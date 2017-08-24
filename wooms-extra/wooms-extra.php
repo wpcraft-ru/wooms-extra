@@ -8,7 +8,9 @@ Author: WPCraft
 Author URI: https://wpcraft.ru
 */
 
-require_once 'inc/class-import-product-images.php';
+require_once 'inc/class-cron.php';
+// require_once 'inc/class-import-product-images.php';
+require_once 'inc/class-import-product-stocks.php';
 
 class WooMS_Extra {
 
