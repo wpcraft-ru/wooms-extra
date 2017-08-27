@@ -20,16 +20,47 @@ class WooMS_Warehouses {
   public function load_data($product_id, $value, $data) {
     // получать остаток по складу и загружать в товары
 
+    if(empty(get_option('woomss_warehouses_sync_stock_enabled'))){
+      return false;
+    }
 
-    /**
-    * Test
-    */
+    // $url = 'https://online.moysklad.ru/api/remap/1.1/report/stock/all';
+    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s', 'b6237097-477a-11e6-7a69-9711002440b7');
+    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s', $value['id']);
+    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s&store.id=%s', $id_product, $id_store);
 
-    // $url = 'https://online.moysklad.ru/api/remap/1.1/entity/uom/19f1edc0-fc42-4001-94cb-c9ec9c62ec10';
-    //
-    // $data = wooms_get_data_by_url($url);
-    //
-    // var_dump($data); exit;
+    $data = wooms_get_data_by_url($url);
+
+    $product = wc_get_product($product_id);
+
+    if(empty($data['rows'][0]['stock'])){
+      $product->set_stock_quantity(0);
+      $product->set_stock_status('outofstock');
+      $product->save();
+
+      return false;
+
+    } else {
+      $stock = (int)$data['rows'][0]['stock'];
+    }
+
+    if($stock <= 0){
+      $product->set_stock_quantity(0);
+      $product->set_stock_status('outofstock');
+      $product->save();
+
+      return false;
+    }
+
+
+    $product->set_stock_quantity($stock);
+    $product->set_stock_status('instock');
+    $product->save();
+
+    return true;
+
+    // update_post_meta($product_id, 'wooms_stock', print_r($data['rows'], true));
+    // var_dump($data['rows'][0]['stock']); exit;
   }
 
   /**
@@ -39,9 +70,18 @@ class WooMS_Warehouses {
 
     add_settings_section(
     	'woomss_section_warehouses',
-    	'Склад',
+    	'Склад и остатки',
     	null,
     	'mss-settings'
+    );
+
+    register_setting('mss-settings', 'woomss_warehouses_sync_stock_enabled');
+    add_settings_field(
+      $id = 'woomss_warehouses_sync_stock_enabled',
+      $title = 'Включить синхронизацию остатков',
+      $callback = [$this, 'woomss_warehouses_sync_stock_enabled_display'],
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
     );
 
     register_setting('mss-settings', 'woomss_warehouses_sync_enabled');
@@ -62,6 +102,12 @@ class WooMS_Warehouses {
       $section = 'woomss_section_warehouses'
     );
 
+  }
+
+  //Display field
+  function woomss_warehouses_sync_stock_enabled_display(){
+    $option = 'woomss_warehouses_sync_stock_enabled';
+    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
   }
 
   //Display field
