@@ -3,17 +3,66 @@
 /**
  * Import variants from MoySklad
  */
-class woomss_tool_import_variaints extends woomss_import {
+class WooMS_Product_Variations
+{
 
   function __construct(){
-      parent::__construct();
-      $this->section_title = __('Импорт вариаций');
-      $this->section_exerpt = __('Импортируем вариации и привязываем их к продуктам WooCommerce');
-      $this->slug = 'woomss_tool_import_variaints';
-      $this->slug_action = 'woomss_tool_import_variaints_do';
+    add_action( 'admin_init', array($this, 'settings_init'), 100 );
+
+    //Use hook do_action('wooms_product_update', $product_id, $value, $data);
+    add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
+
   }
 
-  function load_data(){
+  function settings_init()
+  {
+    add_settings_section(
+      'woomss_section_variations',
+      'Вариации и модификации продуктов',
+      null,
+      'mss-settings'
+    );
+
+    register_setting('mss-settings', 'woomss_variations_sync_enabled');
+    add_settings_field(
+      $id = 'woomss_variations_sync_enabled',
+      $title = 'Включить синхронизацию вариаций',
+      $callback = [$this, 'woomss_variations_sync_enabled_display'],
+      $page = 'mss-settings',
+      $section = 'woomss_section_variations'
+    );
+  }
+
+  function woomss_variations_sync_enabled_display(){
+    $option = 'woomss_variations_sync_enabled';
+    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+
+  }
+
+  function load_data($product_id, $value, $data)
+  {
+    if( empty(get_option('woomss_variations_sync_enabled')) ){
+      return;
+    }
+
+    if(empty($value['modificationsCount'])){
+      return false;
+    } else {
+      $count = (int)$value['modificationsCount'];
+    }
+
+    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?productid=%s', $value['id']);
+
+    $data = wooms_get_data_by_url($url);
+
+    // var_dump($data); exit;
+
+
+
+    // test
+  }
+
+  function load_data_v0(){
 
     echo '<p>load data start...</p>';
 
@@ -67,7 +116,7 @@ class woomss_tool_import_variaints extends woomss_import {
 
       if($product_type != 'variable'){
         wp_set_object_terms( $product_id, 'variable', 'product_type' );
-        
+
         printf('<p>+ Set product as: %s</p>', 'variable');
       }
 
@@ -229,4 +278,6 @@ class woomss_tool_import_variaints extends woomss_import {
           }
     }
 
-} new woomss_tool_import_variaints;
+}
+
+new WooMS_Product_Variations;
