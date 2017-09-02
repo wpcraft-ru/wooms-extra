@@ -14,30 +14,8 @@ class WooMS_Product_Variations
 
   }
 
-  function settings_init()
-  {
-    add_settings_section(
-      'woomss_section_variations',
-      'Вариации и модификации продуктов',
-      null,
-      'mss-settings'
-    );
 
-    register_setting('mss-settings', 'woomss_variations_sync_enabled');
-    add_settings_field(
-      $id = 'woomss_variations_sync_enabled',
-      $title = 'Включить синхронизацию вариаций',
-      $callback = [$this, 'woomss_variations_sync_enabled_display'],
-      $page = 'mss-settings',
-      $section = 'woomss_section_variations'
-    );
-  }
 
-  function woomss_variations_sync_enabled_display(){
-    $option = 'woomss_variations_sync_enabled';
-    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
-
-  }
 
   function load_data($product_id, $item, $data)
   {
@@ -46,92 +24,272 @@ class WooMS_Product_Variations
     }
 
     if(empty($item['modificationsCount'])){
-      return false;
+      $this->remove_varaitions_for_product($product_id);
     } else {
-      $count = (int)$item['modificationsCount'];
+      $this->set_product_as_variable($product_id);
     }
 
-    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', $item['id']);
+    //Get and cache $characteristics
+    if(empty($characteristics = get_transient('wooms_characteristics'))){
+      $characteristics = $this->get_all_characteristics();
+      if( ! empty($characteristics) ){
+        set_transient('wooms_characteristics', $characteristics, DAY_IN_SECONDS);
+      }
+    }
+
+    // $this->update_product_attributes($product_id);
+
+    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', '0004fbc1-06ea-11e6-7a69-9711000ac43f');
+    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', $item['id']);
 
     $data = wooms_get_data_by_url($url);
 
+    $this->set_product_attributes_for_variation($product_id, $data);
+
+    $this->update_variations_for_product($product_id, $data);
+
     return;
 
-    //// Testing
 
-    var_dump($data); exit;
+  }
 
+  function update_variations_for_product($product_id, $data){
 
-    if(empty($data['rows'])){
-      return;
+    if(empty($data["rows"])){
+      return false;
     }
+
+
+
+    foreach ($data["rows"] as $key => $value) {
+
+
+        if( ! $variation_id = $this->get_variation_by_wooms_id($value['id']) ){
+          $variation_id = $this->add_variation($product_id, $value);
+        }
+
+        $this->set_variation_attributes($variation_id, $value['characteristics']);
+
+        $variation = wc_get_product($variation_id);
+
+        $variation->set_name( $value['name'] );
+
+        if( ! empty($value["salePrices"][0]['value'])){
+          $price = $value["salePrices"][0]['value']/100;
+          $variation->set_price( $price );
+          $variation->set_regular_price( $price );
+
+        }
+
+        $variation->save();
+
+    }
+  }
+
+  /**
+  * Set attributes and value for variation
+  */
+  function set_variation_attributes($variation_id, $characteristics){
+    $attributes = [];
+    foreach ($characteristics as $key => $characteristic) {
+      $attribute_name = sanitize_title( $characteristic['name'] );
+      $attributes[$attribute_name] = $characteristic['value'];
+    }
+
+    $variation = wc_get_product($variation_id);
+    $variation->set_attributes( $attributes );
+    $variation->save();
+
+  }
+
+  /**
+  * Set attributes for variables
+  */
+  function set_product_attributes_for_variation($product_id, $data){
+
+    $ms_attributes = [];
+
+    foreach ($data['rows'] as $key => $row) {
+      foreach ($row['characteristics'] as $key => $characteristic) {
+        $ms_attributes[$characteristic['id']] = [
+          'name' => $characteristic["name"],
+          'values' => [],
+        ];
+      }
+    }
+
+    foreach ($data['rows'] as $key => $row) {
+      foreach ($row['characteristics'] as $key => $characteristic) {
+        $ms_attributes[$characteristic['id']]['values'][] = $characteristic['value'];
+      }
+    }
+
+    foreach ($ms_attributes as $key => $value) {
+      $ms_attributes[$key]['values'] = array_unique($value['values']);
+    }
+
+    $attributes = [];
+
+    foreach ($ms_attributes as $key => $value) {
+
+      $attribute_object = new WC_Product_Attribute();
+			// $attribute_object->set_id( $key );
+			$attribute_object->set_name( $value['name'] );
+			$attribute_object->set_options( $value['values'] );
+			$attribute_object->set_position( 0 );
+			$attribute_object->set_visible( 1 );
+			$attribute_object->set_variation( 1 );
+			$attributes[] = $attribute_object;
+
+    }
+
+    $product = wc_get_product($product_id);
+    $product->set_attributes($attributes);
+    $product->save();
+
+    // var_dump($product); exit;
+
+  }
+
+  function add_variation($product_id, $value){
+
+    $variation = new WC_Product_Variation();
+    $variation->set_parent_id( absint( $product_id ) );
+    $variation->set_status( 'publish' );
+
+    $variation->save();
+
+    $variation_id = $variation->get_id();
+
+    if( empty($variation_id) ){
+      return  false;
+    } else {
+      update_post_meta($variation_id, 'wooms_id', $value['id']);
+      do_action('wooms_add_variation', $variation_id, $product_id, $value);
+      return $variation_id;
+    }
+  }
+
+
+  function get_variation_by_wooms_id($id){
+    // $posts = get_posts('post_type=product_variation' );
+    $posts = get_posts('post_type=product_variation&meta_key=wooms_id&meta_value=' . $id );
+
+    if(empty($posts)){
+      return false;
+    } else {
+      return $posts[0]->ID;
+    }
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  function set_product_as_variable($product_id){
 
     $product = wc_get_product($product_id);
 
     if( ! $product->is_type('variable')){
       $r = wp_set_post_terms( $product_id, 'variable', 'product_type' );
-      $product = wc_get_product($product_id);
+      return true;
+    } else {
+      return true;
     }
 
-    foreach ($data['rows'] as $key => $value) {
-      $product_variation_id = $this->get_variation_by_wooms_id(["id"]);
-
-      if(empty($product_variation_id)){
-        $product_variation_id = $this->add_variation($product_id, $value);
-      }
-
-      if(empty($product_variation_id)){
-        wp_send_json_error('no product');
-      } else {
-        // wp_send_json_success('ok');
-
-        $this->update_variation_data($product_variation_id, $value);
-      }
-    }
   }
 
-  function update_variation_data($product_variation_id, $item){
 
-    $varation = wc_get_product($product_variation_id);
+  function get_all_characteristics(){
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/metadata';
+    $data = wooms_get_data_by_url($url);
 
-    if(empty($item['characteristics'])){
+    if(empty($data["characteristics"])){
       return false;
     }
 
-    $characteristics = [];
-    foreach ($item['characteristics'] as $key => $value) {
-      $characteristic = [
-        // 'id' => $value['id'],
-        'name' => $value['name'],
-        'value' => $value['value'],
+    $data_result = [];
+    foreach ($data["characteristics"] as $key => $value) {
+      $data_result[] = [
+        'id' => $value["id"],
+        'name' => $value["name"],
+        'type' => $value["type"],
+        'required' => $value["required"]
       ];
-
-      $characteristics[$value['id']] = $characteristic;
-
     }
 
-    var_dump($item); exit;
-
-
-    $this->prepare_product_attributes_and_characteristic($characteristics, $product_variation_id);
-
-
-    // $attr = $varation->get_prop( 'attributes' );
-    $attr = $varation->get_attributes();
-    // $attr['razm'] = 'xl';
-
-    $varation->set_attributes($attr);
-
-    $varation->save();
-    // $this->set_prop( 'attributes', $attributes );
-
-
-
-    var_dump($attr); exit;
-
-
+    if(empty($data_result)){
+      return false;
+    } else {
+      return $data_result;
+    }
 
   }
+
+  function update_product_attributes($product_id){
+
+    $uuid = get_post_meta($product_id, 'wooms_id', true);
+
+    if(empty($uuid)){
+      return false;
+    }
+
+
+    $product = wc_get_product($product_id);
+  }
+
+
+
+  function remove_varaitions_for_product($product_id){
+    //todo make remove variation for product
+    return true;
+  }
+
+
+
+
+
+  //// Testing
+  //
+  // var_dump($data); exit;
+  //
+  //
+  // if(empty($data['rows'])){
+  //   return;
+  // }
+  //
+  // $product = wc_get_product($product_id);
+  //
+  // if( ! $product->is_type('variable')){
+  //   $r = wp_set_post_terms( $product_id, 'variable', 'product_type' );
+  //   $product = wc_get_product($product_id);
+  // }
+  //
+  // foreach ($data['rows'] as $key => $value) {
+  //   $product_variation_id = $this->get_variation_by_wooms_id(["id"]);
+  //
+  //   if(empty($product_variation_id)){
+  //     $product_variation_id = $this->add_variation($product_id, $value);
+  //   }
+  //
+  //   if(empty($product_variation_id)){
+  //     wp_send_json_error('no product');
+  //   } else {
+  //     // wp_send_json_success('ok');
+  //
+  //     $this->update_variation_data($product_variation_id, $value);
+  //   }
+  // }
 
   function prepare_product_attributes_and_characteristic($characteristic, $product_variation_id){
 
@@ -155,45 +313,7 @@ class WooMS_Product_Variations
 
   }
 
-  function add_variation($product_id, $value){
 
-    if($post_id = $this->get_variation_by_wooms_id($value['id'])){
-
-
-      return $post_id;
-    }
-
-    $product = wc_get_product($product_id);
-
-    $variation = new WC_Product_Variation();
-    $variation->set_parent_id( absint( $product_id ) );
-    $variation->set_status( 'publish' );
-
-    $variation->save();
-
-    $variation_id = $variation->get_id();
-
-    do_action('wooms_add_variation', $variation_id, $product_id, $value);
-
-    if( empty($variation_id) ){
-      return  false;
-    } else {
-      update_post_meta($variation_id, 'wooms_id', $value['id']);
-      return $variation_id;
-    }
-  }
-
-  function get_variation_by_wooms_id($id){
-    // $posts = get_posts('post_type=product_variation' );
-    $posts = get_posts('post_type=product_variation&meta_key=wooms_id&meta_value=' . $id );
-
-    if(empty($posts)){
-      return false;
-    } else {
-      return $posts[0]->ID;
-    }
-
-  }
 
   function load_data_v0(){
 
@@ -355,61 +475,87 @@ class WooMS_Product_Variations
   }
 
 
-    /**
-     * Save attributes after check from data MS
-     *
-     * @param integer $product_id
-     * @return return type
-     */
-    function save_characteristics_as_attributes($product_id, $characteristics){
+  /**
+   * Save attributes after check from data MS
+   *
+   * @param integer $product_id
+   * @return return type
+   */
+  function save_characteristics_as_attributes($product_id, $characteristics){
 
-          $product = wc_get_product($product_id);
-
-
-          //Check and save characteristics as attributes with variation tag
-          foreach ($characteristics as $characteristic) {
+        $product = wc_get_product($product_id);
 
 
-            $key_pa = 'pa_' . $characteristic['id'];
-            $attributes = $product->get_attributes();
+        //Check and save characteristics as attributes with variation tag
+        foreach ($characteristics as $characteristic) {
 
-            $saved_value = $product->get_attribute( $key_pa );
 
-            if(empty($saved_value)){
-              $attributes[$key_pa] = array(
-                'name' => esc_textarea($characteristic['name']),
-                'value' => esc_textarea($characteristic['value']),
-                'position' => 0,
-                'is_visible' => 0,
-                'is_variation' => 1,
-                'is_taxonomy' => 0
-              );
-              printf('<p>+ Attribute "%s". Added with value: %s</p>', $characteristic['name'], $characteristic['value']);
+          $key_pa = 'pa_' . $characteristic['id'];
+          $attributes = $product->get_attributes();
+
+          $saved_value = $product->get_attribute( $key_pa );
+
+          if(empty($saved_value)){
+            $attributes[$key_pa] = array(
+              'name' => esc_textarea($characteristic['name']),
+              'value' => esc_textarea($characteristic['value']),
+              'position' => 0,
+              'is_visible' => 0,
+              'is_variation' => 1,
+              'is_taxonomy' => 0
+            );
+            printf('<p>+ Attribute "%s". Added with value: %s</p>', $characteristic['name'], $characteristic['value']);
+            //Save $attributes in metafield
+            update_post_meta($product_id, '_product_attributes', $attributes);
+
+
+          } else {
+            //Если атрибут есть, но значение не совпадает
+
+            $values_array = array_map('trim', explode("|", $saved_value));
+
+            if ( ! in_array(esc_textarea($characteristic['value']), $values_array) ){
+              $attributes[$key_pa]['value'] .= ' | ' . esc_textarea($characteristic['value']);
+              printf('<p>+ Attribute "%s". Saved value: %s</p>', $characteristic['name'], $attributes[$key_pa]['value']);
+
               //Save $attributes in metafield
               update_post_meta($product_id, '_product_attributes', $attributes);
 
-
-            } else {
-              //Если атрибут есть, но значение не совпадает
-
-              $values_array = array_map('trim', explode("|", $saved_value));
-
-              if ( ! in_array(esc_textarea($characteristic['value']), $values_array) ){
-                $attributes[$key_pa]['value'] .= ' | ' . esc_textarea($characteristic['value']);
-                printf('<p>+ Attribute "%s". Saved value: %s</p>', $characteristic['name'], $attributes[$key_pa]['value']);
-
-                //Save $attributes in metafield
-                update_post_meta($product_id, '_product_attributes', $attributes);
-
-              }
             }
-
-
-            // printf('<hr><pre>%s</pre><hr>', print_r($att, true));
-
-
           }
-    }
+
+
+          // printf('<hr><pre>%s</pre><hr>', print_r($att, true));
+
+
+        }
+  }
+
+
+  function settings_init()
+  {
+    add_settings_section(
+      'woomss_section_variations',
+      'Вариации и модификации продуктов',
+      null,
+      'mss-settings'
+    );
+
+    register_setting('mss-settings', 'woomss_variations_sync_enabled');
+    add_settings_field(
+      $id = 'woomss_variations_sync_enabled',
+      $title = 'Включить синхронизацию вариаций',
+      $callback = [$this, 'woomss_variations_sync_enabled_display'],
+      $page = 'mss-settings',
+      $section = 'woomss_section_variations'
+    );
+  }
+
+  function woomss_variations_sync_enabled_display(){
+    $option = 'woomss_variations_sync_enabled';
+    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+
+  }
 
 }
 
