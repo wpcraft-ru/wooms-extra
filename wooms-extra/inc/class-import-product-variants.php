@@ -39,27 +39,160 @@ class WooMS_Product_Variations
 
   }
 
-  function load_data($product_id, $value, $data)
+  function load_data($product_id, $item, $data)
   {
     if( empty(get_option('woomss_variations_sync_enabled')) ){
       return;
     }
 
-    if(empty($value['modificationsCount'])){
+    if(empty($item['modificationsCount'])){
       return false;
     } else {
-      $count = (int)$value['modificationsCount'];
+      $count = (int)$item['modificationsCount'];
     }
 
-    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?productid=%s', $value['id']);
+    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', $item['id']);
 
     $data = wooms_get_data_by_url($url);
 
-    // var_dump($data); exit;
+    return;
+
+    //// Testing
+
+    var_dump($data); exit;
+
+
+    if(empty($data['rows'])){
+      return;
+    }
+
+    $product = wc_get_product($product_id);
+
+    if( ! $product->is_type('variable')){
+      $r = wp_set_post_terms( $product_id, 'variable', 'product_type' );
+      $product = wc_get_product($product_id);
+    }
+
+    foreach ($data['rows'] as $key => $value) {
+      $product_variation_id = $this->get_variation_by_wooms_id(["id"]);
+
+      if(empty($product_variation_id)){
+        $product_variation_id = $this->add_variation($product_id, $value);
+      }
+
+      if(empty($product_variation_id)){
+        wp_send_json_error('no product');
+      } else {
+        // wp_send_json_success('ok');
+
+        $this->update_variation_data($product_variation_id, $value);
+      }
+    }
+  }
+
+  function update_variation_data($product_variation_id, $item){
+
+    $varation = wc_get_product($product_variation_id);
+
+    if(empty($item['characteristics'])){
+      return false;
+    }
+
+    $characteristics = [];
+    foreach ($item['characteristics'] as $key => $value) {
+      $characteristic = [
+        // 'id' => $value['id'],
+        'name' => $value['name'],
+        'value' => $value['value'],
+      ];
+
+      $characteristics[$value['id']] = $characteristic;
+
+    }
+
+    var_dump($item); exit;
+
+
+    $this->prepare_product_attributes_and_characteristic($characteristics, $product_variation_id);
+
+
+    // $attr = $varation->get_prop( 'attributes' );
+    $attr = $varation->get_attributes();
+    // $attr['razm'] = 'xl';
+
+    $varation->set_attributes($attr);
+
+    $varation->save();
+    // $this->set_prop( 'attributes', $attributes );
 
 
 
-    // test
+    var_dump($attr); exit;
+
+
+
+  }
+
+  function prepare_product_attributes_and_characteristic($characteristic, $product_variation_id){
+
+    $variation = wc_get_product($product_variation_id);
+
+    $product_id = $variation->get_parent_id();
+
+    if(empty($product_id)){
+      return false;
+    }
+
+    $product = wc_get_product($product_id);
+
+    if(empty($product)){
+      return false;
+    }
+
+    $attributes = $product->get_attributes();
+
+    var_dump($characteristic, $attributes); exit;
+
+  }
+
+  function add_variation($product_id, $value){
+
+    if($post_id = $this->get_variation_by_wooms_id($value['id'])){
+
+
+      return $post_id;
+    }
+
+    $product = wc_get_product($product_id);
+
+    $variation = new WC_Product_Variation();
+    $variation->set_parent_id( absint( $product_id ) );
+    $variation->set_status( 'publish' );
+
+    $variation->save();
+
+    $variation_id = $variation->get_id();
+
+    do_action('wooms_add_variation', $variation_id, $product_id, $value);
+
+    if( empty($variation_id) ){
+      return  false;
+    } else {
+      update_post_meta($variation_id, 'wooms_id', $value['id']);
+      return $variation_id;
+    }
+  }
+
+  function get_variation_by_wooms_id($id){
+    // $posts = get_posts('post_type=product_variation' );
+    $posts = get_posts('post_type=product_variation&meta_key=wooms_id&meta_value=' . $id );
+
+    if(empty($posts)){
+      return false;
+    } else {
+      return $posts[0]->ID;
+    }
+
   }
 
   function load_data_v0(){
