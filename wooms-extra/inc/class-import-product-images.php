@@ -16,7 +16,6 @@ class WooMS_Import_Product_Images {
 
     add_action('wooms_cron_worker_start', [$this, 'download_images_from_metafield']);
 
-//
     add_action('woomss_tool_actions_btns', [$this, 'ui_for_manual_start'], 15);
     add_action('woomss_tool_actions_wooms_products_images_manual_start', [$this, 'ui_action']);
 
@@ -51,18 +50,18 @@ class WooMS_Import_Product_Images {
    */
   public function ui_action() {
 
-
     $data = $this->download_images_from_metafield();
 
-    // var_dump($data); exit;
+    echo '<hr>';
 
-
-    //Test
-    // $url_api = 'https://online.moysklad.ru/api/remap/1.1/download/cd5e6e67-8441-11e7-7a6c-d2a9000589f3';
-    // $data =  $this->download_img($url_api, 'Condor_sviter_bk_1.jpg', 2511);
-    //
-
-
+    if(empty($data)){
+      echo '<p>Нет картинок для загрузки</p>';
+    } else {
+      echo "<p>Загружены миниатюры для продуктов:</p>";
+      foreach ($data as $key => $value) {
+        printf('<p><a href="%s">ID %s</a></p>', get_edit_post_link($value),$value);
+      }
+    }
   }
 
 
@@ -84,9 +83,12 @@ class WooMS_Import_Product_Images {
 
       $image_name = $image_data['filename'];
 
-      $check_id = $this->download_img($data_get_image['url'], $data_get_image['filename'], $value->ID);
+      $check_id = $this->download_img($url, $image_name, $value->ID);
 
       if( ! empty($check_id)){
+
+        set_post_thumbnail($value->ID, $check_id);
+
         delete_post_meta($value->ID, 'wooms_url_for_get_thumbnail');
         delete_post_meta($value->ID, 'wooms_image_data');
 
@@ -126,6 +128,7 @@ class WooMS_Import_Product_Images {
       return $check_id;
     }
 
+
     $header_array = [
         'Authorization' => 'Basic ' . base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) )
     ];
@@ -148,13 +151,15 @@ class WooMS_Import_Product_Images {
 
      $tmpfname = wp_tempnam( $file_name );
      $fh = fopen($tmpfname, 'w');
-     if($target_url == $info['url']){//если редиректа нет записываем файл
+
+
+     if($url_api == $info['url']){//если редиректа нет записываем файл
         fwrite($fh, $output);
-        wp_mail('yumashev@fleep.io', 'test download image', 't1');
+        // wp_mail('yumashev@fleep.io', 'test download image', $target_url);
       } else {
         $file = file_get_contents($info['url']);//если редирект есть то скачиваем файл по ссылке
         fwrite($fh, $file);
-        wp_mail('yumashev@fleep.io', 'test download image', 't2');
+        // wp_mail('yumashev@fleep.io', 'test download image', $info['url']);
       }
 
      fclose($fh);
@@ -242,7 +247,7 @@ class WooMS_Import_Product_Images {
 
     ?>
     <h2>Загрузка картинок</h2>
-    <p>Для выполнения загрузки картинок вручную - нажмите на кнопку</p>
+    <p>Ручная загрузка картинок по 5 штук за раз.</p>
     <a href="<?php echo add_query_arg('a', 'wooms_products_images_manual_start', admin_url('tools.php?page=moysklad')) ?>" class="button">Выполнить</a>
     <?php
   }
