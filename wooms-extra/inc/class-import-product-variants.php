@@ -39,8 +39,7 @@ class WooMS_Product_Variations
 
     // $this->update_product_attributes($product_id);
 
-    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', '0004fbc1-06ea-11e6-7a69-9711000ac43f');
-    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', $item['id']);
+    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/variant?filter=productid=%s', $item['id']);
 
     $data = wooms_get_data_by_url($url);
 
@@ -258,39 +257,6 @@ class WooMS_Product_Variations
 
 
 
-
-  //// Testing
-  //
-  // var_dump($data); exit;
-  //
-  //
-  // if(empty($data['rows'])){
-  //   return;
-  // }
-  //
-  // $product = wc_get_product($product_id);
-  //
-  // if( ! $product->is_type('variable')){
-  //   $r = wp_set_post_terms( $product_id, 'variable', 'product_type' );
-  //   $product = wc_get_product($product_id);
-  // }
-  //
-  // foreach ($data['rows'] as $key => $value) {
-  //   $product_variation_id = $this->get_variation_by_wooms_id(["id"]);
-  //
-  //   if(empty($product_variation_id)){
-  //     $product_variation_id = $this->add_variation($product_id, $value);
-  //   }
-  //
-  //   if(empty($product_variation_id)){
-  //     wp_send_json_error('no product');
-  //   } else {
-  //     // wp_send_json_success('ok');
-  //
-  //     $this->update_variation_data($product_variation_id, $value);
-  //   }
-  // }
-
   function prepare_product_attributes_and_characteristic($characteristic, $product_variation_id){
 
     $variation = wc_get_product($product_variation_id);
@@ -309,7 +275,6 @@ class WooMS_Product_Variations
 
     $attributes = $product->get_attributes();
 
-    var_dump($characteristic, $attributes); exit;
 
   }
 
@@ -523,9 +488,6 @@ class WooMS_Product_Variations
 
             }
           }
-
-
-          // printf('<hr><pre>%s</pre><hr>', print_r($att, true));
 
 
         }

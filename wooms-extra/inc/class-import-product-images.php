@@ -14,7 +14,7 @@ class WooMS_Import_Product_Images {
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
 
-    add_action('wooms_cron_worker_start', [$his, 'download_images_from_metafield']);
+    add_action('wooms_cron_worker_start', [$this, 'download_images_from_metafield']);
 
 //
     add_action('woomss_tool_actions_btns', [$this, 'ui_for_manual_start'], 15);
@@ -54,7 +54,7 @@ class WooMS_Import_Product_Images {
 
     $data = $this->download_images_from_metafield();
 
-    var_dump($data); exit;
+    // var_dump($data); exit;
 
 
     //Test
