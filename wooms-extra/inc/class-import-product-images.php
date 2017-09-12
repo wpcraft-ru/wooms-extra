@@ -14,7 +14,7 @@ class WooMS_Import_Product_Images {
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
 
-    add_action('wooms_cron_worker_start', [$this, 'download_images_from_metafield']);
+    add_action('wooms_cron_image_downloads', [$this, 'download_images_from_metafield']);
 
     add_action('woomss_tool_actions_btns', [$this, 'ui_for_manual_start'], 15);
     add_action('woomss_tool_actions_wooms_products_images_manual_start', [$this, 'ui_action']);
@@ -73,6 +73,10 @@ class WooMS_Import_Product_Images {
 
 
     $list = get_posts('post_type=product&meta_key=wooms_url_for_get_thumbnail&meta_compare=EXISTS');
+
+    if(empty($list)){
+      return false;
+    }
 
     $result = [];
 

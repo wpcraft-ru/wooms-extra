@@ -11,7 +11,7 @@ class WooMS_Orders_Sender  {
     add_action('woomss_tool_actions_btns', [$this, 'ui_for_manual_start'], 15);
     add_action('woomss_tool_actions_wooms_orders_send', [$this, 'ui_action']);
 
-    add_action('wooms_cron_worker_start',[$this, 'cron_starter_walker']);
+    add_action('wooms_cron_order_sender',[$this, 'cron_starter_walker']);
 
   }
 
