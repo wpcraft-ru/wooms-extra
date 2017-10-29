@@ -212,7 +212,7 @@ class WooMS_Orders_Sender  {
     register_setting('mss-settings', 'wooms_orders_sender_enable');
     add_settings_field(
       $id = 'wooms_orders_sender_enable',
-      $title = 'Включить передатчик заказов в МойСклад',
+      $title = 'Включить синхронизацию заказов в МойСклад',
       $callback = [$this, 'wooms_orders_sender_enable_display_field'],
       $page = 'mss-settings',
       $section = 'woomss_section_other'

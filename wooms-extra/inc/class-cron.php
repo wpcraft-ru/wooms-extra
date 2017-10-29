@@ -25,10 +25,6 @@ class WooMS_WP_Cron {
 
   function add_hook(){
 
-		if ( ! wp_next_scheduled( 'wooms_cron_image_downloads' ) ) {
-			wp_schedule_event( time(), 'wooms_cron_worker', 'wooms_cron_image_downloads' );
-		}
-
 		if ( ! wp_next_scheduled( 'wooms_cron_order_sender' ) ) {
 			wp_schedule_event( time(), 'wooms_cron_worker', 'wooms_cron_order_sender' );
 		}
