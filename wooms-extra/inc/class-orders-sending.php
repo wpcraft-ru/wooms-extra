@@ -111,9 +111,11 @@ class WooMS_Orders_Sender  {
 
       $price = $item->get_total();
 
+      $quantity = $item->get_quantity();
+
       $data[] = [
-        'quantity' => $item->get_quantity(),
-        'price' => $price * 100,
+        'quantity' => $quantity,
+        'price' => ($price / $quantity) * 100,
         'discount' => 0,
         'vat' => 0,
         'assortment' => [

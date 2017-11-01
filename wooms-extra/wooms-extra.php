@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: WooMS Extra
-Version: 1.2.1
+Version: 1.2.2
 Plugin URI: https://wpcraft.ru/product/wooms-extra/
 Description: Расширение для синхронизации МойСклад и WooCommerce
 Author: WPCraft
