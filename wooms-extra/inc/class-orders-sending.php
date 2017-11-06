@@ -109,6 +109,14 @@ class WooMS_Orders_Sender  {
       $product_id = $item["product_id"];
       $uuid = get_post_meta($product_id, 'wooms_id', true);
 
+      if(empty($uuid)){
+        continue;
+      }
+
+      if(apply_filters('wooms_order_item_skip', false, $product_id, $item)){
+        continue;
+      }
+
       $price = $item->get_total();
 
       $quantity = $item->get_quantity();
@@ -126,7 +134,6 @@ class WooMS_Orders_Sender  {
           ]
         ],
         'reserve' => 0
-        // 'reserve' => $item->get_total()
       ];
     }
 
