@@ -7,7 +7,7 @@ class WooMS_Product_Variations
 {
 
   function __construct(){
-    add_action( 'admin_init', array($this, 'settings_init'), 100 );
+    add_action( 'admin_init', array($this, 'settings_init'), 150 );
 
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
@@ -496,27 +496,22 @@ class WooMS_Product_Variations
 
   function settings_init()
   {
-    add_settings_section(
-      'woomss_section_variations',
-      'Вариации и модификации продуктов',
-      null,
-      'mss-settings'
-    );
-
     register_setting('mss-settings', 'woomss_variations_sync_enabled');
     add_settings_field(
       $id = 'woomss_variations_sync_enabled',
       $title = 'Включить синхронизацию вариаций',
       $callback = [$this, 'woomss_variations_sync_enabled_display'],
       $page = 'mss-settings',
-      $section = 'woomss_section_variations'
+      $section = 'woomss_section_other'
     );
   }
 
   function woomss_variations_sync_enabled_display(){
     $option = 'woomss_variations_sync_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
-
+    ?>
+    <p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.</strong></p>
+    <?php
   }
 
 }
