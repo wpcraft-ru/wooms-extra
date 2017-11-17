@@ -24,10 +24,7 @@ class WooMS_Warehouses {
       return false;
     }
 
-    // $url = 'https://online.moysklad.ru/api/remap/1.1/report/stock/all';
-    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s', 'b6237097-477a-11e6-7a69-9711002440b7');
     $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s', $value['id']);
-    // $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s&store.id=%s', $id_product, $id_store);
 
     $data = wooms_get_data_by_url($url);
 
@@ -71,7 +68,7 @@ class WooMS_Warehouses {
     add_settings_section(
     	'woomss_section_warehouses',
     	'Склад и остатки',
-    	null,
+    	$callback = array($this, 'display_woomss_section_warehouses'),
     	'mss-settings'
     );
 
@@ -102,6 +99,10 @@ class WooMS_Warehouses {
       $section = 'woomss_section_warehouses'
     );
 
+  }
+
+  function display_woomss_section_warehouses(){
+    echo "<p>Функционал обязательно нужно проверять на тестовом сайте. Он еще проходит обкатку. В случае проблем сообщайте в техподдержку.</p>";
   }
 
   //Display field

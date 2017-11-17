@@ -9,7 +9,7 @@ class WooMS_Product_Attributes
 
   function __construct()
   {
-    add_action( 'admin_init', array($this, 'settings_init'), 100 );
+    add_action( 'admin_init', array($this, 'settings_init'), 150 );
 
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
@@ -139,12 +139,6 @@ class WooMS_Product_Attributes
    */
   public function settings_init()
   {
-    add_settings_section(
-      'woomss_section_attributes',
-      'Атрибуты',
-      null,
-      'mss-settings'
-    );
 
     register_setting('mss-settings', 'wooms_attr_enabled');
     add_settings_field(
@@ -152,7 +146,7 @@ class WooMS_Product_Attributes
       $title = 'Включить синхронизацию атрибутов',
       $callback = [$this, 'wooms_attr_enabled_display'],
       $page = 'mss-settings',
-      $section = 'woomss_section_attributes'
+      $section = 'woomss_section_other'
     );
 
   }
@@ -164,6 +158,7 @@ class WooMS_Product_Attributes
   {
     $option = 'wooms_attr_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+    echo '<p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.</strong></p>';
   }
 }
 

@@ -204,9 +204,7 @@ class WooMS_Products_Bundle
   {
     $option = 'wooms_products_bundle_enable';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
-    ?>
-    <p><strong>Функция работает в тестовом режиме. Перед запуском на боевом сайте нужно проверить ее на тестовой копии. Если что писать в техподдержку.</strong></p>
-    <?php
+    echo "<p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.</strong></p>";
   }
 
 }
