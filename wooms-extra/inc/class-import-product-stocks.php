@@ -3,28 +3,42 @@
 /**
  * Import products from MoySklad
  */
-class WooMS_Warehouses {
+class WooMS_Warehouses
+{
 
-  function __construct(){
-    add_action( 'admin_init', array($this, 'settings_init'), 100 );
+  function __construct()
+  {
 
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
 
+    //Settings
+    add_action( 'admin_init', array($this, 'settings_init'), 100 );
   }
+
 
 
   /**
    * Load data for product
+   * @TODO: сделать синк по складу
    */
   public function load_data($product_id, $value, $data) {
     // получать остаток по складу и загружать в товары
 
-    if(empty(get_option('woomss_warehouses_sync_stock_enabled'))){
+    if(empty(get_option('woomss_stock_sync_enabled'))){
       return false;
     }
 
-    $url = sprintf('https://online.moysklad.ru/api/remap/1.1/report/stock/all?product.id=%s', $value['id']);
+    $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
+
+
+    if( get_option('woomss_warehouses_sync_enabled') and $warehouse_id = get_option('woomss_warehouse_id') ) {
+      $url = add_query_arg(array('store.id' => $warehouse_id, 'product.id' => $value['id']), $url);
+    } else {
+      $url = add_query_arg('product.id', $value['id'], $url);
+    }
+
+    // WooMS_Log::add($url);
 
     $data = wooms_get_data_by_url($url);
 
@@ -56,8 +70,6 @@ class WooMS_Warehouses {
 
     return true;
 
-    // update_post_meta($product_id, 'wooms_stock', print_r($data['rows'], true));
-    // var_dump($data['rows'][0]['stock']); exit;
   }
 
   /**
@@ -72,11 +84,11 @@ class WooMS_Warehouses {
     	'mss-settings'
     );
 
-    register_setting('mss-settings', 'woomss_warehouses_sync_stock_enabled');
+    register_setting('mss-settings', 'woomss_stock_sync_enabled');
     add_settings_field(
-      $id = 'woomss_warehouses_sync_stock_enabled',
+      $id = 'woomss_stock_sync_enabled',
       $title = 'Включить синхронизацию остатков',
-      $callback = [$this, 'woomss_warehouses_sync_stock_enabled_display'],
+      $callback = [$this, 'woomss_stock_sync_enabled_display'],
       $page = 'mss-settings',
       $section = 'woomss_section_warehouses'
     );
@@ -102,12 +114,19 @@ class WooMS_Warehouses {
   }
 
   function display_woomss_section_warehouses(){
-    echo "<p>Функционал обязательно нужно проверять на тестовом сайте. Он еще проходит обкатку. В случае проблем сообщайте в техподдержку.</p>";
+    ?>
+    <p>Данные опции позволяют настроить обмен данным по остаткам между складом и сайтом.</p>
+    <ol>
+      <li>Функционал обязательно нужно проверять на тестовом сайте. Он еще проходит обкатку. В случае проблем сообщайте в техподдержку</li>
+      <li>После изменения этих опций, следует обязательно <a href="<?php echo admin_url('tools.php?page=moysklad') ?>" target="_blank">запускать обмен данными вручную</a>, чтобы статусы наличия продуктов обновились</li>
+      <li>Перед включением опций, нужно настроить магазина на работу с <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=products&section=inventory') ?>" target="_blank">Запасами</a></li>
+    </ol>
+    <?php
   }
 
   //Display field
-  function woomss_warehouses_sync_stock_enabled_display(){
-    $option = 'woomss_warehouses_sync_stock_enabled';
+  function woomss_stock_sync_enabled_display(){
+    $option = 'woomss_stock_sync_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
   }
 
@@ -147,8 +166,6 @@ class WooMS_Warehouses {
     <?php
 
   }
-
-
 }
 
 new WooMS_Warehouses;
