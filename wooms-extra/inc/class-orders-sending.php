@@ -3,7 +3,8 @@
 /**
  * Send orders to MoySklad
  */
-class WooMS_Orders_Sender  {
+class WooMS_Orders_Sender
+{
 
   function __construct(){
     add_action( 'admin_init', array($this, 'settings_init'), 100 );
@@ -15,20 +16,6 @@ class WooMS_Orders_Sender  {
 
   }
 
-
-  function ui_action(){
-    $result_list = $this->walker();
-
-    echo '<br/><hr>';
-
-    if(empty($result_list)){
-      echo "<p>Нет заказов для передачи в МойСклад</p>";
-    } else {
-      foreach ($result_list as $key => $value) {
-        printf('<p>Передан заказ <a href="%s">№%s</a></p>', get_edit_post_link($value), $value);
-      }
-    }
-  }
 
   function walker(){
     $args = array(
@@ -65,15 +52,11 @@ class WooMS_Orders_Sender  {
 
     $result = $this->send_data($url, $data);
 
-
     if(empty($result['id'])){
       return false;
     }
 
     update_post_meta($order_id, 'wooms_id', $result['id']);
-
-
-
     return true;
   }
 
@@ -145,50 +128,87 @@ class WooMS_Orders_Sender  {
 
   }
 
-
+  /**
+  * Получаем данные об контрагенте для передачи в МойСклад
+  */
   function get_data_agent($order_id){
 
     $order = wc_get_order($order_id);
 
     $user = $order->get_user();
 
-    if( ! empty($user)){
-      // for exist user
-    }
+    $email = '';
 
-    $name = $order->get_billing_company();
-    if(empty($name)){
-      $name = $order->get_billing_last_name();
-      if( ! empty($order->get_billing_first_name())){
-        $name .= ' ' . $order->get_billing_first_name();
+    if( empty($user)){
+      if( ! empty($order->get_billing_email()) ){
+        $email = $order->get_billing_email();
       }
+    } else {
+      $email = $user->user_email;
     }
 
-    if(empty($name)){
-      $name = "Клиент по заказу №" . $order_id;
-    }
-
-    $data = [
-      "name" => $name,
-    ];
-
-    if( ! empty($order->get_billing_email()) ){
-      $data["email"] = $order->get_billing_email();
-    }
-
-    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
-
-    $result = $this->send_data($url, $data);
-
-    if(empty($result["meta"])){
+    if(empty($email)){
+      do_action('u7logger', 'class-orders-sending.php - empty email');
       return false;
     }
 
-    $meta = $result["meta"];
+    $meta = $this->get_agent_meta_by_email($email);
+
+    if(empty($meta)){
+
+      $name = $order->get_billing_company();
+      if(empty($name)){
+        $name = $order->get_billing_last_name();
+        if( ! empty($order->get_billing_first_name())){
+          $name .= ' ' . $order->get_billing_first_name();
+        }
+      }
+
+      if(empty($name)){
+        $name = "Клиент по заказу №" . $order_id;
+      }
+
+      $data = array(
+        "name" => $name,
+      );
+
+      if( ! empty($email)){
+        $data['email'] = $email;
+      }
+
+      $url = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
+
+      $result = $this->send_data($url, $data);
+
+      if(empty($result["meta"])){
+        return false;
+      }
+
+      $meta = $result["meta"];
+
+    }
+
     return array('meta' => $meta);
 
   }
 
+  /**
+  * Get meta by email agent
+  */
+  function get_agent_meta_by_email($email = ''){
+    $url_search_agent = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty?filter=email=' . $email;
+    $data_agents = wooms_get_data_by_url($url_search_agent);
+
+    if(empty($data_agents['rows'][0]['meta'])){
+      return false;
+    } else {
+      return $data_agents['rows'][0]['meta'];
+    }
+  }
+
+  /**
+  * Get meta for organization
+  */
   function get_data_organization(){
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
     $data = wooms_get_data_by_url($url);
@@ -199,6 +219,40 @@ class WooMS_Orders_Sender  {
       $meta = $data['rows'][0]['meta'];
       return array('meta' => $meta);
     }
+  }
+
+  function send_data($url, $data){
+
+    if(is_array($data)){
+      $data = json_encode( $data );
+    } else {
+      return false;
+    }
+
+    $args = array(
+      'timeout' => 45,
+      'headers' => array(
+        "Content-Type" => 'application/json',
+        'Authorization' => 'Basic ' . base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) )
+      ),
+      'body' => $data
+    );
+
+    $response = wp_remote_post($url, $args);
+    $response_code = wp_remote_retrieve_response_code( $response );
+    $response_body = wp_remote_retrieve_body( $response );
+    $result = json_decode( $response_body, TRUE );
+
+    if(empty($result)){
+      return false;
+    } else {
+      return $result;
+    }
+  }
+
+  //Start by cron
+  function cron_starter_walker(){
+    $this->walker();
   }
 
   function ui_for_manual_start(){
@@ -234,42 +288,19 @@ class WooMS_Orders_Sender  {
 
   }
 
+  function ui_action(){
+    $result_list = $this->walker();
 
-  function send_data($url, $data){
+    echo '<br/><hr>';
 
-    if(is_array($data)){
-      $data = json_encode( $data );
+    if(empty($result_list)){
+      echo "<p>Нет заказов для передачи в МойСклад</p>";
     } else {
-      return false;
+      foreach ($result_list as $key => $value) {
+        printf('<p>Передан заказ <a href="%s">№%s</a></p>', get_edit_post_link($value), $value);
+      }
     }
-
-    $args = array(
-      'timeout' => 45,
-      'headers' => array(
-        "Content-Type" => 'application/json',
-        'Authorization' => 'Basic ' . base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) )
-      ),
-      'body' => $data
-    );
-
-    $response = wp_remote_post($url, $args);
-    $response_code = wp_remote_retrieve_response_code( $response );
-    $response_body = wp_remote_retrieve_body( $response );
-    $result = json_decode( $response_body, TRUE );
-
-    if(empty($result)){
-      return false;
-    } else {
-      return $result;
-    }
-
   }
-
-  //Start by cron
-  function cron_starter_walker(){
-    $this->walker();
-  }
-
 
 }
 
