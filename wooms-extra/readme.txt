@@ -1,0 +1,76 @@
+=== WooMS Extra ===
+Tags: moysklad, woocommerce, sync, integration
+Requires at least: 4.0
+Tested up to: 4.8
+Stable tag: 4.3
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+
+MoySklad (moysklad.ru) and WooCommerce - sync, integration, connection
+
+== Description ==
+
+Интеграция приложения МойСклад (торговля, опт, розница, склад, производство, CRM) и WooCommerce (WordPress)
+
+Особенности:
+
+*   Синхронизация товаров по протоколу REST API
+*   Загрузка категорий
+*   Загрузка картинок
+*   Передача заказов на Склад
+*   Простые настройки
+
+
+[Инструкция по правильному запуску Интернет магазина на базе WordPress & WooCommerce](https://wpcraft.ru/2017/internet-magazin-na-wordpress-woocommerce-storefront-mojsklad/)
+
+По вопросам доработки https://wpcraft.ru/contacts/
+Плагин спроектирован таким образом, что относительно просто позволяет дорабатывать механику под задачи и автоматизацию конкретного магазина/каталога.
+
+== Installation ==
+
+This section describes how to install the plugin and get it working.
+
+e.g.
+
+1. Upload plugin to the `/wp-content/plugins/` directory
+1. Activate the plugin through the 'Plugins' menu in WordPress
+1. Go to Settings / MoySklad and setup
+1. Got to Tools / MoySklad and run sync
+
+== Frequently Asked Questions ==
+
+= Какие товары синхронизируются? =
+
+По умолчанию только с артикулами. Чтобы можно было синхронизировать товары МойСклад и сайта без удаления.
+Но если включить опцию UUID, то товары можно синхронизировать без артикула. В этом случае придется сначала удалить продукты с сайта.
+
+= Что нужно чтобы синхронизация заработала? =
+
+Нужно правильно указать реквизиты доступа на странице настроек плагина в панели управления сайтом. На стороне МойСклад ничего делать не нужно.
+
+= Как устроен механизм синхронизации? =
+
+Используется протокол REST API. Без протокола CommerceML. Вся логика находится на стороне сайта и сайт сам запрашиует данные из МойСклад.
+В зависимости от особенностей конфигурации сервера бот синхронизации может зависать из-за таймаутов. Для этого в плагине встроен супервайзер, который следит за ботом и пинает его в случае остановки.
+
+= Какие минимальные требования? =
+
+WordPress 4.5
+WooCommerce 3.0 - мб будет работать на Woo 2.х но не факт.
+PHP 5.6
+
+
+== Screenshots ==
+
+1. Страница настроек.
+2. Страница управления
+
+== Changelog ==
+
+= 1.4.2 =
+* Добавлен readme.txt
+* Переработан обмен атрибутов и исправлены ошибки
+* Добавлена проверка Покупателей на дубли по email
+
+= 1.0.1 =
+* Первичная версия с передачей Заказов в МойСклад
