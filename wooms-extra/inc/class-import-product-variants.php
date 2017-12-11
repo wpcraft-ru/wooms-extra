@@ -58,10 +58,7 @@ class WooMS_Product_Variations
       return false;
     }
 
-
-
     foreach ($data["rows"] as $key => $value) {
-
 
         if( ! $variation_id = $this->get_variation_by_wooms_id($value['id']) ){
           $variation_id = $this->add_variation($product_id, $value);
@@ -82,6 +79,7 @@ class WooMS_Product_Variations
 
         $variation->save();
 
+        do_action('wooms_variation_id', $variation_id, $value, $data);
     }
   }
 

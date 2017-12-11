@@ -12,6 +12,9 @@ class WooMS_Warehouses
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
 
+    //Use hook do_action('wooms_variation_id', $variation_id, $value, $data);
+    add_action('wooms_variation_id', [$this, 'load_data'], 10, 3);
+
     //Settings
     add_action( 'admin_init', array($this, 'settings_init'), 100 );
   }
