@@ -16,7 +16,6 @@ class WooMS_Orders_Sender
 
   }
 
-
   function walker(){
     $args = array(
       'post_type' => 'shop_order',
@@ -48,6 +47,11 @@ class WooMS_Orders_Sender
 
     $data = $this->get_data_order_for_moysklad($order_id);
 
+    if(empty($data)){
+      update_post_meta($order_id, 'wooms_send_timestamp', date("Y-m-d H:i:s"));
+      return false;
+    }
+
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 
     $result = $this->send_data($url, $data);
@@ -67,11 +71,15 @@ class WooMS_Orders_Sender
       "name" => apply_filters('wooms_order_name', (string)$order_id),
     ];
 
+    $data['positions'] = $this->get_data_positions($order_id);
+    if(empty($data['positions'])){
+      return false;
+    }
+
     $data["organization"] = $this->get_data_organization();
 
     $data["agent"] = $this->get_data_agent($order_id);
 
-    $data['positions'] = $this->get_data_positions($order_id);
 
     return $data;
 
@@ -256,10 +264,6 @@ class WooMS_Orders_Sender
   }
 
   function ui_for_manual_start(){
-
-    if( empty(get_option('woomss_images_sync_enabled')) ){
-      return;
-    }
 
     ?>
     <h2>Отправка заказов в МойСклад</h2>
