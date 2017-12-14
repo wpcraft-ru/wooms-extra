@@ -18,6 +18,7 @@ class WooMS_Orders_Sender
 
   function walker(){
     $args = array(
+      'numberposts' => apply_filters('wooms_orders_number', 5),
       'post_type' => 'shop_order',
       'post_status' => 'any',
       'meta_key' => 'wooms_send_timestamp',
