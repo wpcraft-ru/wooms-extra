@@ -9,14 +9,19 @@ class WooMS_Orders_Sender
   function __construct(){
     add_action( 'admin_init', array($this, 'settings_init'), 100 );
 
-    add_action('woomss_tool_actions_btns', [$this, 'ui_for_manual_start'], 15);
-    add_action('woomss_tool_actions_wooms_orders_send', [$this, 'ui_action']);
+    add_action('woomss_tool_actions_btns', array($this, 'ui_for_manual_start'), 15);
+    add_action('woomss_tool_actions_wooms_orders_send', array($this, 'ui_action'));
 
-    add_action('wooms_cron_order_sender',[$this, 'cron_starter_walker']);
+    add_action('wooms_cron_order_sender', array($this, 'cron_starter_walker'));
+
+    add_action( 'admin_enqueue_scripts', array($this, 'enqueue_date_picker') );
 
   }
 
   function walker(){
+
+
+
     $args = array(
       'numberposts' => apply_filters('wooms_orders_number', 5),
       'post_type' => 'shop_order',
@@ -24,6 +29,17 @@ class WooMS_Orders_Sender
       'meta_key' => 'wooms_send_timestamp',
       'meta_compare' => 'NOT EXISTS',
     );
+
+    if(empty(get_option('wooms_orders_send_from'))){
+      $date_from = '2 day ago';
+    } else {
+      $date_from = get_option('wooms_orders_send_from');
+    }
+
+    $args['date_query'] = array(
+      'after' => $date_from
+    );
+
     $orders = get_posts($args);
 
     $result_list = [];
@@ -277,22 +293,51 @@ class WooMS_Orders_Sender
 
   function settings_init(){
 
+    add_settings_section('wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings' );
+
     register_setting('mss-settings', 'wooms_orders_sender_enable');
     add_settings_field(
       $id = 'wooms_orders_sender_enable',
       $title = 'Включить синхронизацию заказов в МойСклад',
-      $callback = [$this, 'wooms_orders_sender_enable_display_field'],
+      $callback = [$this, 'display_wooms_orders_sender_enable'],
       $page = 'mss-settings',
-      $section = 'woomss_section_other'
+      $section = 'wooms_section_orders'
+    );
+
+    register_setting('mss-settings', 'wooms_orders_send_from');
+    add_settings_field(
+      $id = 'wooms_orders_send_from',
+      $title = 'Дата, с которой берутся Заказы для отправки',
+      $callback = [$this, 'display_wooms_orders_send_from'],
+      $page = 'mss-settings',
+      $section = 'wooms_section_orders'
     );
   }
 
-  function wooms_orders_sender_enable_display_field(){
+  function display_wooms_orders_sender_enable()
+  {
     $option = 'wooms_orders_sender_enable';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+  }
+  function display_wooms_orders_send_from()
+  {
+    $option_key = 'wooms_orders_send_from';
+    printf('<input type="text" name="%s" value="%s" />', $option_key, get_option($option_key) );
+    echo '<p><small>Если дата не выбрана, то берутся заказы сегодняшнего и вчерашнего дня. Иначе берутся все новые заказы с указанной даты.</small></p>';
+
+    ?>
+    <script type="text/javascript">
+        jQuery(document).ready(function(){
+          jQuery('input[name=wooms_orders_send_from]').datepicker();
+        });
+    </script>
+    <?php
 
   }
 
+  /**
+  * UI for manual start send data of order
+  */
   function ui_action(){
     $result_list = $this->walker();
 
@@ -305,6 +350,28 @@ class WooMS_Orders_Sender
         printf('<p>Передан заказ <a href="%s">№%s</a></p>', get_edit_post_link($value), $value);
       }
     }
+  }
+
+  /**
+  * Add jQuery date picker for select start-date sending orders to MoySklad
+  */
+  function enqueue_date_picker()
+  {
+    $screen = get_current_screen();
+    if(empty($screen->id) or 'settings_page_mss-settings' != $screen->id){
+      return;
+    }
+
+    wp_enqueue_script( 'jquery-ui-datepicker' );
+
+    $wp_scripts = wp_scripts();
+    wp_enqueue_style(
+      'jquery-ui',
+      'http://ajax.googleapis.com/ajax/libs/jqueryui/' . $wp_scripts->registered['jquery-ui-core']->ver . '/themes/smoothness/jquery-ui.css',
+      false,
+      $wp_scripts->registered['jquery-ui-core']->ver,
+      false
+    );
   }
 
 }
