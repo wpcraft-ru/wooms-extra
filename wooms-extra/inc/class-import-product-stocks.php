@@ -66,8 +66,11 @@ class WooMS_Warehouses
       return false;
     }
 
+    if( ! empty(get_option('wooms_warehouse_count')) ){
+      $product->set_manage_stock('yes');
+      $product->set_stock_quantity($stock);
+    }
 
-    $product->set_stock_quantity($stock);
     $product->set_stock_status('instock');
     $product->save();
 
@@ -81,10 +84,10 @@ class WooMS_Warehouses
   public function settings_init() {
 
     add_settings_section(
-    	'woomss_section_warehouses',
-    	'Склад и остатки',
-    	$callback = array($this, 'display_woomss_section_warehouses'),
-    	'mss-settings'
+      'woomss_section_warehouses',
+      'Склад и остатки',
+      $callback = array($this, 'display_woomss_section_warehouses'),
+      'mss-settings'
     );
 
     register_setting('mss-settings', 'woomss_stock_sync_enabled');
@@ -92,6 +95,15 @@ class WooMS_Warehouses
       $id = 'woomss_stock_sync_enabled',
       $title = 'Включить синхронизацию остатков',
       $callback = [$this, 'woomss_stock_sync_enabled_display'],
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
+    register_setting('mss-settings', 'wooms_warehouse_count');
+    add_settings_field(
+      $id = 'wooms_warehouse_count',
+      $title = 'Управление запасами',
+      $callback = [$this, 'display_wooms_warehouse_count'],
       $page = 'mss-settings',
       $section = 'woomss_section_warehouses'
     );
@@ -128,19 +140,41 @@ class WooMS_Warehouses
   }
 
   //Display field
-  function woomss_stock_sync_enabled_display(){
+  function woomss_stock_sync_enabled_display()
+  {
     $option = 'woomss_stock_sync_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
   }
 
   //Display field
-  function woomss_warehouses_sync_enabled_display(){
+  function display_wooms_warehouse_count()
+  {
+    $option = 'wooms_warehouse_count';
+
+    printf(
+      '<input type="checkbox" name="%s" value="1" %s />',
+      $option,
+      checked( 1, get_option($option), false )
+    );
+
+    printf(
+      '<p><strong>Перед включением опции, убедитесь что верно настроено управление запасами в WooCommerce (на <a href="%s" target="_blank">странице настроек</a>).</strong></p>',
+      admin_url('admin.php?page=wc-settings&tab=products&section=inventory')
+    );
+
+    echo "<p><small>Если включена, то будет показан остаток в количестве единиц продукта на складе. Если снять галочку - только наличие.</small></p>";
+  }
+
+  //Display field
+  function woomss_warehouses_sync_enabled_display()
+  {
     $option = 'woomss_warehouses_sync_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
   }
 
   //Display field: select warehouse
-  function woomss_warehouse_id_display(){
+  function woomss_warehouse_id_display()
+  {
     $option = 'woomss_warehouse_id';
 
     if( empty(get_option('woomss_warehouses_sync_enabled')) ){
@@ -152,7 +186,6 @@ class WooMS_Warehouses
 
     $data = wooms_get_data_by_url($url);
 
-
     if(empty($data['rows'])){
       return;
     }
@@ -162,12 +195,13 @@ class WooMS_Warehouses
     ?>
     <select class="wooms_select_warehouse" name="woomss_warehouse_id">
       <option value="">Выберите склад</option>
-      <?php foreach ($data['rows'] as $value) {
-          printf('<option value="%s" %s>%s</option>', $value['id'], selected($value['id'], $selected_wh, false), $value['name']);
-        } ?>
+      <?php
+      foreach ($data['rows'] as $value):
+        printf('<option value="%s" %s>%s</option>', $value['id'], selected($value['id'], $selected_wh, false), $value['name']);
+      endforeach;
+      ?>
     </select>
     <?php
-
   }
 }
 

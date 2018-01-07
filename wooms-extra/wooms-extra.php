@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: WooMS Extra
-Version: 1.5.1
 Plugin URI: https://wpcraft.ru/product/wooms-extra/
 Description: Расширение для синхронизации МойСклад и WooCommerce
 Author: WPCraft
 Author URI: https://wpcraft.ru
+Version: 1.5.2
 */
 
 require_once 'inc/class-cron.php';
