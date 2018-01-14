@@ -7,7 +7,6 @@ class WooMS_Orders_Sender
 {
 
   function __construct(){
-    add_action( 'admin_init', array($this, 'settings_init'), 100 );
 
     add_action('woomss_tool_actions_btns', array($this, 'ui_for_manual_start'), 15);
     add_action('woomss_tool_actions_wooms_orders_send', array($this, 'ui_action'));
@@ -16,12 +15,137 @@ class WooMS_Orders_Sender
 
     add_action( 'admin_enqueue_scripts', array($this, 'enqueue_date_picker') );
 
+    add_action( 'rest_api_init', array($this, 'rest_api_init_callback_endpoint') );
+
+    add_action( 'admin_init', array($this, 'settings_init'), 100 );
+
   }
 
-  function walker(){
+  // Add endpoint /wp-json/wooms/v1/order-update/
+  function rest_api_init_callback_endpoint()
+  {
+     register_rest_route( 'wooms/v1', '/order-update/', array(
+       // 'methods' => WP_REST_Server::READABLE,
+       'methods' => WP_REST_Server::EDITABLE,
+       'callback' => array($this, 'get_data_order_from_moysklad'),
+     ));
+  }
 
+  //Get data from MoySkald and start update order
+  function get_data_order_from_moysklad($data_request){
 
+    try {
+      $body = $data_request->get_body();
+      $data = json_decode($body, true);
 
+      if(empty($data["events"][0]["meta"]["href"])){
+        return;
+      }
+
+      $url = $data["events"][0]["meta"]["href"];
+
+      $data_order = wooms_get_data_by_url($url);
+
+      if(empty($data_order['id'])){
+        return;
+      }
+
+      $order_uuid = $data_order['id'];
+      $state_url = $data_order["state"]["meta"]["href"];
+      $state_data = wooms_get_data_by_url($state_url);
+
+      if(empty($state_data['name'])){
+        return;
+      }
+
+      $state_name = $state_data['name'];
+
+      $result = $this->check_and_update_order_status($order_uuid, $state_name);
+      if($result){
+        $response = new WP_REST_Response( array('success', 'Data received successfully') );
+        $response->set_status( 200 );
+        return $response;
+      } else {
+        throw new Exception("Заказ не обновился");
+      }
+
+    } catch (Exception $e) {
+      $response = new WP_REST_Response( array('fail', $e->getMessage()) );
+      $response->set_status( 500 );
+      return $response;
+    }
+
+  }
+
+  //Update order by data from MoySklad
+  function check_and_update_order_status($order_uuid, $state_name){
+
+    $args = array(
+      'numberposts' => 1,
+      'post_type' => 'shop_order',
+      'post_status' => 'any',
+      'meta_key' => 'wooms_id',
+      'meta_value' => $order_uuid,
+    );
+
+    $orders = get_posts($args);
+
+    if(empty($orders[0]->ID)){
+      return false;
+    }
+
+    $order_id = $orders[0]->ID;
+
+    $order = wc_get_order($order_id);
+
+    switch ($state_name) {
+      case "Новый":
+          $check = $order->update_status('pending', 'Выбран статус "Новый" через МойСклад');
+          break;
+      case "Подтвержден":
+          $check = $order->update_status('processing', 'Выбран статус "Подтвержден" через МойСклад');
+          break;
+      case "Собран":
+          $check = $order->update_status('processing', 'Выбран статус "Собран" через МойСклад');
+          break;
+      case "На удержании":
+          $check = $order->update_status('on-hold', 'Выбран статус "На удержании" через МойСклад');
+          break;
+      case "Отменен":
+          $check = $order->update_status('cancelled', 'Отменен через МойСклад');
+          break;
+      case "Не удался":
+          $check = $order->update_status('failed', 'Выбран статус "Не удался" через МойСклад');
+          break;
+      case "Возврат":
+          $check = $order->update_status('refunded', 'Статус "Возврат" через МойСклад');
+          break;
+      case "Отгружен":
+          $check = $order->update_status('completed', 'Выбран статус "Отгружен" через МойСклад');
+          break;
+      case "Доставлен":
+          $check = $order->update_status('completed', 'Выбран статус "Доставлен" через МойСклад');
+          break;
+      default:
+        $check = false;
+    }
+
+    $check = apply_filters('wooms_order_status_chg', $check, $order, $state_name);
+
+    // do_action('logger_u7', ['test5', $order_uuid, $state_name, $order]);
+
+    if($check){
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+  * Main walker for send orders
+  */
+  function walker()
+  {
     $args = array(
       'numberposts' => apply_filters('wooms_orders_number', 5),
       'post_type' => 'shop_order',
@@ -60,8 +184,11 @@ class WooMS_Orders_Sender
 
   }
 
-  function send_order($order_id){
-
+  /**
+  * Send order to moysklad.ru and mark the order as sended
+  */
+  function send_order($order_id)
+  {
     $data = $this->get_data_order_for_moysklad($order_id);
 
     if(empty($data)){
@@ -81,9 +208,11 @@ class WooMS_Orders_Sender
     return true;
   }
 
-
-
-  function get_data_order_for_moysklad($order_id){
+  /**
+  * Prepare data before send
+  */
+  function get_data_order_for_moysklad($order_id)
+  {
     $data = [
       "name" => apply_filters('wooms_order_name', (string)$order_id),
     ];
@@ -94,16 +223,16 @@ class WooMS_Orders_Sender
     }
 
     $data["organization"] = $this->get_data_organization();
-
     $data["agent"] = $this->get_data_agent($order_id);
 
-
     return $data;
-
   }
 
-  function get_data_positions($order_id){
-
+  /**
+  * Get data of positions the order
+  */
+  function get_data_positions($order_id)
+  {
     $order = wc_get_order($order_id);
     $items = $order->get_items();
 
@@ -150,7 +279,6 @@ class WooMS_Orders_Sender
     } else {
       return $data;
     }
-
   }
 
   /**
@@ -173,7 +301,6 @@ class WooMS_Orders_Sender
     }
 
     if(empty($email)){
-      do_action('u7logger', 'class-orders-sending.php - empty email');
       return false;
     }
 
@@ -293,7 +420,12 @@ class WooMS_Orders_Sender
 
   function settings_init(){
 
-    add_settings_section('wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings' );
+    add_settings_section(
+      'wooms_section_orders',
+      'Заказы - передача в МойСклад',
+      '',
+      'mss-settings'
+    );
 
     register_setting('mss-settings', 'wooms_orders_sender_enable');
     add_settings_field(
@@ -318,7 +450,16 @@ class WooMS_Orders_Sender
   {
     $option = 'wooms_orders_sender_enable';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+    ?>
+    <div>
+      <hr>
+      <strong>Статус:</strong>
+      <span><?php $this->get_status_order_webhook() ?></span>
+    </div>
+
+    <?php
   }
+
   function display_wooms_orders_send_from()
   {
     $option_key = 'wooms_orders_send_from';
@@ -332,6 +473,123 @@ class WooMS_Orders_Sender
         });
     </script>
     <?php
+
+  }
+
+  function get_status_order_webhook()
+  {
+    // echo "<hr>";
+
+    $check = $this->check_webhooks_and_try_fix();
+
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
+    $data = wooms_get_data_by_url($url);
+
+    $webhooks = array();
+    foreach($data['rows'] as $row){
+      if($row['url'] == rest_url('/wooms/v1/order-update/')){
+        $webhooks[$row['id']] = array(
+          'entityType' => $row['entityType'],
+          'url' => $row['url'],
+          'method' => $row['method'],
+          'enabled' => $row['enabled'],
+          'action' => $row['action'],
+        );
+      }
+    }
+
+    if(empty(get_option('wooms_orders_sender_enable'))){
+      if(empty($webhooks)){
+        echo "Хук на стороне МойСклад отключен в соответствии с настройкой";
+      } else {
+        echo "Что то пошло не так. Хук на стороне МойСклад остался включен в нарушении настроек.";
+      }
+    } else {
+      if(empty($webhooks)){
+        echo "Что то пошло не так. Хук на стороне МойСклад отключен в нарушении настройки. Попробуйте отключить и включить снова. Если не поможет - обратитесь в техподдержку.";
+      } else {
+        echo "Хук на стороне МойСклад добавлен в соответствии с настройки";
+      }
+    }
+    echo '<p><small>Ссылка для получения данных от МойСклад: ' . rest_url('/wooms/v1/order-update/') . '</small></p>';
+
+    // echo '<pre>';
+    // var_dump($data['rows']);
+    // echo '</pre>';
+  }
+
+  /**
+  * Check isset hook and fix if not isset
+  */
+  function check_webhooks_and_try_fix(){
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
+    $data = wooms_get_data_by_url($url);
+
+    $webhooks = array();
+    foreach($data['rows'] as $row){
+      if($row['entityType'] != 'customerorder'){
+        continue;
+      }
+      if($row['url'] != rest_url('/wooms/v1/order-update/')){
+        continue;
+      }
+
+      $webhooks[$row['id']] = array(
+        'entityType' => $row['entityType'],
+        'url' => $row['url'],
+        'method' => $row['method'],
+        'enabled' => $row['enabled'],
+        'action' => $row['action'],
+      );
+    }
+
+    //Проверка на включение опции и наличия хуков
+    if(empty(get_option('wooms_orders_sender_enable'))){
+
+      if(empty($webhooks)){
+        return true;
+      } else {
+        //пытаемся удалить лишний хук
+        $args = array(
+          'timeout' => 45,
+          'headers' => array(
+            "Content-Type" => 'application/json',
+            'Authorization' => 'Basic ' . base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) )
+          ),
+          'method' => 'DELETE'
+        );
+
+        foreach($webhooks as $id => $value){
+          $url = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook/' . $id;
+          $check = wp_remote_request( $url, $args );
+        }
+
+      }
+
+
+    } else {
+      //Если нужного вебхука нет - создаем новый
+      if(empty($webhooks)){
+        // создаем веб хук в МойСклад
+        $data = array(
+          'url' => rest_url('/wooms/v1/order-update/'),
+          'action' => "UPDATE",
+          "entityType" => "customerorder"
+        );
+
+        $result = $this->send_data($url, $data);
+
+        if(empty($result)){
+          return false;
+        } else {
+          return true;
+        }
+
+      } else {
+        return true;
+      }
+    }
+
 
   }
 
