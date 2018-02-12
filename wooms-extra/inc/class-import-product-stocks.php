@@ -46,9 +46,8 @@ class WooMS_Warehouses
     if(empty($data['rows'][0]['stock'])){
       $product->set_stock_quantity(0);
       $product->set_stock_status('outofstock');
-      $product->save();
 
-      return false;
+      $stock = 0;
 
     } else {
       $stock = (int)$data['rows'][0]['stock'];
@@ -56,8 +55,8 @@ class WooMS_Warehouses
 
     if($stock <= 0){
       $product->set_stock_quantity(0);
+      $product->set_backorders('yes');
       $product->set_stock_status('outofstock');
-      $product->save();
     }
 
     if( ! empty(get_option('wooms_warehouse_count')) ){
