@@ -132,8 +132,6 @@ class WooMS_Orders_Sender
 
     $check = apply_filters('wooms_order_status_chg', $check, $order, $state_name);
 
-    // do_action('logger_u7', ['test5', $order_uuid, $state_name, $order]);
-
     if($check){
       return true;
     } else {
@@ -453,7 +451,7 @@ class WooMS_Orders_Sender
     ?>
     <div>
       <hr>
-      <strong>Статус:</strong>
+      <strong>Передатчик Статусов из Склада на Сайт:</strong>
       <span><?php $this->get_status_order_webhook() ?></span>
     </div>
 

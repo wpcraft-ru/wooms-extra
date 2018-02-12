@@ -1,14 +1,12 @@
 <?php
-
 /**
- * Import products from MoySklad
+ * Synchronization the stock of goods from MoySklad
  */
 class WooMS_Warehouses
 {
 
   function __construct()
   {
-
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
     add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
 
@@ -19,13 +17,11 @@ class WooMS_Warehouses
     add_action( 'admin_init', array($this, 'settings_init'), 100 );
   }
 
-
-
   /**
    * Load data for product
-   * @TODO: сделать синк по складу
    */
-  public function load_data($product_id, $value, $data) {
+  public function load_data($product_id, $value, $data)
+  {
     // получать остаток по складу и загружать в товары
 
     if(empty(get_option('woomss_stock_sync_enabled'))){
@@ -62,8 +58,6 @@ class WooMS_Warehouses
       $product->set_stock_quantity(0);
       $product->set_stock_status('outofstock');
       $product->save();
-
-      return false;
     }
 
     if( ! empty(get_option('wooms_warehouse_count')) ){
