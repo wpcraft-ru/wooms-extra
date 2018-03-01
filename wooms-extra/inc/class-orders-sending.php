@@ -252,9 +252,9 @@ class WooMS_Orders_Sender {
 			if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
 				continue;
 			}
-			$price = $item->get_total();
+			$price    = $item->get_total();
 			$quantity = $item->get_quantity();
-			$data[] = [
+			$data[]   = [
 				'quantity'   => $quantity,
 				'price'      => ( $price / $quantity ) * 100,
 				'discount'   => 0,
@@ -271,9 +271,9 @@ class WooMS_Orders_Sender {
 		}
 		if ( empty( $data ) ) {
 			return false;
-		} else {
-			return $data;
 		}
+		
+		return $data;
 	}
 	
 	
