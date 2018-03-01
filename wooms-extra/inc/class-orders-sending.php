@@ -279,6 +279,7 @@ class WooMS_Orders_Sender {
 	
 	/**
 	 * Get meta for organization
+	 *
 	 * @return array|bool
 	 */
 	function get_data_organization() {
