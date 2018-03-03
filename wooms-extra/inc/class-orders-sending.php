@@ -299,6 +299,7 @@ class WooMS_Orders_Sender {
 				"legalAddress"  => $this->get_data_order_address( $order_id ),
 				"actualAddress" => $this->get_data_order_address( $order_id ),
 				"phone"         => $this->get_data_order_phone( $order_id ),
+				"email"         => $email,
 			);
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
 			$result = $this->send_data( $url, $data );
@@ -341,6 +342,7 @@ class WooMS_Orders_Sender {
 				"legalAddress"  => $this->get_data_order_address( $order_id ),
 				"actualAddress" => $this->get_data_order_address( $order_id ),
 				"phone"         => $this->get_data_order_phone( $order_id ),
+				"email"         => $email,
 			);
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
 			$result = $this->send_data( $url, $data );
