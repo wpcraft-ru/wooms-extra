@@ -276,54 +276,7 @@ class WooMS_Orders_Sender {
 		return $data;
 	}
 	
-	function get_data_type_counterparty( $order_id ) {
-		$order = wc_get_order( $order_id );
-		$user  = $order->get_user();
-		$email = '';
-		if ( empty( $user ) ) {
-			if ( ! empty( $order->get_billing_email() ) ) {
-				$email = $order->get_billing_email();
-			}
-		} else {
-			$email = $user->user_email;
-		}
-		if ( empty( $email ) ) {
-			return false;
-		}
-		$meta = $this->get_agent_meta_by_email( $email );
-		if ( empty( $meta ) ) {
-			
-			$data = array(
-				"name"          => $this->get_data_order_name( $order_id ),
-				"companyType"   => $this->get_data_order_company_type( $order_id ),
-				"legalAddress"  => $this->get_data_order_address( $order_id ),
-				"actualAddress" => $this->get_data_order_address( $order_id ),
-				"phone"         => $this->get_data_order_phone( $order_id ),
-				"email"         => $email,
-			);
-			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-			$args          = array(
-				'timeout' => 45,
-				'headers' => array(
-					"Content-Type"  => 'application/json',
-					'Authorization' => 'Basic ' .
-					                   base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) ),
-				),
-				'body'    => $data,
-			);
-			$response      = wp_remote_post( $url, $args );
-			$response_code = wp_remote_retrieve_response_code( $response );
-			$response_body = wp_remote_retrieve_body( $response );
-			$result        = json_decode( $response_body, true );
-			//$result = $this->send_data( $url, $data );
-			if ( empty( $result["meta"] ) ) {
-				return false;
-			}
-			$meta = $result["meta"];
-		}
-		
-		return array( 'meta' => $meta );
-	}
+
 	/**
 	 * Get data counterparty for send MoySklad
 	 *
@@ -346,19 +299,25 @@ class WooMS_Orders_Sender {
 		if ( empty( $email ) ) {
 			return false;
 		}
+		$data   = array(
+			"name"          => $this->get_data_order_name( $order_id ),
+			"companyType"   => $this->get_data_order_company_type( $order_id ),
+			"legalAddress"  => $this->get_data_order_address( $order_id ),
+			"actualAddress" => $this->get_data_order_address( $order_id ),
+			"phone"         => $this->get_data_order_phone( $order_id ),
+			"email"         => $email,
+		);
 		$meta = $this->get_agent_meta_by_email( $email );
 		if ( empty( $meta ) ) {
-			
-			$data   = array(
-				"name"          => $this->get_data_order_name( $order_id ),
-				"companyType"   => $this->get_data_order_company_type( $order_id ),
-				"legalAddress"  => $this->get_data_order_address( $order_id ),
-				"actualAddress" => $this->get_data_order_address( $order_id ),
-				"phone"         => $this->get_data_order_phone( $order_id ),
-				"email"         => $email,
-			);
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
-			$result = $this->send_data( $url, $data );
+			$result = wooms_request( $url, $data, 'POST' );
+			if ( empty( $result["meta"] ) ) {
+				return false;
+			}
+			$meta = $result["meta"];
+		} else {
+			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty/' . $meta;
+			$result = wooms_request( $url, $data, 'PUT' );
 			if ( empty( $result["meta"] ) ) {
 				return false;
 			}
@@ -395,10 +354,11 @@ class WooMS_Orders_Sender {
 		$data_agents      = wooms_get_data_by_url( $url_search_agent );
 		if ( empty( $data_agents['rows'][0]['meta'] ) ) {
 			return false;
-		} else {
-			return $data_agents['rows'][0]['meta'];
 		}
+		
+		return $data_agents['rows'][0]['id'];
 	}
+	
 	
 	/**
 	 * Get name counterparty from order
