@@ -222,7 +222,7 @@ class WooMS_Orders_Sender {
 		if ( empty( $data['positions'] ) ) {
 			return false;
 		}
-		$data["organization"] = $this->get_data_type_counterparty( $order_id );
+		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
 		
 		return $data;
@@ -302,7 +302,20 @@ class WooMS_Orders_Sender {
 				"email"         => $email,
 			);
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-			$result = $this->send_data( $url, $data );
+			$args          = array(
+				'timeout' => 45,
+				'headers' => array(
+					"Content-Type"  => 'application/json',
+					'Authorization' => 'Basic ' .
+					                   base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) ),
+				),
+				'body'    => $data,
+			);
+			$response      = wp_remote_post( $url, $args );
+			$response_code = wp_remote_retrieve_response_code( $response );
+			$response_body = wp_remote_retrieve_body( $response );
+			$result        = json_decode( $response_body, true );
+			//$result = $this->send_data( $url, $data );
 			if ( empty( $result["meta"] ) ) {
 				return false;
 			}
