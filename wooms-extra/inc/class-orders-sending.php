@@ -307,6 +307,7 @@ class WooMS_Orders_Sender {
 			"phone"         => $this->get_data_order_phone( $order_id ),
 			"email"         => $email,
 		);
+		
 		$meta = $this->get_agent_meta_by_email( $email );
 		if ( empty( $meta ) ) {
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
