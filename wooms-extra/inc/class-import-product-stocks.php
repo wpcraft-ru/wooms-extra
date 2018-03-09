@@ -44,8 +44,6 @@ class WooMS_Warehouses
     $product = wc_get_product($product_id);
 
     if(empty($data['rows'][0]['stock'])){
-      $product->set_stock_quantity(0);
-      $product->set_stock_status('outofstock');
 
       $stock = 0;
 
@@ -53,18 +51,26 @@ class WooMS_Warehouses
       $stock = (int)$data['rows'][0]['stock'];
     }
 
+    if(get_option('wooms_stock_empty_backorder')){
+      $product->set_backorders('yes');
+    } else {
+      $product->set_backorders('no');
+    }
+
+    if( empty(get_option('wooms_warehouse_count')) ){
+      $product->set_manage_stock('no');
+    } else {
+      $product->set_manage_stock('yes');
+    }
+
     if($stock <= 0){
       $product->set_stock_quantity(0);
-      $product->set_backorders('yes');
       $product->set_stock_status('outofstock');
-    }
-
-    if( ! empty(get_option('wooms_warehouse_count')) ){
-      $product->set_manage_stock('yes');
+    } else {
       $product->set_stock_quantity($stock);
+      $product->set_stock_status('instock');
     }
 
-    $product->set_stock_status('instock');
     $product->save();
 
     return true;
@@ -97,6 +103,15 @@ class WooMS_Warehouses
       $id = 'wooms_warehouse_count',
       $title = 'Управление запасами',
       $callback = [$this, 'display_wooms_warehouse_count'],
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
+    register_setting('mss-settings', 'wooms_stock_empty_backorder');
+    add_settings_field(
+      $id = 'wooms_stock_empty_backorder',
+      $title = 'Разрешать предазказ при 0 остатке',
+      $callback = [$this, 'display_wooms_stock_empty_backorder'],
       $page = 'mss-settings',
       $section = 'woomss_section_warehouses'
     );
@@ -137,6 +152,14 @@ class WooMS_Warehouses
   {
     $option = 'woomss_stock_sync_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+  }
+
+  //Display field
+  function display_wooms_stock_empty_backorder()
+  {
+    $option = 'wooms_stock_empty_backorder';
+    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+    echo '<p><small>Если включить опцию то система будет разрешать предзаказ при 0 остатках</small></p>';
   }
 
   //Display field
