@@ -130,13 +130,13 @@ class WooMS_Product_Variations
     foreach ($ms_attributes as $key => $value) {
 
       $attribute_object = new WC_Product_Attribute();
-			// $attribute_object->set_id( $key );
-			$attribute_object->set_name( $value['name'] );
-			$attribute_object->set_options( $value['values'] );
-			$attribute_object->set_position( 0 );
-			$attribute_object->set_visible( 1 );
-			$attribute_object->set_variation( 1 );
-			$attributes[] = $attribute_object;
+      // $attribute_object->set_id( $key );
+      $attribute_object->set_name( $value['name'] );
+      $attribute_object->set_options( $value['values'] );
+      $attribute_object->set_position( 0 );
+      $attribute_object->set_visible( 1 );
+      $attribute_object->set_variation( 1 );
+      $attributes[] = $attribute_object;
 
     }
 
@@ -383,16 +383,16 @@ class WooMS_Product_Variations
       //create variation from data
       $variation_post_title = esc_textarea($data_variation['name']);
 
-			$new_variation = array(
-				'post_title'   => $variation_post_title,
-				'post_content' => '',
-				'post_status'  => 'publish',
-				'post_author'  => get_current_user_id(),
-				'post_parent'  => $product_id,
-				'post_type'    => 'product_variation'
-			);
+      $new_variation = array(
+        'post_title'   => $variation_post_title,
+        'post_content' => '',
+        'post_status'  => 'publish',
+        'post_author'  => get_current_user_id(),
+        'post_parent'  => $product_id,
+        'post_type'    => 'product_variation'
+      );
 
-			$variation_id = wp_insert_post( $new_variation );
+      $variation_id = wp_insert_post( $new_variation );
 
       update_post_meta( $variation_id, 'woomss_id', esc_textarea($data_variation['id']) );
 
