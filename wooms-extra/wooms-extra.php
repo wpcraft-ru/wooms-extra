@@ -5,7 +5,7 @@ Plugin URI: https://wpcraft.ru/product/wooms-extra/
 Description: Расширение для синхронизации МойСклад и WooCommerce
 Author: WPCraft
 Author URI: https://wpcraft.ru
-Version: 1.6.2
+Version: 1.6.3
 */
 
 require_once 'inc/class-cron.php';
