@@ -669,7 +669,7 @@ class WooMS_Orders_Sender {
 		$result_list = $this->walker();
 		echo '<br/><hr>';
 		if ( empty( $result_list ) ) {
-			echo "<p>Нет <strong>новых</strong> заказов для передачи в МойСклад</p>";
+			printf( '<p>Все <strong>новые</strong> заказы уже переданы в МойСклад. Если их там нет, то сообщите в <a href="%s" target="_blank">тех поддержку</a>.</p>', '//wpcraft.ru/contacts/' );
 		} else {
 			foreach ( $result_list as $key => $value ) {
 				printf( '<p>Передан заказ <a href="%s">№%s</a></p>', get_edit_post_link( $value ), $value );
