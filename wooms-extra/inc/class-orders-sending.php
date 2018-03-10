@@ -224,6 +224,7 @@ class WooMS_Orders_Sender {
 		}
 		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
+		$data["moment"]        = $this->get_date_created_agent( $order_id );
 		
 		return $data;
 	}
@@ -324,6 +325,12 @@ class WooMS_Orders_Sender {
 		
 		return array( 'meta' => $meta );
 	}
+
+
+function get_date_created_agent ($order_id){
+	$order = wc_get_order( $order_id );
+	return $order->get_date_created()->date('Y-m-d h:i:s');
+}
 	/**
 	 * Get data counterparty for send MoySklad
 	 *
