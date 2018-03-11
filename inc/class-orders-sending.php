@@ -326,7 +326,7 @@ class WooMS_Orders_Sender {
 		$meta = $this->get_agent_meta_by_email( $email );
 		if ( empty( $meta ) ) {
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
-			$result = wooms_request( $url, $data, 'POST' );
+			$result = wooms_request( $url, $data);
 			if ( empty( $result["meta"] ) ) {
 				return false;
 			}
@@ -513,15 +513,29 @@ class WooMS_Orders_Sender {
 		
 		add_settings_section( 'wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings' );
 		register_setting( 'mss-settings', 'wooms_orders_sender_enable' );
-		add_settings_field( $id = 'wooms_orders_sender_enable', $title = 'Включить синхронизацию заказов в МойСклад', $callback = [
-			$this,
-			'display_wooms_orders_sender_enable',
-		], $page = 'mss-settings', $section = 'wooms_section_orders' );
+		add_settings_field(
+			$id = 'wooms_orders_sender_enable',
+			$title = 'Включить синхронизацию заказов в МойСклад',
+			$callback = array($this , 'display_wooms_orders_sender_enable'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
+		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
+		add_settings_field(
+			$id = 'wooms_enable_webhooks',
+			$title = 'Используется платный тариф',
+			$callback = array($this , 'display_wooms_enable_webhooks'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
 		register_setting( 'mss-settings', 'wooms_orders_send_from' );
-		add_settings_field( $id = 'wooms_orders_send_from', $title = 'Дата, с которой берутся Заказы для отправки', $callback = [
-			$this,
-			'display_wooms_orders_send_from',
-		], $page = 'mss-settings', $section = 'wooms_section_orders' );
+		add_settings_field(
+			$id = 'wooms_orders_send_from',
+			$title = 'Дата, с которой берутся Заказы для отправки',
+			$callback = array($this , 'display_wooms_orders_send_from'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
 	}
 	
 	/**
@@ -530,14 +544,24 @@ class WooMS_Orders_Sender {
 	function display_wooms_orders_sender_enable() {
 		$option = 'wooms_orders_sender_enable';
 		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-		?>
-		<div>
-			<hr>
-			<strong>Передатчик Статусов из Склада на Сайт:</strong>
-			<span><?php $this->get_status_order_webhook() ?></span>
-		</div>
-		
-		<?php
+
+	}
+	/**
+	 * Enable webhooks from MoySklad
+	 */
+	function display_wooms_enable_webhooks() {
+		$option = 'wooms_enable_webhooks';
+		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+		if ( get_option( 'wooms_enable_webhooks' ) )  {
+			?>
+			<div>
+				<hr>
+				<strong>Передатчик Статусов из Склада на Сайт:</strong>
+				<div><?php $this->get_status_order_webhook() ?></div>
+			</div>
+			
+			<?php
+		}
 	}
 	
 	/**
@@ -547,7 +571,7 @@ class WooMS_Orders_Sender {
 		// echo "<hr>";
 		$check    = $this->check_webhooks_and_try_fix();
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
-		$data     = wooms_get_data_by_url( $url );
+		$data     = wooms_request( $url );
 		$webhooks = array();
 		foreach ( $data['rows'] as $row ) {
 			if ( $row['url'] == rest_url( '/wooms/v1/order-update/' ) ) {
@@ -575,9 +599,7 @@ class WooMS_Orders_Sender {
 		}
 		echo '<p><small>Ссылка для получения данных от МойСклад: ' . rest_url( '/wooms/v1/order-update/' ) .
 		     '</small></p>';
-		// echo '<pre>';
-		// var_dump($data['rows']);
-		// echo '</pre>';
+
 	}
 	
 	/**
@@ -588,6 +610,9 @@ class WooMS_Orders_Sender {
 	function check_webhooks_and_try_fix() {
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
 		$data     = wooms_get_data_by_url( $url );
+		if (empty($data)){
+			return false;
+		}
 		$webhooks = array();
 		foreach ( $data['rows'] as $row ) {
 			if ( $row['entityType'] != 'customerorder' ) {
@@ -611,19 +636,11 @@ class WooMS_Orders_Sender {
 				return true;
 			} else {
 				//пытаемся удалить лишний хук
-				$args = array(
-					'timeout' => 45,
-					'headers' => array(
-						"Content-Type"  => 'application/json',
-						'Authorization' => 'Basic ' . base64_encode( get_option( 'woomss_login' ) . ':' .
-						                                             get_option( 'woomss_pass' ) ),
-					),
-					'method'  => 'DELETE',
-				);
 				foreach ( $webhooks as $id => $value ) {
 					$url   = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook/' . $id;
-					$check = wp_remote_request( $url, $args );
+					$check = wooms_request( $url, null, 'DELETE');
 				}
+				return false;
 			}
 		} else {
 			//Если нужного вебхука нет - создаем новый
@@ -634,7 +651,7 @@ class WooMS_Orders_Sender {
 					'action'     => "UPDATE",
 					"entityType" => "customerorder",
 				);
-				$result = $this->send_data( $url, $data );
+				$result = wooms_request( $url, $data );
 				if ( empty( $result ) ) {
 					return false;
 				} else {
