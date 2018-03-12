@@ -523,7 +523,7 @@ class WooMS_Orders_Sender {
 		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
 		add_settings_field(
 			$id = 'wooms_enable_webhooks',
-			$title = 'Используется платный тариф',
+			$title = 'Передатчик Статусов из Мой Склада на Сайт',
 			$callback = array($this , 'display_wooms_enable_webhooks'),
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
@@ -552,12 +552,19 @@ class WooMS_Orders_Sender {
 	function display_wooms_enable_webhooks() {
 		$option = 'wooms_enable_webhooks';
 		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-		if ( get_option( 'wooms_enable_webhooks' ) )  {
+		if ( get_option( 'wooms_enable_webhooks' ) ) {
 			?>
 			<div>
 				<hr>
-				<strong>Передатчик Статусов из Склада на Сайт:</strong>
 				<div><?php $this->get_status_order_webhook() ?></div>
+			</div>
+			
+			<?php
+		} else {
+			?>
+			<hr>
+			<div>
+				<small>Передатчик статусов из Мой Склад может работать только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.</small>
 			</div>
 			
 			<?php
