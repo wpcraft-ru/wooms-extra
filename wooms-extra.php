@@ -62,3 +62,4 @@ require_once 'inc/class-import-product-stocks.php';
 require_once 'inc/class-import-product-variants.php';
 require_once 'inc/class-products-bundles.php';
 require_once 'inc/class-orders-sending.php';
+require_once 'inc/class-import-product-choice-categories.php';
