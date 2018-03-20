@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.6.5
+ * Version: 1.6.6
  * WC requires at least: 3.0
  * WC tested up to: 3.3.3
  *

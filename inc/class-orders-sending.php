@@ -198,7 +198,7 @@ class WooMS_Orders_Sender {
 			return false;
 		}
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
-		$result = $this->send_data( $url, $data );
+		$result = wooms_request( $url, $data );
 		if ( empty( $result['id'] ) ) {
 			return false;
 		}
@@ -242,11 +242,17 @@ class WooMS_Orders_Sender {
 		if ( empty( $items ) ) {
 			return false;
 		}
-		$data = [];
+		$data = array();
 		foreach ( $items as $key => $item ) {
-			
-			$product_id = $item["product_id"];
+			if ($item['variation_id'] != 0) {
+				$product_id = $item['variation_id'];
+				$product_type = 'variant';
+			} else {
+				$product_id = $item["product_id"];
+				$product_type = 'product';
+			}
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
+
 			if ( empty( $uuid ) ) {
 				continue;
 			}
@@ -255,20 +261,20 @@ class WooMS_Orders_Sender {
 			}
 			$price    = $item->get_total();
 			$quantity = $item->get_quantity();
-			$data[]   = [
+			$data[] = array(
 				'quantity'   => $quantity,
 				'price'      => ( $price / $quantity ) * 100,
 				'discount'   => 0,
 				'vat'        => 0,
-				'assortment' => [
-					'meta' => [
-						"href"      => "https://online.moysklad.ru/api/remap/1.1/entity/product/" . $uuid,
-						"type"      => "product",
+				'assortment' => array(
+					'meta' => array(
+						"href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+						"type"      => "{$product_type}",
 						"mediaType" => "application/json",
-					],
-				],
+					),
+				),
 				'reserve'    => 0,
-			];
+			);
 		}
 		if ( empty( $data ) ) {
 			return false;
