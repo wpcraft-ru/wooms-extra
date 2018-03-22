@@ -48,13 +48,13 @@ class WooMS_Orders_Sender {
 				return;
 			}
 			$url        = $data["events"][0]["meta"]["href"];
-			$data_order = wooms_get_data_by_url( $url );
+			$data_order = wooms_request( $url );
 			if ( empty( $data_order['id'] ) ) {
 				return;
 			}
 			$order_uuid = $data_order['id'];
 			$state_url  = $data_order["state"]["meta"]["href"];
-			$state_data = wooms_get_data_by_url( $state_url );
+			$state_data = wooms_request( $state_url );
 			if ( empty( $state_data['name'] ) ) {
 				return;
 			}
@@ -215,9 +215,9 @@ class WooMS_Orders_Sender {
 	 * @return array|bool
 	 */
 	function get_data_order_for_moysklad( $order_id ) {
-		$data              = [
+		$data              = array(
 			"name" => apply_filters( 'wooms_order_name', (string) $order_id ),
-		];
+		);
 		$data['positions'] = $this->get_data_positions( $order_id );
 		if ( empty( $data['positions'] ) ) {
 			return false;
@@ -225,6 +225,7 @@ class WooMS_Orders_Sender {
 		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
 		$data["moment"]       = $this->get_date_created_moment( $order_id );
+		$data["description"]  = $this->get_date_order_description( $order_id );
 		
 		return $data;
 	}
@@ -290,7 +291,7 @@ class WooMS_Orders_Sender {
 	 */
 	function get_data_organization() {
 		$url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-		$data = wooms_get_data_by_url( $url );
+		$data = wooms_request( $url );
 		$meta = $data['rows'][0]['meta'];
 		if ( empty( $meta ) ) {
 			return false;
@@ -409,7 +410,7 @@ class WooMS_Orders_Sender {
 		if ( $order->get_billing_address_1() || $order->get_billing_address_2() ) {
 			$address .= ', ' . $order->get_billing_address_1();
 			if ( ! empty( $order->get_billing_address_2() ) ) {
-				$address .= ' ' . $order->get_billing_address_2();
+				$address .= ', ' . $order->get_billing_address_2();
 			}
 		}
 		
@@ -442,7 +443,7 @@ class WooMS_Orders_Sender {
 	 */
 	function get_agent_meta_by_email( $email = '' ) {
 		$url_search_agent = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty?filter=email=' . $email;
-		$data_agents      = wooms_get_data_by_url( $url_search_agent );
+		$data_agents      = wooms_request( $url_search_agent );
 		if ( empty( $data_agents['rows'][0]['meta'] ) ) {
 			return false;
 		}
@@ -461,6 +462,31 @@ class WooMS_Orders_Sender {
 		$order = wc_get_order( $order_id );
 		
 		return $order->get_date_created()->date( 'Y-m-d h:i:s' );
+	}
+	
+	/**
+	 * Get data customerorder description created for send MoySklad
+	 *
+	 * @param $order_id
+	 *
+	 * @return string
+	 */
+	function get_date_order_description( $order_id ) {
+		$order = wc_get_order( $order_id );
+		$customer_note = '';
+		if ($order->get_customer_note()){
+			$customer_note .= "Комментарий к заказу:\n" . $order->get_customer_note() . "\n\r";
+		}
+		if ($order->get_shipping_method()){
+			$customer_note .= "Метод доставки: " . $order->get_shipping_method() . "\n\r";
+		}
+		if ($order->get_payment_method_title()){
+			$customer_note .= "Метод оплаты: " . $order->get_payment_method_title() . "\n";
+			if ($order->get_transaction_id()){
+				$customer_note .= "Транзакция №" . $order->get_transaction_id() . "\n";
+			}
+		}
+		return $customer_note;
 	}
 	
 	/**
@@ -622,7 +648,7 @@ class WooMS_Orders_Sender {
 	 */
 	function check_webhooks_and_try_fix() {
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
-		$data     = wooms_get_data_by_url( $url );
+		$data     = wooms_request( $url );
 		if (empty($data)){
 			return false;
 		}
