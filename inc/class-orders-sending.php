@@ -48,13 +48,13 @@ class WooMS_Orders_Sender {
 				return;
 			}
 			$url        = $data["events"][0]["meta"]["href"];
-			$data_order = wooms_get_data_by_url( $url );
+			$data_order = wooms_request( $url );
 			if ( empty( $data_order['id'] ) ) {
 				return;
 			}
 			$order_uuid = $data_order['id'];
 			$state_url  = $data_order["state"]["meta"]["href"];
-			$state_data = wooms_get_data_by_url( $state_url );
+			$state_data = wooms_request( $state_url );
 			if ( empty( $state_data['name'] ) ) {
 				return;
 			}
@@ -198,7 +198,7 @@ class WooMS_Orders_Sender {
 			return false;
 		}
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
-		$result = $this->send_data( $url, $data );
+		$result = wooms_request( $url, $data );
 		if ( empty( $result['id'] ) ) {
 			return false;
 		}
@@ -215,9 +215,9 @@ class WooMS_Orders_Sender {
 	 * @return array|bool
 	 */
 	function get_data_order_for_moysklad( $order_id ) {
-		$data              = [
+		$data              = array(
 			"name" => apply_filters( 'wooms_order_name', (string) $order_id ),
-		];
+		);
 		$data['positions'] = $this->get_data_positions( $order_id );
 		if ( empty( $data['positions'] ) ) {
 			return false;
@@ -225,6 +225,7 @@ class WooMS_Orders_Sender {
 		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
 		$data["moment"]       = $this->get_date_created_moment( $order_id );
+		$data["description"]  = $this->get_date_order_description( $order_id );
 		
 		return $data;
 	}
@@ -242,11 +243,17 @@ class WooMS_Orders_Sender {
 		if ( empty( $items ) ) {
 			return false;
 		}
-		$data = [];
+		$data = array();
 		foreach ( $items as $key => $item ) {
-			
-			$product_id = $item["product_id"];
+			if ($item['variation_id'] != 0) {
+				$product_id = $item['variation_id'];
+				$product_type = 'variant';
+			} else {
+				$product_id = $item["product_id"];
+				$product_type = 'product';
+			}
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
+
 			if ( empty( $uuid ) ) {
 				continue;
 			}
@@ -255,20 +262,20 @@ class WooMS_Orders_Sender {
 			}
 			$price    = $item->get_total();
 			$quantity = $item->get_quantity();
-			$data[]   = [
+			$data[] = array(
 				'quantity'   => $quantity,
 				'price'      => ( $price / $quantity ) * 100,
 				'discount'   => 0,
 				'vat'        => 0,
-				'assortment' => [
-					'meta' => [
-						"href"      => "https://online.moysklad.ru/api/remap/1.1/entity/product/" . $uuid,
-						"type"      => "product",
+				'assortment' => array(
+					'meta' => array(
+						"href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+						"type"      => "{$product_type}",
 						"mediaType" => "application/json",
-					],
-				],
+					),
+				),
 				'reserve'    => 0,
-			];
+			);
 		}
 		if ( empty( $data ) ) {
 			return false;
@@ -284,7 +291,7 @@ class WooMS_Orders_Sender {
 	 */
 	function get_data_organization() {
 		$url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-		$data = wooms_get_data_by_url( $url );
+		$data = wooms_request( $url );
 		$meta = $data['rows'][0]['meta'];
 		if ( empty( $meta ) ) {
 			return false;
@@ -403,7 +410,7 @@ class WooMS_Orders_Sender {
 		if ( $order->get_billing_address_1() || $order->get_billing_address_2() ) {
 			$address .= ', ' . $order->get_billing_address_1();
 			if ( ! empty( $order->get_billing_address_2() ) ) {
-				$address .= ' ' . $order->get_billing_address_2();
+				$address .= ', ' . $order->get_billing_address_2();
 			}
 		}
 		
@@ -436,7 +443,7 @@ class WooMS_Orders_Sender {
 	 */
 	function get_agent_meta_by_email( $email = '' ) {
 		$url_search_agent = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty?filter=email=' . $email;
-		$data_agents      = wooms_get_data_by_url( $url_search_agent );
+		$data_agents      = wooms_request( $url_search_agent );
 		if ( empty( $data_agents['rows'][0]['meta'] ) ) {
 			return false;
 		}
@@ -455,6 +462,31 @@ class WooMS_Orders_Sender {
 		$order = wc_get_order( $order_id );
 		
 		return $order->get_date_created()->date( 'Y-m-d h:i:s' );
+	}
+	
+	/**
+	 * Get data customerorder description created for send MoySklad
+	 *
+	 * @param $order_id
+	 *
+	 * @return string
+	 */
+	function get_date_order_description( $order_id ) {
+		$order = wc_get_order( $order_id );
+		$customer_note = '';
+		if ($order->get_customer_note()){
+			$customer_note .= "Комментарий к заказу:\n" . $order->get_customer_note() . "\n\r";
+		}
+		if ($order->get_shipping_method()){
+			$customer_note .= "Метод доставки: " . $order->get_shipping_method() . "\n\r";
+		}
+		if ($order->get_payment_method_title()){
+			$customer_note .= "Метод оплаты: " . $order->get_payment_method_title() . "\n";
+			if ($order->get_transaction_id()){
+				$customer_note .= "Транзакция №" . $order->get_transaction_id() . "\n";
+			}
+		}
+		return $customer_note;
 	}
 	
 	/**
@@ -523,7 +555,7 @@ class WooMS_Orders_Sender {
 		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
 		add_settings_field(
 			$id = 'wooms_enable_webhooks',
-			$title = 'Используется платный тариф',
+			$title = 'Передатчик Статусов из Мой Склада на Сайт',
 			$callback = array($this , 'display_wooms_enable_webhooks'),
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
@@ -552,12 +584,19 @@ class WooMS_Orders_Sender {
 	function display_wooms_enable_webhooks() {
 		$option = 'wooms_enable_webhooks';
 		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-		if ( get_option( 'wooms_enable_webhooks' ) )  {
+		if ( get_option( 'wooms_enable_webhooks' ) ) {
 			?>
 			<div>
 				<hr>
-				<strong>Передатчик Статусов из Склада на Сайт:</strong>
 				<div><?php $this->get_status_order_webhook() ?></div>
+			</div>
+			
+			<?php
+		} else {
+			?>
+			<hr>
+			<div>
+				<small>Передатчик статусов из Мой Склад может работать только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.</small>
 			</div>
 			
 			<?php
@@ -609,7 +648,7 @@ class WooMS_Orders_Sender {
 	 */
 	function check_webhooks_and_try_fix() {
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
-		$data     = wooms_get_data_by_url( $url );
+		$data     = wooms_request( $url );
 		if (empty($data)){
 			return false;
 		}
