@@ -167,6 +167,9 @@ class WooMS_Orders_Sender {
 		}
 		
 		$orders = get_posts( $args );
+		if ( empty( $orders ) ) {
+			false;
+		}
 		$result_list = [];
 		foreach ( $orders as $key => $order ) {
 			$check = $this->send_order( $order->ID );
@@ -198,11 +201,7 @@ class WooMS_Orders_Sender {
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
 
-		if ( $result[0]['errors'] ) {
-			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
-			return false;
-		}
-		if ( empty( $result['id'] ) ) {
+		if ( empty( $result['id'] ) || !isset($result['id']) ) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 			return false;
 		}
