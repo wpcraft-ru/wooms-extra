@@ -8,7 +8,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * WooMS_Orders_Sender constructor.
 	 */
-	function __construct() {
+	public function __construct() {
 		
 		add_action( 'woomss_tool_actions_btns', array( $this, 'ui_for_manual_start' ), 15 );
 		add_action( 'woomss_tool_actions_wooms_orders_send', array( $this, 'ui_action' ) );
@@ -22,7 +22,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * Add endpoint /wp-json/wooms/v1/order-update/
 	 */
-	function rest_api_init_callback_endpoint() {
+	public function rest_api_init_callback_endpoint() {
 		register_rest_route( 'wooms/v1', '/order-update/', array(
 			// 'methods' => WP_REST_Server::READABLE,
 			'methods'  => WP_REST_Server::EDITABLE,
@@ -39,7 +39,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return void|WP_REST_Response
 	 */
-	function get_data_order_from_moysklad( $data_request ) {
+	public function get_data_order_from_moysklad( $data_request ) {
 		
 		try {
 			$body = $data_request->get_body();
@@ -85,7 +85,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return bool
 	 */
-	function check_and_update_order_status( $order_uuid, $state_name ) {
+	public function check_and_update_order_status( $order_uuid, $state_name ) {
 		
 		$args   = array(
 			'numberposts' => 1,
@@ -142,7 +142,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * Start by cron
 	 */
-	function cron_starter_walker() {
+	public function cron_starter_walker() {
 		$this->walker();
 	}
 	
@@ -151,7 +151,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return array
 	 */
-	function walker() {
+	public function walker() {
 		$args = array(
 			'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
 			'post_type'    => 'shop_order',
@@ -159,28 +159,29 @@ class WooMS_Orders_Sender {
 			'meta_key'     => 'wooms_send_timestamp',
 			'meta_compare' => 'NOT EXISTS',
 		);
-		if ( empty( get_option( 'wooms_orders_send_from' ) ) ) {
-			$date_from = '2 day ago';
-		} else {
-			$date_from = get_option( 'wooms_orders_send_from' );
+		
+		if ( get_option( 'wooms_orders_send_from' ) ) {
+			$args['date_query'] = array(
+				'after' => get_option( 'wooms_orders_send_from' ),
+			);
 		}
-		$args['date_query'] = array(
-			'after' => $date_from,
-		);
-		$orders             = get_posts( $args );
-		$result_list        = [];
+		
+		$orders = get_posts( $args );
+		if ( empty( $orders ) ) {
+			false;
+		}
+		$result_list = [];
 		foreach ( $orders as $key => $order ) {
 			$check = $this->send_order( $order->ID );
-			if ( $check ) {
+			if ( false != $check ) {
 				update_post_meta( $order->ID, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 				$result_list[] = $order->ID;
 			}
 		}
-		if ( ! empty( $result_list ) ) {
-			return $result_list;
-		} else {
+		if ( empty( $result_list ) ) {
 			false;
 		}
+		return $result_list;
 	}
 	
 	/**
@@ -190,7 +191,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return bool
 	 */
-	function send_order( $order_id ) {
+	public function send_order( $order_id ) {
 		$data = $this->get_data_order_for_moysklad( $order_id );
 		if ( empty( $data ) ) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
@@ -199,13 +200,16 @@ class WooMS_Orders_Sender {
 		}
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
-		if ( empty( $result['id'] ) ) {
+
+		if ( empty( $result['id'] ) || !isset($result['id']) ) {
+			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 			return false;
 		}
 		update_post_meta( $order_id, 'wooms_id', $result['id'] );
 		
 		return true;
 	}
+	
 	
 	/**
 	 * Prepare data before send
@@ -214,13 +218,13 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return array|bool
 	 */
-	function get_data_order_for_moysklad( $order_id ) {
+	public function get_data_order_for_moysklad( $order_id ) {
 		$data              = array(
 			"name" => apply_filters( 'wooms_order_name', (string) $order_id ),
 		);
 		$data['positions'] = $this->get_data_positions( $order_id );
 		if ( empty( $data['positions'] ) ) {
-			return false;
+			unset($data['positions']);
 		}
 		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
@@ -237,7 +241,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return array|bool
 	 */
-	function get_data_positions( $order_id ) {
+	public function get_data_positions( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$items = $order->get_items();
 		if ( empty( $items ) ) {
@@ -253,7 +257,7 @@ class WooMS_Orders_Sender {
 				$product_type = 'product';
 			}
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
-
+			
 			if ( empty( $uuid ) ) {
 				continue;
 			}
@@ -277,10 +281,7 @@ class WooMS_Orders_Sender {
 				'reserve'    => 0,
 			);
 		}
-		if ( empty( $data ) ) {
-			return false;
-		}
-		
+	
 		return $data;
 	}
 	
@@ -289,7 +290,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return array|bool
 	 */
-	function get_data_organization() {
+	public function get_data_organization() {
 		$url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
 		$data = wooms_request( $url );
 		$meta = $data['rows'][0]['meta'];
@@ -307,7 +308,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return array|bool
 	 */
-	function get_data_agent( $order_id ) {
+	public function get_data_agent( $order_id ) {
 		
 		$order = wc_get_order( $order_id );
 		$user  = $order->get_user();
@@ -320,7 +321,7 @@ class WooMS_Orders_Sender {
 			$email = $user->user_email;
 		}
 		if ( empty( $email ) ) {
-			return false;
+			$email = get_option('admin_email');
 		}
 		$data = array(
 			"name"          => $this->get_data_order_name( $order_id ),
@@ -330,6 +331,7 @@ class WooMS_Orders_Sender {
 			"phone"         => $this->get_data_order_phone( $order_id ),
 			"email"         => $email,
 		);
+
 		$meta = $this->get_agent_meta_by_email( $email );
 		if ( empty( $meta ) ) {
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
@@ -357,7 +359,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return string
 	 */
-	function get_data_order_name( $order_id ) {
+	public function get_data_order_name( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$name  = $order->get_billing_company();
 		if ( empty( $name ) ) {
@@ -377,9 +379,9 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return string
 	 */
-	function get_data_order_company_type( $order_id ) {
+	public function get_data_order_company_type( $order_id ) {
 		$order = wc_get_order( $order_id );
-		if ( $order->get_billing_company() ) {
+		if (!empty($order->get_billing_company())  ) {
 			$company_type = "legal";
 		} else {
 			$company_type = "individual";
@@ -395,7 +397,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return string
 	 */
-	function get_data_order_address( $order_id ) {
+	public function get_data_order_address( $order_id ) {
 		$order   = wc_get_order( $order_id );
 		$address = '';
 		if ( $order->get_billing_postcode() ) {
@@ -424,11 +426,11 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return null|string
 	 */
-	function get_data_order_phone( $order_id ) {
+	public function get_data_order_phone( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$phone = $order->get_billing_phone();
 		if ( empty( $phone ) ) {
-			$phone = null;
+			$phone = '';
 		}
 		
 		return $phone;
@@ -441,7 +443,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return bool
 	 */
-	function get_agent_meta_by_email( $email = '' ) {
+	public function get_agent_meta_by_email( $email = '' ) {
 		$url_search_agent = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty?filter=email=' . $email;
 		$data_agents      = wooms_request( $url_search_agent );
 		if ( empty( $data_agents['rows'][0]['meta'] ) ) {
@@ -458,7 +460,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return string
 	 */
-	function get_date_created_moment( $order_id ) {
+	public function get_date_created_moment( $order_id ) {
 		$order = wc_get_order( $order_id );
 		
 		return $order->get_date_created()->date( 'Y-m-d h:i:s' );
@@ -471,7 +473,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return string
 	 */
-	function get_date_order_description( $order_id ) {
+	public function get_date_order_description( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$customer_note = '';
 		if ($order->get_customer_note()){
@@ -489,46 +491,14 @@ class WooMS_Orders_Sender {
 		return $customer_note;
 	}
 	
-	/**
-	 * Send data to MoySklad
-	 *
-	 * @param $url
-	 * @param $data
-	 *
-	 * @return array|bool|mixed|object
-	 */
-	function send_data( $url, $data ) {
-		
-		if ( is_array( $data ) ) {
-			$data = json_encode( $data );
-		} else {
-			return false;
-		}
-		$args          = array(
-			'timeout' => 45,
-			'headers' => array(
-				"Content-Type"  => 'application/json',
-				'Authorization' => 'Basic ' .
-				                   base64_encode( get_option( 'woomss_login' ) . ':' . get_option( 'woomss_pass' ) ),
-			),
-			'body'    => $data,
-		);
-		$response      = wp_remote_post( $url, $args );
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-		$result        = json_decode( $response_body, true );
-		if ( empty( $result ) ) {
-			return false;
-		} else {
-			return $result;
-		}
-	}
-	
 	
 	/**
 	 * Start manual send orders to MoySklad
 	 */
-	function ui_for_manual_start() {
+	public function ui_for_manual_start() {
+		if ( empty( get_option( 'wooms_orders_sender_enable' ) ) ) {
+			return;
+		}
 		?>
 		<h2>Отправка заказов в МойСклад</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
@@ -541,7 +511,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * Setting
 	 */
-	function settings_init() {
+	public function settings_init() {
 		
 		add_settings_section( 'wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings' );
 		register_setting( 'mss-settings', 'wooms_orders_sender_enable' );
@@ -573,15 +543,15 @@ class WooMS_Orders_Sender {
 	/**
 	 * Send statuses from MoySklad
 	 */
-	function display_wooms_orders_sender_enable() {
+	public function display_wooms_orders_sender_enable() {
 		$option = 'wooms_orders_sender_enable';
 		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-
+		
 	}
 	/**
 	 * Enable webhooks from MoySklad
 	 */
-	function display_wooms_enable_webhooks() {
+	public function display_wooms_enable_webhooks() {
 		$option = 'wooms_enable_webhooks';
 		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
 		if ( get_option( 'wooms_enable_webhooks' ) ) {
@@ -606,7 +576,7 @@ class WooMS_Orders_Sender {
 	/**
 	 *
 	 */
-	function get_status_order_webhook() {
+	public function get_status_order_webhook() {
 		// echo "<hr>";
 		$check    = $this->check_webhooks_and_try_fix();
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
@@ -638,7 +608,7 @@ class WooMS_Orders_Sender {
 		}
 		echo '<p><small>Ссылка для получения данных от МойСклад: ' . rest_url( '/wooms/v1/order-update/' ) .
 		     '</small></p>';
-
+		
 	}
 	
 	/**
@@ -646,7 +616,7 @@ class WooMS_Orders_Sender {
 	 *
 	 * @return bool
 	 */
-	function check_webhooks_and_try_fix() {
+	public function check_webhooks_and_try_fix() {
 		$url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
 		$data     = wooms_request( $url );
 		if (empty($data)){
@@ -705,7 +675,7 @@ class WooMS_Orders_Sender {
 	/**
 	 *
 	 */
-	function display_wooms_orders_send_from() {
+	public function display_wooms_orders_send_from() {
 		$option_key = 'wooms_orders_send_from';
 		printf( '<input type="text" name="%s" value="%s" />', $option_key, get_option( $option_key ) );
 		echo '<p><small>Если дата не выбрана, то берутся заказы сегодняшнего и вчерашнего дня. Иначе берутся все новые заказы с указанной даты.</small></p>';
@@ -721,7 +691,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * UI for manual start send data of order
 	 */
-	function ui_action() {
+	public function ui_action() {
 		$result_list = $this->walker();
 		echo '<br/><hr>';
 		if ( empty( $result_list ) ) {
@@ -737,7 +707,7 @@ class WooMS_Orders_Sender {
 	/**
 	 * Add jQuery date picker for select start-date sending orders to MoySklad
 	 */
-	function enqueue_date_picker() {
+	public function enqueue_date_picker() {
 		$screen = get_current_screen();
 		if ( empty( $screen->id ) or 'settings_page_mss-settings' != $screen->id ) {
 			return;
