@@ -160,11 +160,15 @@ class WooMS_Orders_Sender {
 			'meta_compare' => 'NOT EXISTS',
 		);
 		
-		if ( get_option( 'wooms_orders_send_from' ) ) {
-			$args['date_query'] = array(
-				'after' => get_option( 'wooms_orders_send_from' ),
-			);
+		if ( empty( get_option( 'wooms_orders_send_from' ) ) ) {
+			$date_from = '2 day ago';
+		} else {
+			$date_from = get_option( 'wooms_orders_send_from' );
+
 		}
+		$args['date_query'] = array(
+			'after' => $date_from,
+		);
 		
 		$orders = get_posts( $args );
 		if ( empty( $orders ) ) {
