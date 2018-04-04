@@ -8,10 +8,10 @@ class WooMS_Warehouses
   function __construct()
   {
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
-    add_action('wooms_product_update', [$this, 'load_data'], 10, 3);
+    add_action('wooms_product_update', [$this, 'load_data'], 10, 2);
 
-    //Use hook do_action('wooms_variation_id', $variation_id, $value, $data);
-    add_action('wooms_variation_id', [$this, 'load_data'], 10, 3);
+    //Use hook do_action('wooms_variation_id', $variation_id, $value);
+    add_action('wooms_variation_id', [$this, 'load_data'], 10, 2);
 
     //Settings
     add_action( 'admin_init', array($this, 'settings_init'), 100 );
@@ -20,7 +20,7 @@ class WooMS_Warehouses
   /**
    * Load data for product
    */
-  public function load_data($product_id, $value, $data)
+  public function load_data($product_id, $value)
   {
     // получать остаток по складу и загружать в товары
 
