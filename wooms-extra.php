@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.6.8
+ * Version: 1.7.0
  * WC requires at least: 3.0
  * WC tested up to: 3.3.4
  *
@@ -17,7 +17,6 @@
 
 require_once 'inc/class-cron.php';
 require_once 'inc/class-import-product-stocks.php';
-require_once 'inc/class-import-product-attributes.php';
 require_once 'inc/class-import-product-variants.php';
 require_once 'inc/class-products-bundles.php';
 require_once 'inc/class-orders-sending.php';
