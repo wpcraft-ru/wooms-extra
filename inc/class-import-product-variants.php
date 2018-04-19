@@ -11,6 +11,7 @@ class WooMS_Product_Variations {
 		
 		//Use hook do_action('wooms_product_update', $product_id, $value, $data);
 		add_action( 'wooms_product_update', array( $this, 'load_data' ), 15, 3 );
+		add_action( 'wooms_product_update', array( $this, 'load_attributes_data' ), 16, 2 );
 		add_action( 'wooms_product_variant_import_row', array( $this, 'load_data_variant' ), 15, 3 );
 		// Cron
 		add_action( 'init', array( $this, 'add_cron_hook' ) );
@@ -63,37 +64,23 @@ class WooMS_Product_Variations {
 	}
 	
 	/**
-	 * @param $value
-	 * @param $key
-	 * @param $data
+	 * Installation of attributes for variable product
+	 *
+	 * @param $product_id
+	 * @param $item
 	 */
-	public function load_data_variant( $value, $key, $data ) {
-		
-		if ( false != $value['archived'] ) {
+	public function load_attributes_data( $product_id, $item ) {
+		if ( empty( $item['modificationsCount'] ) ) {
 			return;
 		}
-		$response   = wooms_request( $value['product']['meta']['href'] );
-		$product_id = $this->get_product_id_by_uuid( $response['id'] );
+		$count       = apply_filters( 'wooms_variant_attributes_iteration_size', 100 );
+		$args_ms_api = array(
+			'filter=productid' => $item['id'],
+			'limit'            => $count,
+		);
+		$url_api     = add_query_arg( $args_ms_api, 'https://online.moysklad.ru/api/remap/1.1/entity/variant' );
+		$data        = wooms_request( $url_api );
 		$this->set_product_attributes_for_variation( $product_id, $data );
-		$this->update_variations_for_product( $product_id, $value );
-		do_action( 'wooms_product_variations_update', $value, $key, $data );
-	}
-	
-	/**
-	 * Get product variant ID
-	 *
-	 * @param $uuid
-	 *
-	 * @return bool
-	 */
-	public function get_product_id_by_uuid( $uuid ) {
-		
-		$posts = get_posts( 'post_type=product&meta_key=wooms_id&meta_value=' . $uuid );
-		if ( empty( $posts[0]->ID ) ) {
-			return false;
-		}
-		
-		return $posts[0]->ID;
 	}
 	
 	/**
@@ -103,7 +90,6 @@ class WooMS_Product_Variations {
 	 * @param $data
 	 */
 	public function set_product_attributes_for_variation( $product_id, $data ) {
-		
 		$ms_attributes = [];
 		foreach ( $data['rows'] as $key => $row ) {
 			foreach ( $row['characteristics'] as $key => $characteristic ) {
@@ -139,6 +125,46 @@ class WooMS_Product_Variations {
 	}
 	
 	/**
+	 * Installation of variations for variable product
+	 *
+	 * @param $value
+	 * @param $key
+	 * @param $data
+	 */
+	public function load_data_variant( $value, $key, $data ) {
+		
+		if ( false != $value['archived'] ) {
+			return;
+		}
+		$response   = wooms_request( $value['product']['meta']['href'] );
+		$product_id = $this->get_product_id_by_uuid( $response['id'] );
+		if ( empty( get_option( 'wooms_use_uuid' ) ) ) {
+			if ( empty( $response['article'] ) ) {
+				return;
+			}
+		}
+		$this->update_variations_for_product( $product_id, $value );
+		do_action( 'wooms_product_variations_update', $value, $key, $data );
+	}
+	
+	/**
+	 * Get product variant ID
+	 *
+	 * @param $uuid
+	 *
+	 * @return bool
+	 */
+	public function get_product_id_by_uuid( $uuid ) {
+		
+		$posts = get_posts( 'post_type=product&meta_key=wooms_id&meta_value=' . $uuid );
+		if ( empty( $posts[0]->ID ) ) {
+			return false;
+		}
+		
+		return $posts[0]->ID;
+	}
+	
+	/**
 	 * Update and add variables from product
 	 *
 	 * @param $product_id
@@ -161,7 +187,6 @@ class WooMS_Product_Variations {
 			$variation->set_regular_price( $price );
 		}
 		$variation->save();
-		
 		do_action( 'wooms_variation_id', $variation_id, $value );
 	}
 	
@@ -181,16 +206,7 @@ class WooMS_Product_Variations {
 		
 		return $posts[0]->ID;
 	}
-	/*	public function update_product_attributes( $product_id ) {
-			
-			$uuid = get_post_meta( $product_id, 'wooms_id', true );
-			if ( empty( $uuid ) ) {
-				return false;
-			}
-			$product = wc_get_product( $product_id );
-			return $product;
-		}*/
-
+	
 	/**
 	 * Add variables from product
 	 *
@@ -222,6 +238,7 @@ class WooMS_Product_Variations {
 	 * @param $characteristics
 	 */
 	public function set_variation_attributes( $variation_id, $characteristics ) {
+		
 		$attributes = [];
 		foreach ( $characteristics as $key => $characteristic ) {
 			$attribute_name                = sanitize_title( $characteristic['name'] );
@@ -326,11 +343,6 @@ class WooMS_Product_Variations {
 		}
 	}
 	
-	public function remove_variations_for_product( $product_id ) {
-		//todo make remove variation for product
-		return true;
-	}
-	
 	/**
 	 * Stopping walker imports from MoySklad
 	 *
@@ -348,6 +360,11 @@ class WooMS_Product_Variations {
 		}
 		set_transient( 'wooms_variant_end_timestamp', date( "Y-m-d H:i:s" ), $timer );
 		
+		return true;
+	}
+	
+	public function remove_variations_for_product( $product_id ) {
+		//todo make remove variation for product
 		return true;
 	}
 	
@@ -414,6 +431,9 @@ class WooMS_Product_Variations {
 		if ( empty( get_option( 'woomss_walker_cron_enabled' ) ) ) {
 			return false;
 		}
+		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
+			return false;
+		}
 		if ( $end_stamp = get_transient( 'wooms_variant_end_timestamp' ) ) {
 			
 			$interval_hours = get_option( 'woomss_walker_cron_timer' );
@@ -421,9 +441,9 @@ class WooMS_Product_Variations {
 			if ( empty( $interval_hours ) ) {
 				return false;
 			}
-			$now       = new DateTime();
-			$end_stamp = new DateTime( $end_stamp );
-			$end_stamp = $now->diff( $end_stamp );
+			$now        = new DateTime();
+			$end_stamp  = new DateTime( $end_stamp );
+			$end_stamp  = $now->diff( $end_stamp );
 			$diff_hours = $end_stamp->format( '%h' );
 			if ( $diff_hours > $interval_hours ) {
 				return true;
@@ -458,6 +478,8 @@ class WooMS_Product_Variations {
 					<p><strong>Сейчас выполняется пакетная обработка данных в фоне.</strong></p>
 					<p>Отметка времени о последней итерации: <?php echo $time_string ?></p>
 					<p>Количество обработанных вариаций: <?php echo get_transient( 'wooms_count_variant_stat' ); ?></p>
+					<p>Количество обработанных
+						атрибутов: <?php echo get_transient( 'wooms_count_variant_attr_stat' ); ?></p>
 					<p>Секунд прошло: <?php echo $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно
 						через минуту. Можно обновить страницу для проверки результатов работы.</p>
 				
