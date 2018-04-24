@@ -478,8 +478,6 @@ class WooMS_Product_Variations {
 					<p><strong>Сейчас выполняется пакетная обработка данных в фоне.</strong></p>
 					<p>Отметка времени о последней итерации: <?php echo $time_string ?></p>
 					<p>Количество обработанных вариаций: <?php echo get_transient( 'wooms_count_variant_stat' ); ?></p>
-					<p>Количество обработанных
-						атрибутов: <?php echo get_transient( 'wooms_count_variant_attr_stat' ); ?></p>
 					<p>Секунд прошло: <?php echo $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно
 						через минуту. Можно обновить страницу для проверки результатов работы.</p>
 				
