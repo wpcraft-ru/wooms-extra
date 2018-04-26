@@ -143,6 +143,9 @@ class WooMS_Orders_Sender {
 	 * Start by cron
 	 */
 	public function cron_starter_walker() {
+		if ( empty( get_option( 'wooms_orders_sender_enable' ) ) ) {
+			return;
+		}
 		$this->walker();
 	}
 	
@@ -467,7 +470,7 @@ class WooMS_Orders_Sender {
 	public function get_date_created_moment( $order_id ) {
 		$order = wc_get_order( $order_id );
 		
-		return $order->get_date_created()->date( 'Y-m-d h:i:s' );
+		return $order->get_date_created()->date( 'd.m.Y H:i' );
 	}
 	
 	/**
