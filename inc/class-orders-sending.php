@@ -146,6 +146,16 @@ class WooMS_Orders_Sender {
 		if ( empty( get_option( 'wooms_orders_sender_enable' ) ) ) {
 			return;
 		}
+		$orders = get_posts( array(
+			'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
+			'post_type'    => 'shop_order',
+			'post_status'  => 'any',
+			'meta_key'     => 'wooms_send_timestamp',
+			'meta_compare' => 'NOT EXISTS',
+		) );
+		if ( empty( $orders ) ) {
+			return;
+		}
 		$this->walker();
 	}
 	
@@ -174,6 +184,7 @@ class WooMS_Orders_Sender {
 		);
 		
 		$orders = get_posts( $args );
+
 		if ( empty( $orders ) ) {
 			false;
 		}
@@ -207,7 +218,7 @@ class WooMS_Orders_Sender {
 		}
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
-
+		
 		if ( empty( $result['id'] ) || !isset($result['id']) ) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 			return false;
@@ -285,7 +296,7 @@ class WooMS_Orders_Sender {
 						"mediaType" => "application/json",
 					),
 				),
-				'reserve'    => 0,
+				'reserve'    => $quantity,
 			);
 		}
 	
@@ -470,7 +481,7 @@ class WooMS_Orders_Sender {
 	public function get_date_created_moment( $order_id ) {
 		$order = wc_get_order( $order_id );
 		
-		return $order->get_date_created()->date( 'd.m.Y H:i' );
+		return $order->get_date_created()->date( 'Y-m-d H:i:s' );
 	}
 	
 	/**
