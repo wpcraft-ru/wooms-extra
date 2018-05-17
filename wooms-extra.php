@@ -10,8 +10,12 @@
  * Version: 1.7.3
  * Text Domain: wooms-extra
  * Domain Path: /languages
+ *
  * WC requires at least: 3.0
  * WC tested up to: 3.3.5
+ *
+ * WooMS requires at least: 2.0.5
+ * WooMS tested up to: 2.0.5
  *
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -19,15 +23,16 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
+
 add_action( 'admin_init', 'wooms_check_base_plugin' );
 add_action( 'admin_notices', 'wooms_extra_show_notices' );
 function wooms_check_base_plugin() {
-	$wooms_version = '2.0.5';
+	if ( ! function_exists( 'get_plugin_data' ) ) {
+		require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+	}
+	$wooms_version = get_file_data( __FILE__, array( 'wooms_ver' => 'WooMS requires at least' ) );
+	
 	if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
-		if ( ! function_exists( 'deactivate_plugins' ) ) {
-			require_once ABSPATH . '/wp-admin/includes/plugin.php';
-		}
-		
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		if ( isset( $_GET['activate'] ) ) {
 			unset( $_GET['activate'] );
@@ -37,10 +42,7 @@ function wooms_check_base_plugin() {
 		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
 		
-	} elseif ( version_compare( WOOMS_PLUGIN_VER, $wooms_version, '<' ) ) {
-		if ( ! function_exists( 'deactivate_plugins' ) ) {
-			require_once ABSPATH . '/wp-admin/includes/plugin.php';
-		}
+	} elseif ( version_compare( WOOMS_PLUGIN_VER, $wooms_version['wooms_ver'], '<' ) ) {
 		
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		if ( isset( $_GET['activate'] ) ) {
@@ -48,7 +50,7 @@ function wooms_check_base_plugin() {
 		}
 		
 		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
-		              $wooms_version . '</strong> или выше';
+		              $wooms_version['wooms_ver'] . '</strong> или выше';
 		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
 		
