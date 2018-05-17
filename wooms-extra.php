@@ -24,21 +24,34 @@ add_action( 'admin_notices', 'wooms_extra_show_notices' );
 function wooms_check_base_plugin() {
 	$wooms_version = '2.0.5';
 	if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
+		if ( ! function_exists( 'deactivate_plugins' ) ) {
+			require_once ABSPATH . '/wp-admin/includes/plugin.php';
+		}
+		
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		if ( isset( $_GET['activate'] ) ) {
 			unset( $_GET['activate'] );
 		}
+		
 		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
+		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
+		
 	} elseif ( version_compare( WOOMS_PLUGIN_VER, $wooms_version, '<' ) ) {
+		if ( ! function_exists( 'deactivate_plugins' ) ) {
+			require_once ABSPATH . '/wp-admin/includes/plugin.php';
+		}
+		
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		if ( isset( $_GET['activate'] ) ) {
 			unset( $_GET['activate'] );
 		}
-		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии '. $wooms_version .'</strong> или выше';
+		
+		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
+		              $wooms_version . '</strong> или выше';
+		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
-	} else {
-		register_activation_hook( __FILE__, 'wooms_extra_activate_plugin' );
+		
 	}
 }
 
@@ -48,14 +61,13 @@ function wooms_extra_show_notices() {
 		echo '<div class="notice notice-error">
             <p><strong>Плагин WooMS Extra не активирован!</strong> ' . $message . '</p>
         </div>';
+		
 		delete_transient( 'wooms_extra_activation_error_message' );
 	}
 }
 
-function wooms_extra_activate_plugin() {
-	require_once 'inc/class-cron.php';
-	require_once 'inc/class-import-product-stocks.php';
-	require_once 'inc/class-import-product-variants.php';
-	require_once 'inc/class-products-bundles.php';
-	require_once 'inc/class-orders-sending.php';
-}
+require_once 'inc/class-cron.php';
+require_once 'inc/class-import-product-stocks.php';
+require_once 'inc/class-import-product-variants.php';
+require_once 'inc/class-products-bundles.php';
+require_once 'inc/class-orders-sending.php';
