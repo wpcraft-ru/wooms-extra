@@ -520,7 +520,8 @@ class WooMS_Orders_Sender {
 		?>
 		<h2>Отправка заказов в МойСклад</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
-		<p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
+		<p style="border: 1px solid red;padding: 15px;width: 50%;"><strong>Внимание!</strong> Наличие поля <strong><em>email</em></strong> на страние оформления заказа, является <strong>обязательным</strong>. Если данное поле отключено или не заполняется, то возможны проблемы с синхронизацией заказов.</p>
+		<p style="border: 1px solid green;padding: 15px;width: 50%;"><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
 		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'tools.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
 		<?php
 	}
