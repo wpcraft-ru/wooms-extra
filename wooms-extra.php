@@ -24,8 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-add_action( 'admin_init', 'wooms_check_base_plugin' );
-add_action( 'admin_notices', 'wooms_extra_show_notices' );
+add_action( 'admin_notices', 'wooms_check_base_plugin' );
 function wooms_check_base_plugin() {
 	if ( ! function_exists( 'get_plugin_data' ) ) {
 		require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
@@ -33,35 +32,25 @@ function wooms_check_base_plugin() {
 	$wooms_version = get_file_data( __FILE__, array( 'wooms_ver' => 'WooMS requires at least' ) );
 	
 	if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
-		deactivate_plugins( plugin_basename( __FILE__ ) );
-		if ( isset( $_GET['activate'] ) ) {
-			unset( $_GET['activate'] );
-		}
 		
-		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
+		$error_text = 'Для работы плагина WooMS Extra требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
 		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
 		
 	} elseif ( version_compare( WOOMS_PLUGIN_VER, $wooms_version['wooms_ver'], '<' ) ) {
 		
-		deactivate_plugins( plugin_basename( __FILE__ ) );
-		if ( isset( $_GET['activate'] ) ) {
-			unset( $_GET['activate'] );
-		}
-		
-		$error_text = 'Для корректной работы требуется плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
+		$error_text = 'Для работы плагина WooMS Extra требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
 		              $wooms_version['wooms_ver'] . '</strong> или выше';
 		
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
 		
 	}
-}
-
-function wooms_extra_show_notices() {
+	
 	$message = get_transient( 'wooms_extra_activation_error_message' );
+	
 	if ( ! empty( $message ) ) {
 		echo '<div class="notice notice-error">
-            <p><strong>Плагин WooMS Extra не активирован!</strong> ' . $message . '</p>
+            <p><strong>Внимание!</strong> ' . $message . '</p>
         </div>';
 		
 		delete_transient( 'wooms_extra_activation_error_message' );
