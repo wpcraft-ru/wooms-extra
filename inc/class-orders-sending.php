@@ -221,9 +221,14 @@ class WooMS_Orders_Sender {
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
 		
-		if ( empty( $result['id'] ) || ! isset( $result['id'] ) ) {
+		if ( empty( $result['id'] ) || ! isset( $result['id'] ) || isset($result['errors'])) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
+			$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
+			$errors .= 'Параметр:'. $result['errors'][0]['parameter'] . "\n\r";
+			$errors .= $result['errors'][0]['error'];
 			
+			$logger = wc_get_logger();
+			$logger->debug( $errors, array( 'source' => 'wooms-order-sending') );
 			return false;
 		}
 		
