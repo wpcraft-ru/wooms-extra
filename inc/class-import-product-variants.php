@@ -36,13 +36,22 @@ class WooMS_Product_Variations {
 	 * @param $data
 	 */
 	public function load_data( $product_id, $item, $data ) {
-		$product_variant = null;
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
+			if ( ! empty( $item['modificationsCount'] ) ) {
+				$this->set_product_as_simple( $product_id );
+				
+				do_action( 'wooms_product_variation', $product_id, $item );
+			}
+			
 			return;
 		}
+		
 		if ( ! empty( $item['modificationsCount'] ) ) {
 			$this->set_product_as_variable( $product_id );
+			
+			do_action( 'wooms_product_variation', $product_id, $item );
 		}
+		
 	}
 	
 	/**
@@ -54,9 +63,25 @@ class WooMS_Product_Variations {
 	 */
 	public function set_product_as_variable( $product_id ) {
 		$product = wc_get_product( $product_id );
-		if ( ! $product->is_type( 'variable' ) ) {
+		if ( ! $product->is_type( 'variable' )) {
 			wp_set_post_terms( $product_id, 'variable', 'product_type' );
-			
+			return true;
+		}
+
+		return false;
+	}
+	
+	/**
+	 * Installation of simple product
+	 *
+	 * @param $product_id
+	 *
+	 * @return bool
+	 */
+	public function set_product_as_simple( $product_id ) {
+		$product = wc_get_product( $product_id );
+		if ( $product->is_type( 'variable' ) ) {
+			wp_set_post_terms( $product_id, 'simple', 'product_type' );
 			return true;
 		}
 		
@@ -73,6 +98,7 @@ class WooMS_Product_Variations {
 		if ( empty( $item['modificationsCount'] ) ) {
 			return;
 		}
+		
 		$count       = apply_filters( 'wooms_variant_attributes_iteration_size', 100 );
 		$args_ms_api = array(
 			'filter=productid' => $item['id'],
@@ -99,14 +125,17 @@ class WooMS_Product_Variations {
 				];
 			}
 		}
+		
 		foreach ( $data['rows'] as $key => $row ) {
 			foreach ( $row['characteristics'] as $key => $characteristic ) {
 				$ms_attributes[ $characteristic['id'] ]['values'][] = $characteristic['value'];
 			}
 		}
+		
 		foreach ( $ms_attributes as $key => $value ) {
 			$ms_attributes[ $key ]['values'] = array_unique( $value['values'] );
 		}
+		
 		$attributes = [];
 		foreach ( $ms_attributes as $key => $value ) {
 			
@@ -119,6 +148,7 @@ class WooMS_Product_Variations {
 			$attribute_object->set_variation( 1 );
 			$attributes[] = $attribute_object;
 		}
+		
 		$product = wc_get_product( $product_id );
 		$product->set_attributes( $attributes );
 		$product->save();
@@ -136,6 +166,7 @@ class WooMS_Product_Variations {
 		if ( false != $value['archived'] ) {
 			return;
 		}
+		
 		$response   = wooms_request( $value['product']['meta']['href'] );
 		$product_id = $this->get_product_id_by_uuid( $response['id'] );
 		if ( empty( get_option( 'wooms_use_uuid' ) ) ) {
@@ -143,8 +174,9 @@ class WooMS_Product_Variations {
 				return;
 			}
 		}
+		
 		$this->update_variations_for_product( $product_id, $value );
-		do_action( 'wooms_product_variations_update', $value, $key, $data );
+		do_action( 'wooms_product_variant', $product_id, $value, $data );
 	}
 	
 	/**
@@ -171,13 +203,14 @@ class WooMS_Product_Variations {
 	 * @param $value
 	 */
 	public function update_variations_for_product( $product_id, $value ) {
-		
 		if ( empty( $value ) ) {
 			return;
 		}
+		
 		if ( ! $variation_id = $this->get_variation_by_wooms_id( $value['id'] ) ) {
 			$variation_id = $this->add_variation( $product_id, $value );
 		}
+		
 		$this->set_variation_attributes( $variation_id, $value['characteristics'] );
 		$variation = wc_get_product( $variation_id );
 		$variation->set_name( $value['name'] );
@@ -186,6 +219,7 @@ class WooMS_Product_Variations {
 			$variation->set_price( $price );
 			$variation->set_regular_price( $price );
 		}
+		
 		$variation->save();
 		do_action( 'wooms_variation_id', $variation_id, $value );
 	}
@@ -198,7 +232,6 @@ class WooMS_Product_Variations {
 	 * @return bool
 	 */
 	public function get_variation_by_wooms_id( $id ) {
-		
 		$posts = get_posts( 'post_type=product_variation&meta_key=wooms_id&meta_value=' . $id );
 		if ( empty( $posts ) ) {
 			return false;
@@ -225,6 +258,7 @@ class WooMS_Product_Variations {
 		if ( empty( $variation_id ) ) {
 			return false;
 		}
+		
 		update_post_meta( $variation_id, 'wooms_id', $value['id'] );
 		do_action( 'wooms_add_variation', $variation_id, $product_id, $value );
 		
@@ -238,12 +272,12 @@ class WooMS_Product_Variations {
 	 * @param $characteristics
 	 */
 	public function set_variation_attributes( $variation_id, $characteristics ) {
-		
 		$attributes = [];
 		foreach ( $characteristics as $key => $characteristic ) {
 			$attribute_name                = sanitize_title( $characteristic['name'] );
 			$attributes[ $attribute_name ] = $characteristic['value'];
 		}
+		
 		$variation = wc_get_product( $variation_id );
 		$variation->set_attributes( $attributes );
 		$variation->save();
@@ -274,6 +308,7 @@ class WooMS_Product_Variations {
 		if ( $this->check_stop_manual() ) {
 			return false;
 		}
+		
 		$count = apply_filters( 'wooms_variant_iteration_size', 20 );
 		if ( ! $offset = get_transient( 'wooms_variant_offset' ) ) {
 			$offset = 0;
@@ -281,6 +316,7 @@ class WooMS_Product_Variations {
 			update_option( 'wooms_variant_session_id', date( "YmdHis" ), 'no' );
 			delete_transient( 'wooms_count_variant_stat' );
 		}
+		
 		$args_ms_api = array(
 			'offset' => $offset,
 			'limit'  => $count,
@@ -307,16 +343,19 @@ class WooMS_Product_Variations {
 				
 				return false;
 			}
+			
 			$i = 0;
 			foreach ( $data['rows'] as $key => $value ) {
 				do_action( 'wooms_product_variant_import_row', $value, $key, $data );
 				$i ++;
 			}
+			
 			if ( $count_saved = get_transient( 'wooms_count_variant_stat' ) ) {
 				set_transient( 'wooms_count_variant_stat', $i + $count_saved );
 			} else {
 				set_transient( 'wooms_count_variant_stat', $i );
 			}
+			
 			set_transient( 'wooms_variant_offset', $offset + $i );
 			
 			return;
@@ -358,6 +397,7 @@ class WooMS_Product_Variations {
 		} else {
 			$timer = 60 * 60 * intval( get_option( 'woomss_walker_cron_timer', 24 ) );
 		}
+		
 		set_transient( 'wooms_variant_end_timestamp', date( "Y-m-d H:i:s" ), $timer );
 		
 		return true;
@@ -404,9 +444,11 @@ class WooMS_Product_Variations {
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			return;
 		}
+		
 		if ( ! wp_next_scheduled( 'wooms_cron_variation_sync' ) ) {
 			wp_schedule_event( time(), 'wooms_cron_worker_variations', 'wooms_cron_variation_sync' );
 		}
+		
 	}
 	
 	/**
@@ -428,12 +470,15 @@ class WooMS_Product_Variations {
 		if ( ! empty( get_transient( 'wooms_variant_manual_sync' ) ) ) {
 			return true;
 		}
+		
 		if ( empty( get_option( 'woomss_walker_cron_enabled' ) ) ) {
 			return false;
 		}
+		
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			return false;
 		}
+		
 		if ( $end_stamp = get_transient( 'wooms_variant_end_timestamp' ) ) {
 			
 			$interval_hours = get_option( 'woomss_walker_cron_timer' );
@@ -535,12 +580,15 @@ class WooMS_Product_Variations {
 		if ( $screen->base != 'tools_page_moysklad' ) {
 			return;
 		}
+		
 		if ( empty( get_transient( 'wooms_variant_end_timestamp' ) ) ) {
 			return;
 		}
+		
 		if ( ! empty( get_transient( 'wooms_variant_start_timestamp' ) ) ) {
 			return;
 		}
+		
 		?>
 		<div class="wrap">
 			<div id="message" class="updated notice">
@@ -570,7 +618,7 @@ class WooMS_Product_Variations {
 		?>
 		<div class="wrap">
 			<div class="error">
-				<p><strong>Обработка заверишлась с ошибкой.</strong></p>
+				<p><strong>Обработка завершилась с ошибкой.</strong></p>
 				<p>Данные: <?php echo get_transient( 'wooms_error_background' ) ?></p>
 			</div>
 		</div>
@@ -584,7 +632,7 @@ class WooMS_Product_Variations {
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			return;
 		}
-		?><?php
+		
 		echo '<h2>Синхронизация вариативных товаров</h2>';
 		if ( empty( get_transient( 'wooms_variant_start_timestamp' ) ) ) {
 			echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";

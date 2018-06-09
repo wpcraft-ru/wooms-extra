@@ -211,18 +211,28 @@ class WooMS_Orders_Sender {
 	 */
 	public function send_order( $order_id ) {
 		$data = $this->get_data_order_for_moysklad( $order_id );
+		
 		if ( empty( $data ) ) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 			
 			return false;
 		}
+		
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
 		
-		if ( empty( $result['id'] ) || !isset($result['id']) ) {
+		if ( empty( $result['id'] ) || ! isset( $result['id'] ) || isset( $result['errors'] ) ) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
+			$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
+			$errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
+			$errors .= $result['errors'][0]['error'] . "\n\r";
+			
+			$logger = wc_get_logger();
+			$logger->error( $errors, array( 'source' => 'wooms-order-sending' ) );
+			
 			return false;
 		}
+		
 		update_post_meta( $order_id, 'wooms_id', $result['id'] );
 		
 		return true;
@@ -237,13 +247,15 @@ class WooMS_Orders_Sender {
 	 * @return array|bool
 	 */
 	public function get_data_order_for_moysklad( $order_id ) {
-		$data              = array(
-			"name" => apply_filters( 'wooms_order_name', (string) $order_id ),
+		$data = array(
+			"name" => $this->get_data_name( $order_id ),
 		);
 		$data['positions'] = $this->get_data_positions( $order_id );
+		
 		if ( empty( $data['positions'] ) ) {
-			unset($data['positions']);
+			unset( $data['positions'] );
 		}
+		
 		$data["organization"] = $this->get_data_organization();
 		$data["agent"]        = $this->get_data_agent( $order_id );
 		$data["moment"]       = $this->get_date_created_moment( $order_id );
@@ -265,6 +277,7 @@ class WooMS_Orders_Sender {
 		if ( empty( $items ) ) {
 			return false;
 		}
+		
 		$data = array();
 		foreach ( $items as $key => $item ) {
 			if ($item['variation_id'] != 0) {
@@ -274,14 +287,17 @@ class WooMS_Orders_Sender {
 				$product_id = $item["product_id"];
 				$product_type = 'product';
 			}
+			
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
 			
 			if ( empty( $uuid ) ) {
 				continue;
 			}
+			
 			if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
 				continue;
 			}
+			
 			$price    = $item->get_total();
 			$quantity = $item->get_quantity();
 			$data[] = array(
@@ -301,6 +317,29 @@ class WooMS_Orders_Sender {
 		}
 	
 		return $data;
+	}
+
+	/**
+	 * Get data name for send MoySklad
+	 *
+	 * @param $order_id
+	 *
+	 * @return string
+	 */
+	public function get_data_name( $order_id ) {
+		$prefix_postfix_name  = get_option( 'wooms_orders_send_prefix_postfix' );
+		$prefix_postfix_check = get_option( 'wooms_orders_send_check_prefix_postfix' );
+		if ( $prefix_postfix_name ) {
+			if ( 'prefix' == $prefix_postfix_check ) {
+				$name_order = $prefix_postfix_name . '-' . $order_id;
+			} elseif ( 'postfix' == $prefix_postfix_check ) {
+				$name_order = $order_id . '-' . $prefix_postfix_name;
+			}
+		} else {
+			$name_order = $order_id;
+		}
+		
+		return apply_filters( 'wooms_order_name', (string) $name_order );
 	}
 	
 	/**
@@ -520,8 +559,7 @@ class WooMS_Orders_Sender {
 		?>
 		<h2>Отправка заказов в МойСклад</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
-		<p style="border: 1px solid red;padding: 15px;width: 50%;"><strong>Внимание!</strong> Наличие поля <strong><em>email</em></strong> на страние оформления заказа, является <strong>обязательным</strong>. Если данное поле отключено или не заполняется, то возможны проблемы с синхронизацией заказов.</p>
-		<p style="border: 1px solid green;padding: 15px;width: 50%;"><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
+		<p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
 		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'tools.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
 		<?php
 	}
@@ -554,6 +592,22 @@ class WooMS_Orders_Sender {
 			$id = 'wooms_orders_send_from',
 			$title = 'Дата, с которой берутся Заказы для отправки',
 			$callback = array($this , 'display_wooms_orders_send_from'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
+		register_setting( 'mss-settings', 'wooms_orders_send_prefix_postfix' );
+		add_settings_field(
+			$id = 'wooms_orders_send_prefix_postfix',
+			$title = 'Префикс или постфикс к номеру заказа',
+			$callback = array($this , 'display_wooms_orders_send_prefix_postfix'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
+		register_setting( 'mss-settings', 'wooms_orders_send_check_prefix_postfix' );
+		add_settings_field(
+			$id = 'wooms_orders_send_check_prefix_postfix',
+			$title = 'Использовать как префикс или как постфикс',
+			$callback = array($this , 'display_wooms_orders_send_check_prefix_postfix'),
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
 		);
@@ -705,6 +759,29 @@ class WooMS_Orders_Sender {
             });
 		</script>
 		<?php
+	}
+	/**
+	 *
+	 */
+	public function display_wooms_orders_send_prefix_postfix() {
+		$option_key = 'wooms_orders_send_prefix_postfix';
+		printf( '<input type="text" name="%s" value="%s" />', $option_key, get_option( $option_key ) );
+		echo '<p><small>Укажите тут уникальную приставку к номеру заказа. Например - IMP</small></p>';
+	}
+	/**
+	 *
+	 */
+	public function display_wooms_orders_send_check_prefix_postfix() {
+		$selected_prefix_postfix = get_option( 'wooms_orders_send_check_prefix_postfix' );
+		?>
+		<select class="check_prefix_postfix" name="wooms_orders_send_check_prefix_postfix">
+			<?php
+			printf( '<option value="%s" %s>%s</option>', 'prefix', selected( 'prefix', $selected_prefix_postfix, false ), 'перед номером заказа' );
+			printf( '<option value="%s" %s>%s</option>', 'postfix', selected( 'postfix', $selected_prefix_postfix, false ), 'после номера заказа' );
+			?>
+		</select>
+		<?php
+		echo '<p><small>Выберите как выводить уникальную приставку: перед номером заказа (префикс) или после номера заказа (постфикс)</small></p>';
 	}
 	
 	/**
