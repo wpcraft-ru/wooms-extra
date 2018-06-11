@@ -56,7 +56,6 @@ class WooMS_Product_Variations {
 	 *
 	 * @param $product_id
 	 *
-	 * @return bool
 	 */
 	public function set_product_as_variable( $product_id ) {
 		$product = wc_get_product( $product_id );
@@ -509,7 +508,7 @@ class WooMS_Product_Variations {
 			<?php
 			if ( false != $this->check_availability_of_variations() ) {
 				?>
-				<div id="message" class="updated notice">
+				<div id="message" class="notice notice-warning is-dismissible">
 					<p><strong>Выполняется синхронизация вариативных товаров в фоне.</strong></p>
 					<p>Отметка времени о последней итерации: <?php echo $time_string ?></p>
 					<p>Количество обработанных вариаций: <?php echo get_transient( 'wooms_count_variant_stat' ); ?></p>
@@ -520,7 +519,7 @@ class WooMS_Product_Variations {
 				<?php
 			} else {
 				?>
-				<div id="message" class="updated error is-dismissible">
+				<div id="message" class="notice notice-error is-dismissible">
 					<p><strong>Не проведена синхронизация основных товаров</strong></p>
 					<p>Синхронизацию вариативных товаров необходимо поводить <strong>после</strong> общей синхронизации
 						товаров</p>
@@ -581,7 +580,7 @@ class WooMS_Product_Variations {
 		
 		?>
 		<div class="wrap">
-			<div id="message" class="updated notice">
+			<div id="message" class="notice notice-success is-dismissible">
 				<p><strong>Успешно завершился импорт вариативных товаров из МойСклад</strong></p>
 				<?php
 				printf( '<p>Номер текущей сессии: %s</p>', get_option( 'wooms_session_id' ) );
