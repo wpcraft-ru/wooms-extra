@@ -39,8 +39,6 @@ class WooMS_Product_Variations {
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			if ( ! empty( $item['modificationsCount'] ) ) {
 				$this->set_product_as_simple( $product_id );
-				
-				do_action( 'wooms_product_variation', $product_id, $item );
 			}
 			
 			return;
@@ -48,7 +46,6 @@ class WooMS_Product_Variations {
 		
 		if ( ! empty( $item['modificationsCount'] ) ) {
 			$this->set_product_as_variable( $product_id );
-			
 			do_action( 'wooms_product_variation', $product_id, $item );
 		}
 		
@@ -63,29 +60,22 @@ class WooMS_Product_Variations {
 	 */
 	public function set_product_as_variable( $product_id ) {
 		$product = wc_get_product( $product_id );
+		
 		if ( ! $product->is_type( 'variable' )) {
-			wp_set_post_terms( $product_id, 'variable', 'product_type' );
-			return true;
+			wp_set_object_terms( $product_id, 'variable', 'product_type', false );
 		}
-
-		return false;
 	}
 	
 	/**
-	 * Installation of simple product
+	 * Installation of simple product\
 	 *
 	 * @param $product_id
-	 *
-	 * @return bool
 	 */
 	public function set_product_as_simple( $product_id ) {
 		$product = wc_get_product( $product_id );
 		if ( $product->is_type( 'variable' ) ) {
 			wp_set_post_terms( $product_id, 'simple', 'product_type' );
-			return true;
 		}
-		
-		return false;
 	}
 	
 	/**
