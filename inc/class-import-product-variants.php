@@ -510,7 +510,7 @@ class WooMS_Product_Variations {
 			if ( false != $this->check_availability_of_variations() ) {
 				?>
 				<div id="message" class="updated notice">
-					<p><strong>Выполняется синхронизация вариативных товаров.</strong></p>
+					<p><strong>Выполняется синхронизация вариативных товаров в фоне.</strong></p>
 					<p>Отметка времени о последней итерации: <?php echo $time_string ?></p>
 					<p>Количество обработанных вариаций: <?php echo get_transient( 'wooms_count_variant_stat' ); ?></p>
 					<p>Секунд прошло: <?php echo $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно

@@ -10,9 +10,9 @@ class WooMS_Warehouses {
 	 */
 	public function __construct() {
 		//Use hook do_action('wooms_product_update', $product_id, $value, $data);
-		add_action( 'wooms_product_update', array( $this, 'load_data' ), 20, 2 );
-		add_action( 'wooms_variation_id', array( $this, 'load_data' ), 20, 2 );
-		add_action( 'wooms_product_variation', array( $this, 'load_data' ), 0, 2 );
+		add_action( 'wooms_product_update', array( $this, 'load_data' ), 10, 2 );
+		//Use hook do_action('wooms_variation_id', $variation_id, $value);
+		add_action( 'wooms_variation_id', array( $this, 'load_data' ), 10, 2 );
 		//Settings
 		add_action( 'admin_init', array( $this, 'settings_init' ), 100 );
 	}
@@ -31,34 +31,30 @@ class WooMS_Warehouses {
 		if ( empty( get_option( 'woomss_stock_sync_enabled' ) ) ) {
 			return false;
 		}
-		
 		$url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
 		if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
 			$url = add_query_arg( array( 'store.id' => $warehouse_id, 'product.id' => $value['id'] ), $url );
 		} else {
 			$url = add_query_arg( 'product.id', $value['id'], $url );
 		}
-		
-		$data    = wooms_request( $url );
+		$data = wooms_request( $url );
 		$product = wc_get_product( $product_id );
 		if ( empty( $data['rows'][0]['stock'] ) ) {
+			
 			$stock = 0;
 		} else {
 			$stock = (int) $data['rows'][0]['stock'];
 		}
-		
 		if ( get_option( 'wooms_stock_empty_backorder' ) ) {
 			$product->set_backorders( 'yes' );
 		} else {
 			$product->set_backorders( 'no' );
 		}
-		
 		if ( empty( get_option( 'wooms_warehouse_count' ) ) ) {
 			$product->set_manage_stock( 'no' );
 		} else {
 			$product->set_manage_stock( 'yes' );
 		}
-		
 		if ( $stock <= 0 ) {
 			$product->set_stock_quantity( 0 );
 			$product->set_stock_status( 'outofstock' );
@@ -66,11 +62,11 @@ class WooMS_Warehouses {
 			$product->set_stock_quantity( $stock );
 			$product->set_stock_status( 'instock' );
 		}
-		
 		$product->save();
 		
 		return true;
 	}
+	
 	
 	/**
 	 * Settings UI
