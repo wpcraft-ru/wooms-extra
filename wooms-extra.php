@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.7.4
+ * Version: 1.7.5
  * Text Domain: wooms-extra
  * Domain Path: /languages
  *
