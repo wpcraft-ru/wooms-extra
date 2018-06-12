@@ -221,15 +221,14 @@ class WooMS_Orders_Sender {
 		$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 		$result = wooms_request( $url, $data );
 		
-		if ( empty( $result['id'] ) || ! isset( $result['id'] ) || isset( $result['errors'] ) ) {
+		if ( empty( $result['id'] ) || ! isset( $result['id'] ) || isset($result['errors'])) {
 			update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 			$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
-			$errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
-			$errors .= $result['errors'][0]['error'] . "\n\r";
+			$errors .= 'Параметр:'. $result['errors'][0]['parameter'] . "\n\r";
+			$errors .= $result['errors'][0]['error'];
 			
 			$logger = wc_get_logger();
-			$logger->error( $errors, array( 'source' => 'wooms-order-sending' ) );
-			
+			$logger->error( $errors, array( 'source' => 'wooms-order-sending') );
 			return false;
 		}
 		
@@ -277,7 +276,6 @@ class WooMS_Orders_Sender {
 		if ( empty( $items ) ) {
 			return false;
 		}
-		
 		$data = array();
 		foreach ( $items as $key => $item ) {
 			if ($item['variation_id'] != 0) {
@@ -287,17 +285,14 @@ class WooMS_Orders_Sender {
 				$product_id = $item["product_id"];
 				$product_type = 'product';
 			}
-			
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
 			
 			if ( empty( $uuid ) ) {
 				continue;
 			}
-			
 			if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
 				continue;
 			}
-			
 			$price    = $item->get_total();
 			$quantity = $item->get_quantity();
 			$data[] = array(
@@ -318,7 +313,8 @@ class WooMS_Orders_Sender {
 	
 		return $data;
 	}
-
+	
+	
 	/**
 	 * Get data name for send MoySklad
 	 *
@@ -341,7 +337,6 @@ class WooMS_Orders_Sender {
 		
 		return apply_filters( 'wooms_order_name', (string) $name_order );
 	}
-	
 	/**
 	 * Get meta for organization
 	 *
