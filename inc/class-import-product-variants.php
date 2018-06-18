@@ -432,10 +432,10 @@ class WooMS_Product_Variations {
 	public function add_schedule( $schedules ) {
 		
 		$schedules['wooms_cron_worker_variations'] = array(
-			'interval' => 60,
+			'interval' => apply_filters('wooms_variants_cron_interval', 60),
 			'display'  => 'WooMS Cron Load Variations 60 sec',
 		);
-		
+
 		return $schedules;
 	}
 	
