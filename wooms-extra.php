@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.7.4
+ * Version: 1.7.5
  * Text Domain: wooms-extra
  * Domain Path: /languages
  *
@@ -62,4 +62,4 @@ require_once 'inc/class-import-product-stocks.php';
 require_once 'inc/class-import-product-variants.php';
 require_once 'inc/class-products-bundles.php';
 require_once 'inc/class-orders-sending.php';
-require_once 'inc/class-import-product-choice-categories.php';
+require_once 'inc/class-import-sale-prices.php';
