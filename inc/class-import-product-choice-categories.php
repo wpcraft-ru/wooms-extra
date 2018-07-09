@@ -6,8 +6,54 @@
 class WooMS_Import_Product_Choice_Categories {
 	
 	public function __construct() {
-		add_action( 'wooms_product_update', array($this, 'load_data'), 1, 3 );
+		add_action( 'wooms_product_update', array( $this, 'load_data' ), 1, 3 );
 		add_action( 'admin_init', array( $this, 'settings_init' ), 102 );
+		add_filter( 'wooms_variant_ms_api_arg', array( $this, 'add_ms_api_arg_variant' ), 10 );
+		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url' ), 10 );
+		add_filter( 'wooms_product_ms_api_arg', array( $this, 'add_ms_api_arg_simple' ), 10 );
+		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url' ), 10 );
+		
+	}
+	
+	public function add_ms_api_filter_arg() {
+		if ( $this->include_categories() ) {
+			
+			if ( 1 > count( $this->include_categories() ) ) {
+				$filter = implode( '&filter=productFolder=', $this->include_categories() );
+			} else {
+				$filter = 'productFolder=' . implode( '&filter=productFolder=', $this->include_categories() );
+			}
+			
+		}
+		
+		return $filter;
+	}
+	
+	public function add_ms_api_arg_simple( $arg ) {
+		if ( $this->include_categories() ) {
+			$arg['scope']  = 'product';
+			$arg['filter'] = $this->add_ms_api_filter_arg();
+		}
+		
+		return $arg;
+	}
+	public function add_ms_api_arg_variant( $arg ) {
+		if ( $this->include_categories() ) {
+			$arg['scope']  = 'variant';
+			$arg['filter'] = $this->add_ms_api_filter_arg();
+		}
+		return $arg;
+	}
+	public function include_categories() {
+		return get_option( 'woomss_include_categories_sync' );
+	}
+	
+	public function change_ms_api_url( $url ) {
+		if ( $this->include_categories() ) {
+			$url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+		}
+		
+		return $url;
 	}
 	
 	public function load_data( $product_id, $value, $data ) {
@@ -25,9 +71,9 @@ class WooMS_Import_Product_Choice_Categories {
 					return;
 				}*/
 		$checked_choice_include = get_option( 'woomss_include_categories_sync' );
-		$url = $value['productFolder']['meta']['href'];
-		if (in_array($url, $checked_choice_include)){
-			do_action("logger_u7", $value);
+		$url                    = $value['productFolder']['meta']['href'];
+		if ( in_array( $url, $checked_choice_include ) ) {
+			//do_action( "logger_u7", $value );
 			if ( $term_id = $this->update_category( $url ) ) {
 				
 				wp_set_object_terms( $product_id, $term_id, $taxonomy = 'product_cat' );
@@ -101,7 +147,7 @@ class WooMS_Import_Product_Choice_Categories {
 	 * Settings UI
 	 */
 	public function settings_init() {
-		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
+		if ( ! get_option( 'woomss_categories_sync_enabled' ) ) {
 			return;
 		}
 		register_setting( 'mss-settings', 'woomss_exclude_categories_sync' );
@@ -131,13 +177,6 @@ class WooMS_Import_Product_Choice_Categories {
 		<small>Выберите группы, которые не требуется синхронизировать</small>
 		<ul style="max-height: 180px;overflow: auto; box-shadow: inset 0 0 5px 0px #aaa;padding: 20px;">
 			<?php
-			/*			if ( empty( $checked_choice ) ) {
-							echo '<pre>';
-							var_dump( $checked_choice );
-							echo 'yes</pre>';
-						} else {
-							echo 'no';
-						}*/
 			
 			foreach ( $data['rows'] as $value ):
 				if ( ! empty( $value['pathName'] ) ) {
@@ -156,8 +195,8 @@ class WooMS_Import_Product_Choice_Categories {
 				echo '<input type="checkbox"
               name="' . $option . '[' . $value['id'] . ']"
               id="' . $option . '-' . $value['id'] . '"
-              value="' . esc_attr( $value['meta']['href'] ) . '" ' . ( isset( $checked_choice[ $value['id'] ] ) ?
-						checked( $checked_choice[ $value['id'] ], $value['meta']['href'], false ) : '' ) . ' />';
+              value="' . esc_attr( $value['meta']['href'] ) . '" ' .
+				     ( isset( $checked_choice[ $value['id'] ] ) ? checked( $checked_choice[ $value['id'] ], $value['meta']['href'], false ) : '' ) . ' />';
 				echo '<label for="' . $option . '-' . $value['id'] . '">' . $value['name'] . '</label>';
 				echo '</li>';
 			endforeach;
@@ -171,8 +210,8 @@ class WooMS_Import_Product_Choice_Categories {
 		$option         = 'woomss_include_categories_sync';
 		$checked_choice = get_option( 'woomss_include_categories_sync' );
 		
-		$url            = 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder';
-		$data           = wooms_request( $url );
+		$url  = 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder';
+		$data = wooms_request( $url );
 		if ( empty( $data['rows'] ) ) {
 			return;
 		}
@@ -204,8 +243,8 @@ class WooMS_Import_Product_Choice_Categories {
 				echo '<input type="checkbox"
               name="' . $option . '[' . $value['id'] . ']"
               id="' . $option . '-' . $value['id'] . '"
-              value="' . esc_attr( $value['meta']['href'] ) . '" ' . ( isset( $checked_choice[ $value['id'] ] ) ?
-						checked( $checked_choice[ $value['id'] ], $value['meta']['href'], false ) : '' ) . ' />';
+              value="' . esc_attr( $value['meta']['href'] ) . '" ' .
+				     ( isset( $checked_choice[ $value['id'] ] ) ? checked( $checked_choice[ $value['id'] ], $value['meta']['href'], false ) : '' ) . ' />';
 				echo '<label for="' . $option . '-' . $value['id'] . '">' . $value['name'] . '</label>';
 				echo '</li>';
 			endforeach;
@@ -214,4 +253,5 @@ class WooMS_Import_Product_Choice_Categories {
 		<?php
 	}
 }
+
 new WooMS_Import_Product_Choice_Categories;
