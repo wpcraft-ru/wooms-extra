@@ -1,5 +1,7 @@
 <?php
-
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
 /**
  * Import variants from MoySklad
  */
@@ -39,8 +41,6 @@ class WooMS_Product_Variations {
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			if ( ! empty( $item['modificationsCount'] ) ) {
 				$this->set_product_as_simple( $product_id );
-				
-				do_action( 'wooms_product_variation', $product_id, $item );
 			}
 			
 			return;
@@ -48,7 +48,6 @@ class WooMS_Product_Variations {
 		
 		if ( ! empty( $item['modificationsCount'] ) ) {
 			$this->set_product_as_variable( $product_id );
-			
 			do_action( 'wooms_product_variation', $product_id, $item );
 		}
 		
@@ -59,33 +58,29 @@ class WooMS_Product_Variations {
 	 *
 	 * @param $product_id
 	 *
-	 * @return bool
 	 */
 	public function set_product_as_variable( $product_id ) {
+		$was_suspended = wp_suspend_cache_addition();
+		wp_suspend_cache_addition( true );
 		$product = wc_get_product( $product_id );
+		
 		if ( ! $product->is_type( 'variable' )) {
-			wp_set_post_terms( $product_id, 'variable', 'product_type' );
-			return true;
+			wp_set_object_terms( $product_id, 'variable', 'product_type', false );
 		}
-
-		return false;
+		// вернем состояние кэша обратно
+		wp_suspend_cache_addition( $was_suspended );
 	}
 	
 	/**
-	 * Installation of simple product
+	 * Installation of simple product\
 	 *
 	 * @param $product_id
-	 *
-	 * @return bool
 	 */
 	public function set_product_as_simple( $product_id ) {
 		$product = wc_get_product( $product_id );
 		if ( $product->is_type( 'variable' ) ) {
 			wp_set_post_terms( $product_id, 'simple', 'product_type' );
-			return true;
 		}
-		
-		return false;
 	}
 	
 	/**
@@ -116,6 +111,8 @@ class WooMS_Product_Variations {
 	 * @param $data
 	 */
 	public function set_product_attributes_for_variation( $product_id, $data ) {
+		$was_suspended = wp_suspend_cache_addition();
+		wp_suspend_cache_addition( true );
 		$ms_attributes = [];
 		foreach ( $data['rows'] as $key => $row ) {
 			foreach ( $row['characteristics'] as $key => $characteristic ) {
@@ -152,6 +149,8 @@ class WooMS_Product_Variations {
 		$product = wc_get_product( $product_id );
 		$product->set_attributes( $attributes );
 		$product->save();
+
+		wp_suspend_cache_addition( $was_suspended );
 	}
 	
 	/**
@@ -203,6 +202,8 @@ class WooMS_Product_Variations {
 	 * @param $value
 	 */
 	public function update_variations_for_product( $product_id, $value ) {
+		$was_suspended = wp_suspend_cache_addition();
+		wp_suspend_cache_addition( true );
 		if ( empty( $value ) ) {
 			return;
 		}
@@ -219,8 +220,9 @@ class WooMS_Product_Variations {
 			$variation->set_price( $price );
 			$variation->set_regular_price( $price );
 		}
-		
 		$variation->save();
+
+		wp_suspend_cache_addition( $was_suspended );
 		do_action( 'wooms_variation_id', $variation_id, $value );
 	}
 	
@@ -519,8 +521,8 @@ class WooMS_Product_Variations {
 			<?php
 			if ( false != $this->check_availability_of_variations() ) {
 				?>
-				<div id="message" class="updated notice">
-					<p><strong>Сейчас выполняется пакетная обработка данных в фоне.</strong></p>
+				<div id="message" class="notice notice-warning is-dismissible">
+					<p><strong>Выполняется синхронизация вариативных товаров в фоне.</strong></p>
 					<p>Отметка времени о последней итерации: <?php echo $time_string ?></p>
 					<p>Количество обработанных вариаций: <?php echo get_transient( 'wooms_count_variant_stat' ); ?></p>
 					<p>Секунд прошло: <?php echo $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно
@@ -530,7 +532,7 @@ class WooMS_Product_Variations {
 				<?php
 			} else {
 				?>
-				<div id="message" class="updated error is-dismissible">
+				<div id="message" class="notice notice-error is-dismissible">
 					<p><strong>Не проведена синхронизация основных товаров</strong></p>
 					<p>Синхронизацию вариативных товаров необходимо поводить <strong>после</strong> общей синхронизации
 						товаров</p>
@@ -591,7 +593,7 @@ class WooMS_Product_Variations {
 		
 		?>
 		<div class="wrap">
-			<div id="message" class="updated notice">
+			<div id="message" class="notice notice-success is-dismissible">
 				<p><strong>Успешно завершился импорт вариативных товаров из МойСклад</strong></p>
 				<?php
 				printf( '<p>Номер текущей сессии: %s</p>', get_option( 'wooms_session_id' ) );
