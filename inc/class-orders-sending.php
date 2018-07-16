@@ -628,15 +628,10 @@ class WooMS_Orders_Sender {
 				<hr>
 				<div><?php $this->get_status_order_webhook() ?></div>
 			</div>
-			
 			<?php
 		} else {
 			?>
-			<hr>
-			<div>
 				<small>Передатчик статусов из Мой Склад может работать только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.</small>
-			</div>
-			
 			<?php
 		}
 	}
