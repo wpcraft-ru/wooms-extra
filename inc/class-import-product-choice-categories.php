@@ -13,48 +13,41 @@ class WooMS_Import_Product_Choice_Categories {
 		}
 		
 		add_action( 'wooms_product_update', array( $this, 'load_data' ), 1, 3 );
-		
-		add_filter( 'wooms_variant_ms_api_arg', array( $this, 'add_ms_api_arg_variant' ), 10 );
-		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url' ), 10 );
-		add_filter( 'wooms_product_ms_api_arg', array( $this, 'add_ms_api_arg_simple' ), 10 );
-		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url' ), 10 );
+		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
+		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
 		
 	}
 	
-	public function add_ms_api_filter_arg() {
-		if ( $this->select_category() ) {
-			$filter = 'productFolder=' . $this->select_category() ;
-		}
-		
-		return $filter;
-	}
-	
-	public function add_ms_api_arg_simple( $arg ) {
-
-		if ( $this->select_category() ) {
-			$arg['scope']  = 'product';
-			$arg['filter'] = $this->add_ms_api_filter_arg();
-		}
-		
-		return $arg;
-	}
-	public function add_ms_api_arg_variant( $arg ) {
-
-		if ( $this->select_category() ) {
-			$arg['scope']  = 'variant';
-			$arg['filter'] = $this->add_ms_api_filter_arg();
-		}
-		return $arg;
-	}
 	public function select_category() {
 		return get_option( 'woomss_include_categories_sync' );
 	}
 	
-	public function change_ms_api_url( $url ) {
-
-		if ( $this->select_category() ) {
-			$url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+	public function change_ms_api_url_simple( $url ) {
+		if ( empty( $this->select_category() ) ) {
+			return;
 		}
+		
+		$arg = array(
+			'scope'  => 'product',
+			'filter' => 'productFolder=' . $this->select_category(),
+		);
+		
+		$url = add_query_arg( $arg, 'https://online.moysklad.ru/api/remap/1.1/entity/assortment' );
+		
+		return $url;
+	}
+	
+	public function change_ms_api_url_variant( $url ) {
+		if ( empty( $this->select_category() ) ) {
+			return;
+		}
+		
+		$arg = array(
+			'scope'  => 'variant',
+			'filter' => 'productFolder=' . $this->select_category(),
+		);
+		
+		$url = add_query_arg( $arg, 'https://online.moysklad.ru/api/remap/1.1/entity/assortment' );
 		
 		return $url;
 	}
@@ -64,7 +57,7 @@ class WooMS_Import_Product_Choice_Categories {
 		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
 			return;
 		}
-		if ( empty(get_option( 'woomss_include_categories_sync' ) )) {
+		if ( empty($this->select_category() )) {
 			return;
 		}
 		
