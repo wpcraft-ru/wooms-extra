@@ -15,7 +15,7 @@ class WooMS_Import_Sale_Prices {
 		add_action( 'wooms_product_update', array( $this, 'chg_sale_price' ), 100, 2 );
 		add_action( 'wooms_variation_id', array( $this, 'chg_sale_price' ), 100, 2 );
 
-		add_action( 'admin_init', array($this, 'settings'), $priority = 210, $accepted_args = 1 );
+		add_action( 'admin_init', array($this, 'settings'), $priority = 101, $accepted_args = 1 );
 
 	}
 

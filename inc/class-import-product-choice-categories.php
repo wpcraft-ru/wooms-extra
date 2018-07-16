@@ -18,12 +18,6 @@ class WooMS_Import_Product_Choice_Categories {
 	public function add_ms_api_filter_arg() {
 		if ( $this->select_category() ) {
 			$filter = 'productFolder=' . $this->select_category() ;
-			/*if ( 1 > count( $this->select_category() ) ) {
-				$filter = implode( '&filter=productFolder=', $this->select_category() );
-			} else {
-				$filter = 'productFolder=' . implode( '&filter=productFolder=', $this->select_category() );
-			}*/
-			
 		}
 		
 		return $filter;
@@ -58,18 +52,10 @@ class WooMS_Import_Product_Choice_Categories {
 	
 	public function load_data( $product_id, $value, $data ) {
 		
-		/*		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
-					return;
-				}
-				if ( empty( get_option( 'woomss_include_categories_sync' ) ) ) {
-					return;
-				}
-				if ( empty( get_option( 'woomss_exclude_categories_sync' ) ) ) {
-					return;
-				}
-				if ( empty( $value['productFolder']['meta']['href'] ) ) {
-					return;
-				}*/
+		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
+			return;
+		}
+		
 		$checked_choice_include = get_option( 'woomss_include_categories_sync' );
 		$url                    = $value['productFolder']['meta']['href'];
 		if ( in_array( $url, $checked_choice_include ) ) {
@@ -78,8 +64,6 @@ class WooMS_Import_Product_Choice_Categories {
 				wp_set_object_terms( $product_id, $term_id, $taxonomy = 'product_cat' );
 			}
 		}
-		
-		
 	}
 	
 	public function update_category( $url ) {
