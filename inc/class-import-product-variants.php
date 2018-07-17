@@ -45,7 +45,7 @@ class WooMS_Product_Variations {
 			
 			return;
 		}
-		
+
 		if ( ! empty( $item['modificationsCount'] ) ) {
 			$this->set_product_as_variable( $product_id );
 			do_action( 'wooms_product_variation', $product_id, $item );
@@ -65,6 +65,7 @@ class WooMS_Product_Variations {
 		$product = wc_get_product( $product_id );
 		
 		if ( ! $product->is_type( 'variable' )) {
+
 			wp_set_object_terms( $product_id, 'variable', 'product_type', false );
 		}
 		// вернем состояние кэша обратно
@@ -234,7 +235,19 @@ class WooMS_Product_Variations {
 	 * @return bool
 	 */
 	public function get_variation_by_wooms_id( $id ) {
-		$posts = get_posts( 'post_type=product_variation&meta_key=wooms_id&meta_value=' . $id );
+		$posts = get_posts( array(
+			'post_type'=>'product',
+			'meta_key' => 'wooms_id',
+			'meta_value' => $id,
+			'tax_query' => array(
+				array(
+					'taxonomy' => 'product_type',
+					'terms' => 'variable',
+					'operator' => 'NOT EXISTS',
+				)
+			)
+			) );
+		
 		if ( empty( $posts ) ) {
 			return false;
 		}
@@ -319,16 +332,19 @@ class WooMS_Product_Variations {
 			delete_transient( 'wooms_count_variant_stat' );
 		}
 		
-		$args_ms_api = array(
+		$ms_api_args = array(
 			'offset' => $offset,
 			'limit'  => $count,
 		);
-		$url_api     = add_query_arg( $args_ms_api, 'https://online.moysklad.ru/api/remap/1.1/entity/variant' );
+		$ms_api_url = apply_filters('wooms_variant_ms_api_url','https://online.moysklad.ru/api/remap/1.1/entity/variant');
+		$url_api     = add_query_arg( $ms_api_args, $ms_api_url );
+		//do_action("logger_u7", $url_api);
 		try {
 			
 			delete_transient( 'wooms_variant_end_timestamp' );
 			set_transient( 'wooms_variant_start_timestamp', time() );
 			$data = wooms_request( $url_api );
+
 			//Check for errors and send message to UI
 			if ( isset( $data['errors'] ) ) {
 				$error_code = $data['errors'][0]["code"];
@@ -432,10 +448,10 @@ class WooMS_Product_Variations {
 	public function add_schedule( $schedules ) {
 		
 		$schedules['wooms_cron_worker_variations'] = array(
-			'interval' => 60,
+			'interval' => apply_filters('wooms_cron_interval', 60),
 			'display'  => 'WooMS Cron Load Variations 60 sec',
 		);
-		
+
 		return $schedules;
 	}
 	
@@ -553,8 +569,10 @@ class WooMS_Product_Variations {
 	 */
 	public function check_availability_of_variations() {
 		$variants = wc_get_products( array(
-			'type' => 'variable',
+			'post_status'    => 'publish',
+			'numberposts'    => 3,
 		) );
+		
 		if ( empty( $variants ) ) {
 			return false;
 		}
