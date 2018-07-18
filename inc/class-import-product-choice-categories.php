@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Import Product Categories from MoySklad
  */
@@ -8,20 +7,32 @@ class WooMS_Import_Product_Choice_Categories {
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'settings_init' ), 102 );
 		
-		if ( empty(get_option( 'woomss_include_categories_sync' ) )) {
+		if ( empty( get_option( 'woomss_include_categories_sync' ) ) ) {
 			return;
 		}
 		
-		add_action( 'wooms_product_update', array( $this, 'load_data' ), 1, 3 );
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
-		
+		add_filter( 'wooms_skip_categories', array( $this, 'skip_base_parent_category' ), 10, 3 );
 	}
 	
+	
+	/**
+	 * Wrapper to get the option value
+	 *
+	 * @return mixed|void
+	 */
 	public function select_category() {
 		return get_option( 'woomss_include_categories_sync' );
 	}
 	
+	/**
+	 * Replace the link for import from the selected category for simple products
+	 *
+	 * @param $url
+	 *
+	 * @return string|void
+	 */
 	public function change_ms_api_url_simple( $url ) {
 		if ( empty( $this->select_category() ) ) {
 			return;
@@ -37,6 +48,13 @@ class WooMS_Import_Product_Choice_Categories {
 		return $url;
 	}
 	
+	/**
+	 * Replace the link for import from the selected category for variative products
+	 *
+	 * @param $url
+	 *
+	 * @return string|void
+	 */
 	public function change_ms_api_url_variant( $url ) {
 		if ( empty( $this->select_category() ) ) {
 			return;
@@ -52,89 +70,31 @@ class WooMS_Import_Product_Choice_Categories {
 		return $url;
 	}
 	
-	public function load_data( $product_id, $value, $data ) {
-		
-		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
-			return;
-		}
-		if ( empty($this->select_category() )) {
-			return;
-		}
-		
-		$checked_choice_include = get_option( 'woomss_include_categories_sync' );
-		$url                    = $value['productFolder']['meta']['href'];
-		if ( in_array( $url, $checked_choice_include ) ) {
-			if ( $term_id = $this->update_category( $url ) ) {
-				
-				wp_set_object_terms( $product_id, $term_id, $taxonomy = 'product_cat' );
-			}
-		}
-	}
-	
-	public function update_category( $url ) {
-		$data = wooms_request( $url );
-		
-		if ( $term_id = $this->check_term_by_ms_id( $data['id'] ) ) {
-			
-			return $term_id;
-		} else {
-			
-			$args = array();
-			
-			$term_new = [
-				'wooms_id' => $data['id'],
-				'name'     => $data['name'],
-				'archived' => $data['archived'],
-			];
-			
-			if ( isset( $data['productFolder']['meta']['href'] ) ) {
-				$url_parent = $data['productFolder']['meta']['href'];
-				if ( $term_id_parent = $this->update_category( $url_parent ) ) {
-					$args['parent'] = intval( $term_id_parent );
-				}
-			}
-			
-			$term = wp_insert_term( $term_new['name'], $taxonomy = 'product_cat', $args );
-			
-			if ( isset( $term->errors["term_exists"] ) ) {
-				$term_id = intval( $term->error_data['term_exists'] );
-				if ( empty( $term_id ) ) {
-					return false;
-				}
-			} elseif ( isset( $term->term_id ) ) {
-				$term_id = $term->term_id;
-			} elseif ( isset( $term["term_id"] ) ) {
-				$term_id = $term["term_id"];
-			} else {
-				return false;
-			}
-			
-			update_term_meta( $term_id, 'wooms_id', $term_new['wooms_id'] );
-			
-			return $term_id;
-		}
-		
-	}
 	
 	/**
-	 * If isset term return term_id, else return false
+	 * Skipping the parent category by sync time
+	 *
+	 * @param $bool
+	 * @param $url
+	 * @param $path_name
+	 *
+	 * @return bool
 	 */
-	public function check_term_by_ms_id( $id ) {
-		
-		$terms = get_terms( 'taxonomy=product_cat&meta_key=wooms_id&meta_value=' . $id );
-		
-		if ( empty( $terms ) ) {
-			return false;
+	public function skip_base_parent_category( $bool, $url, $path_name ) {
+		if ( $url !== $this->select_category() && empty( $path_name ) ) {
+			$bool = false;
 		}
 		
-		return $terms[0]->term_id;
-		
+		return $bool;
 	}
-	
 	/**
 	 * Settings UI
 	 */
 	public function settings_init() {
+		if ( get_option( 'woomss_categories_sync_enabled' ) ) {
+			return;
+		}
+		
 		register_setting( 'mss-settings', 'woomss_include_categories_sync' );
 		add_settings_field( 'woomss_include_categories_sync', 'Выбрать группу', array(
 			$this,
