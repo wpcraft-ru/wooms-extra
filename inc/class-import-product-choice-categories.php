@@ -14,13 +14,17 @@ class WooMS_Import_Product_Choice_Categories {
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
 		add_filter( 'wooms_skip_categories', array( $this, 'skip_base_parent_category' ), 10, 3 );
+		
+		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20);
+		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ));
+
 	}
 	
 	
 	/**
 	 * Wrapper to get the option value
 	 *
-	 * @return mixed|void
+	 * @return mixed
 	 */
 	public function select_category() {
 		return get_option( 'woomss_include_categories_sync' );
@@ -86,6 +90,74 @@ class WooMS_Import_Product_Choice_Categories {
 		}
 		
 		return $bool;
+	}
+	
+	public function update_meta_session_term( $term_id ) {
+		if ( $session_id = get_option( 'wooms_session_id' ) ) {
+				update_term_meta($term_id, 'wooms_session_id', $session_id );
+			}
+	}
+	
+	public function remove_parent_category() {
+		if ( empty($this->select_category()) ) {
+			return;
+		}
+		
+		$session_id = get_option( 'wooms_session_id' );
+		if ( empty( $session_id ) ) {
+			return false;
+		}
+		
+		$term_select = wooms_request( $this->select_category() );
+		
+		$term = get_terms( array(
+			'taxonomy'     => array( 'product_cat' ),
+			'hide_empty'   => 0,
+			'parent'       => 0,
+			'hierarchical' => false,
+			'meta_query'   => array(
+				array(
+					'key'     => 'wooms_session_id',
+					'value'   => $session_id,
+					'compare' => '!=',
+				),
+				array(
+					'key'   => 'wooms_id',
+					'value' => $term_select['id'],
+				),
+			),
+		) );
+		
+		//do_action( 'logger_u7', [ 'tt_term', $term_select, $term ] );
+
+		
+		$terms_sub = get_terms( array(
+			'taxonomy'     => array( 'product_cat' ),
+			'parent'       => $term[0]->term_id,
+		) );
+		
+		if ( false != $terms_sub ) {
+			foreach ( $terms_sub as $term_sub ) {
+				$parent          = get_term( $term_sub->parent );
+				$parent_wooms_id = get_term_meta( $term_sub->parent, 'wooms_id', true );
+				update_term_meta( $term_sub->term_id, 'wooms_slug_parent', $parent->slug );
+				update_term_meta( $term_sub->term_id, 'wooms_name_parent', $parent->name );
+				update_term_meta( $term_sub->term_id, 'wooms_wooms_id_parent', $parent_wooms_id );
+				if ( $session_id = get_option( 'wooms_session_id' ) ) {
+					update_term_meta( $term_sub->term_id, 'wooms_session_id', $session_id );
+				}
+			}
+		}
+		
+		$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+		//do_action( 'logger_u7', [ 'tt_term1', $term_remove ] );
+
+	}
+	
+
+	
+	public function update_meta_subcategory( $slug = '', $term_id = ''  ) {
+		update_term_meta($term_id, 'wooms_slug_parent', $slug );
 	}
 	/**
 	 * Settings UI
