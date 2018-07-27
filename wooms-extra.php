@@ -12,7 +12,7 @@
  * Domain Path: /languages
  *
  * WC requires at least: 3.0
- * WC tested up to: 3.4.1
+ * WC tested up to: 3.4.4
  *
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5

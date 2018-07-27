@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Import Product Categories from MoySklad
  */
@@ -8,26 +9,17 @@ class WooMS_Import_Product_Choice_Categories {
 		add_action( 'admin_init', array( $this, 'settings_init' ), 102 );
 		
 		if ( empty( get_option( 'woomss_include_categories_sync' ) ) ) {
+			
 			return;
 		}
 		
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
-		add_filter( 'wooms_skip_categories', array( $this, 'skip_base_parent_category' ), 10, 3 );
+		//add_filter( 'wooms_skip_categories', array( $this, 'skip_base_parent_category' ), 10, 3 );
 		
-		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20);
-		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ));
-
-	}
-	
-	
-	/**
-	 * Wrapper to get the option value
-	 *
-	 * @return mixed
-	 */
-	public function select_category() {
-		return get_option( 'woomss_include_categories_sync' );
+		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20 );
+		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ) );
+		
 	}
 	
 	/**
@@ -53,7 +45,16 @@ class WooMS_Import_Product_Choice_Categories {
 	}
 	
 	/**
-	 * Replace the link for import from the selected category for variative products
+	 * Wrapper to get the option value
+	 *
+	 * @return mixed
+	 */
+	public function select_category() {
+		return get_option( 'woomss_include_categories_sync' );
+	}
+	
+	/**
+	 * Replace the link for import from the selected category for variation products
 	 *
 	 * @param $url
 	 *
@@ -92,14 +93,25 @@ class WooMS_Import_Product_Choice_Categories {
 		return $bool;
 	}
 	
+	
+	/**
+	 * We write the time stamp of the session in the meta of the term
+	 *
+	 * @param $term_id
+	 */
 	public function update_meta_session_term( $term_id ) {
 		if ( $session_id = get_option( 'wooms_session_id' ) ) {
-				update_term_meta($term_id, 'wooms_session_id', $session_id );
-			}
+			update_term_meta( $term_id, 'wooms_session_id', $session_id );
+		}
 	}
 	
+	/**
+	 * Delete the parent category
+	 *
+	 * @return bool|void
+	 */
 	public function remove_parent_category() {
-		if ( empty($this->select_category()) ) {
+		if ( empty( $this->select_category() ) ) {
 			return;
 		}
 		
@@ -116,11 +128,11 @@ class WooMS_Import_Product_Choice_Categories {
 			'parent'       => 0,
 			'hierarchical' => false,
 			'meta_query'   => array(
-				array(
+				/*array(
 					'key'     => 'wooms_session_id',
 					'value'   => $session_id,
 					'compare' => '!=',
-				),
+				),*/
 				array(
 					'key'   => 'wooms_id',
 					'value' => $term_select['id'],
@@ -128,12 +140,22 @@ class WooMS_Import_Product_Choice_Categories {
 			),
 		) );
 		
-		//do_action( 'logger_u7', [ 'tt_term', $term_select, $term ] );
-
+		$this->update_subcategory_meta( $term[0]->term_id );
 		
+		$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+		
+	}
+	
+	
+	/**
+	 * Adding parent category values to the metadata of child categories
+	 *
+	 * @param null $term_id
+	 */
+	public function update_subcategory_meta( $term_id = null ) {
 		$terms_sub = get_terms( array(
-			'taxonomy'     => array( 'product_cat' ),
-			'parent'       => $term[0]->term_id,
+			'taxonomy' => array( 'product_cat' ),
+			'parent'   => $term_id,
 		) );
 		
 		if ( false != $terms_sub ) {
@@ -148,17 +170,8 @@ class WooMS_Import_Product_Choice_Categories {
 				}
 			}
 		}
-		
-		$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
-		//do_action( 'logger_u7', [ 'tt_term1', $term_remove ] );
-
 	}
 	
-
-	
-	public function update_meta_subcategory( $slug = '', $term_id = ''  ) {
-		update_term_meta($term_id, 'wooms_slug_parent', $slug );
-	}
 	/**
 	 * Settings UI
 	 */
@@ -178,31 +191,28 @@ class WooMS_Import_Product_Choice_Categories {
 	//Display field
 	public function display_woomss_include_categories_sync() {
 		$option         = 'woomss_include_categories_sync';
-		$checked_choice = get_option( $option);
-		$offset= 0;
-		$limit = 100;
-		$ms_api_args = apply_filters( 'wooms_product_ms_api_arg_category', array(
+		$checked_choice = get_option( $option );
+		$offset         = 0;
+		$limit          = 100;
+		$ms_api_args    = apply_filters( 'wooms_product_ms_api_arg_category', array(
 			'offset' => $offset,
 			'limit'  => $limit,
 		) );
-		$url  = apply_filters( 'wooms_product_ms_api_url_category', 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder' );
-		$url_api     = add_query_arg( $ms_api_args, $url );
-
+		$url            = apply_filters( 'wooms_product_ms_api_url_category', 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder' );
+		$url_api        = add_query_arg( $ms_api_args, $url );
+		
 		$data = wooms_request( $url_api );
 		if ( empty( $data['rows'] ) ) {
 			return;
 		}
 		?>
-
+		
 		<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">
 			<option value="">Выберите группу</option>
 			<?php
 			foreach ( $data['rows'] as $value ):
-				if (empty($value['pathName'])) :
-				printf( '<option value="%s" %s>%s</option>',
-					esc_attr( $value['meta']['href'] ),
-					selected( $checked_choice, $value['meta']['href'], false ),
-					$value['name'] );
+				if ( empty( $value['pathName'] ) ) :
+					printf( '<option value="%s" %s>%s</option>', esc_attr( $value['meta']['href'] ), selected( $checked_choice, $value['meta']['href'], false ), $value['name'] );
 				endif;
 			endforeach;
 			?>
