@@ -37,9 +37,14 @@ class WooMS_Import_Sale_Prices {
 		if ( ! empty($value['salePrices']) ) {
 			foreach ( $value['salePrices'] as $price ) {
 
-				if($price['priceType'] == $price_name and floatval($price['value']) > 0){
+				if($price['priceType'] == $price_name && floatval($price['value']) > 0){
 
 					$product->set_sale_price( floatval($price['value']/100) );
+					$product->save();
+					return;
+				} elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
+					do_action("logger_u7", $price);
+					$product->set_sale_price( '' );
 					$product->save();
 					return;
 				}
