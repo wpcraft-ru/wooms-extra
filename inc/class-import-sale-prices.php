@@ -37,9 +37,12 @@ class WooMS_Import_Sale_Prices {
 		if ( ! empty($value['salePrices']) ) {
 			foreach ( $value['salePrices'] as $price ) {
 
-				if($price['priceType'] == $price_name and floatval($price['value']) > 0){
-
+				if($price['priceType'] == $price_name && floatval($price['value']) > 0){
 					$product->set_sale_price( floatval($price['value']/100) );
+					$product->save();
+					return;
+				} elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
+					$product->set_sale_price( '' );
 					$product->save();
 					return;
 				}
@@ -52,21 +55,22 @@ class WooMS_Import_Sale_Prices {
 	/**
 	* Add settings
 	*/
-	function settings(){
+	public function settings(){
 		register_setting('mss-settings', 'wooms_price_sale_name');
 		add_settings_field(
 			$id = 'wooms_price_sale_name',
 			$title = 'Тип Цены Распродажи',
-			$callback = [$this, 'display_price_sale_name'],
+			$callback = array($this, 'display_price_sale_name'),
 			$page = 'mss-settings',
 			$section = 'woomss_section_other'
 		);
 	}
-	function display_price_sale_name(){
+	
+	public function display_price_sale_name() {
 		$id = 'wooms_price_sale_name';
-		printf('<input type="text" name="%s" value="%s" />', $id, sanitize_text_field(get_option($id)));
+		printf( '<input type="text" name="%s" value="%s" />', $id, sanitize_text_field( get_option( $id ) ) );
 		echo '<p><small>Укажите наименование цены для Распродаж. Система будет проверять такой тип цены и если он указан то будет сохранять его в карточке Продукта.</small></p>';
-		echo '<p><small>Если оставить поле пустым, то цена Распродажи у всех проудктов будут удалены после очередной синхронизации.</small></p>';
+		echo '<p><small>Если оставить поле пустым, то цена Распродажи у всех продуктов будут удалены после очередной синхронизации.</small></p>';
 	}
 }
 

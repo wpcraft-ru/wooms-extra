@@ -535,7 +535,7 @@ class WooMS_Product_Variations {
 		?>
 		<div class="wrap">
 			<?php
-			if ( false != $this->check_availability_of_variations() ) {
+			if ( false !== $this->check_availability_of_variations() ) {
 				?>
 				<div id="message" class="notice notice-warning is-dismissible">
 					<p><strong>Выполняется синхронизация вариативных товаров в фоне.</strong></p>
@@ -568,16 +568,28 @@ class WooMS_Product_Variations {
 	 * @return bool
 	 */
 	public function check_availability_of_variations() {
-		$variants = wc_get_products( array(
-			'post_status'    => 'publish',
-			'numberposts'    => 3,
+		$variants = get_posts( array(
+			'post_type'  => 'product',
+			'meta_query' => array(
+				array(
+					'key'     => 'wooms_id',
+					'compare' => 'EXISTS',
+				),
+			),
+			'tax_query'  => array(
+				array(
+					'taxonomy' => 'product_type',
+					'terms'    => 'variable',
+					'operator' => 'NOT EXISTS',
+				),
+			),
 		) );
 		
-		if ( empty( $variants ) ) {
+		if ( empty( $variants ) && empty( get_transient( 'wooms_end_timestamp' ) ) ) {
 			return false;
+		} else {
+			return true;
 		}
-		
-		return true;
 	}
 	
 	/**

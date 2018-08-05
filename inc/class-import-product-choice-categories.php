@@ -6,7 +6,7 @@
 class WooMS_Import_Product_Choice_Categories {
 	
 	public function __construct() {
-		add_action( 'admin_init', array( $this, 'settings_init' ), 102 );
+		add_action( 'admin_init', array( $this, 'settings_init' ), 110 );
 		
 		if ( empty( get_option( 'woomss_include_categories_sync' ) ) ) {
 			
@@ -15,7 +15,6 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
-		//add_filter( 'wooms_skip_categories', array( $this, 'skip_base_parent_category' ), 10, 3 );
 		
 		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20 );
 		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ) );
