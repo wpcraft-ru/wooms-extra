@@ -45,7 +45,7 @@ class WooMS_Product_Variations {
 			
 			return;
 		}
-
+		
 		if ( ! empty( $item['modificationsCount'] ) ) {
 			$this->set_product_as_variable( $product_id );
 			do_action( 'wooms_product_variation', $product_id, $item );
@@ -60,16 +60,12 @@ class WooMS_Product_Variations {
 	 *
 	 */
 	public function set_product_as_variable( $product_id ) {
-		$was_suspended = wp_suspend_cache_addition();
-		wp_suspend_cache_addition( true );
 		$product = wc_get_product( $product_id );
 		
 		if ( ! $product->is_type( 'variable' )) {
-
+			
 			wp_set_object_terms( $product_id, 'variable', 'product_type', false );
 		}
-		// вернем состояние кэша обратно
-		wp_suspend_cache_addition( $was_suspended );
 	}
 	
 	/**
@@ -112,8 +108,6 @@ class WooMS_Product_Variations {
 	 * @param $data
 	 */
 	public function set_product_attributes_for_variation( $product_id, $data ) {
-		$was_suspended = wp_suspend_cache_addition();
-		wp_suspend_cache_addition( true );
 		$ms_attributes = [];
 		foreach ( $data['rows'] as $key => $row ) {
 			foreach ( $row['characteristics'] as $key => $characteristic ) {
@@ -150,8 +144,7 @@ class WooMS_Product_Variations {
 		$product = wc_get_product( $product_id );
 		$product->set_attributes( $attributes );
 		$product->save();
-
-		wp_suspend_cache_addition( $was_suspended );
+		
 	}
 	
 	/**
@@ -169,6 +162,7 @@ class WooMS_Product_Variations {
 		
 		$response   = wooms_request( $value['product']['meta']['href'] );
 		$product_id = $this->get_product_id_by_uuid( $response['id'] );
+		
 		if ( empty( get_option( 'wooms_use_uuid' ) ) ) {
 			if ( empty( $response['article'] ) ) {
 				return;
@@ -176,6 +170,7 @@ class WooMS_Product_Variations {
 		}
 		
 		$this->update_variations_for_product( $product_id, $value );
+		
 		do_action( 'wooms_product_variant', $product_id, $value, $data );
 	}
 	
@@ -203,27 +198,29 @@ class WooMS_Product_Variations {
 	 * @param $value
 	 */
 	public function update_variations_for_product( $product_id, $value ) {
-		$was_suspended = wp_suspend_cache_addition();
-		wp_suspend_cache_addition( true );
+		
 		if ( empty( $value ) ) {
 			return;
 		}
 		
-		if ( ! $variation_id = $this->get_variation_by_wooms_id( $value['id'] ) ) {
+		if ( ! $variation_id = $this->get_variation_by_wooms_id( $product_id, $value['id'] ) ) {
 			$variation_id = $this->add_variation( $product_id, $value );
+			
 		}
 		
 		$this->set_variation_attributes( $variation_id, $value['characteristics'] );
 		$variation = wc_get_product( $variation_id );
 		$variation->set_name( $value['name'] );
+		//$variation->set_stock_status( 'instock' );
+		
 		if ( ! empty( $value["salePrices"][0]['value'] ) ) {
 			$price = $value["salePrices"][0]['value'] / 100;
 			$variation->set_price( $price );
 			$variation->set_regular_price( $price );
 		}
+		
 		$variation->save();
-
-		wp_suspend_cache_addition( $was_suspended );
+		
 		do_action( 'wooms_variation_id', $variation_id, $value );
 	}
 	
@@ -234,19 +231,13 @@ class WooMS_Product_Variations {
 	 *
 	 * @return bool
 	 */
-	public function get_variation_by_wooms_id( $id ) {
+	public function get_variation_by_wooms_id( $parent_id, $id ) {
 		$posts = get_posts( array(
-			'post_type'=>'product',
+			'post_type'=>'product_variation',
+			'post_parent' => $parent_id,
 			'meta_key' => 'wooms_id',
 			'meta_value' => $id,
-			'tax_query' => array(
-				array(
-					'taxonomy' => 'product_type',
-					'terms' => 'variable',
-					'operator' => 'NOT EXISTS',
-				)
-			)
-			) );
+		) );
 		
 		if ( empty( $posts ) ) {
 			return false;
@@ -268,13 +259,19 @@ class WooMS_Product_Variations {
 		$variation = new WC_Product_Variation();
 		$variation->set_parent_id( absint( $product_id ) );
 		$variation->set_status( 'publish' );
+		$variation->set_stock_status( 'instock' );
 		$variation->save();
 		$variation_id = $variation->get_id();
 		if ( empty( $variation_id ) ) {
 			return false;
 		}
 		
+		if ( $session_id = get_option( 'wooms_session_id' ) ) {
+			update_post_meta( $product_id, 'wooms_session_id', $session_id );
+		}
+		
 		update_post_meta( $variation_id, 'wooms_id', $value['id'] );
+		
 		do_action( 'wooms_add_variation', $variation_id, $product_id, $value );
 		
 		return $variation_id;
@@ -338,13 +335,13 @@ class WooMS_Product_Variations {
 		);
 		$ms_api_url = apply_filters('wooms_variant_ms_api_url','https://online.moysklad.ru/api/remap/1.1/entity/variant');
 		$url_api     = add_query_arg( $ms_api_args, $ms_api_url );
-		//do_action("logger_u7", $url_api);
+		
 		try {
 			
 			delete_transient( 'wooms_variant_end_timestamp' );
 			set_transient( 'wooms_variant_start_timestamp', time() );
 			$data = wooms_request( $url_api );
-
+			
 			//Check for errors and send message to UI
 			if ( isset( $data['errors'] ) ) {
 				$error_code = $data['errors'][0]["code"];
@@ -451,7 +448,7 @@ class WooMS_Product_Variations {
 			'interval' => apply_filters('wooms_cron_interval', 60),
 			'display'  => 'WooMS Cron Load Variations 60 sec',
 		);
-
+		
 		return $schedules;
 	}
 	
@@ -535,6 +532,7 @@ class WooMS_Product_Variations {
 		?>
 		<div class="wrap">
 			<?php
+			
 			if ( false !== $this->check_availability_of_variations() ) {
 				?>
 				<div id="message" class="notice notice-warning is-dismissible">
@@ -568,24 +566,29 @@ class WooMS_Product_Variations {
 	 * @return bool
 	 */
 	public function check_availability_of_variations() {
+		
 		$variants = get_posts( array(
-			'post_type'  => 'product',
-			'meta_query' => array(
+			'post_type'   => 'product',
+			'numberposts' => 10,
+			'fields'      => 'ids',
+			'tax_query'   => array(
+				'relation' => 'AND',
+				array(
+					'taxonomy' => 'product_type',
+					'terms'    => 'variable',
+					'field'    => 'slug',
+				),
+			),
+			'meta_query'  => array(
 				array(
 					'key'     => 'wooms_id',
 					'compare' => 'EXISTS',
 				),
 			),
-			'tax_query'  => array(
-				array(
-					'taxonomy' => 'product_type',
-					'terms'    => 'variable',
-					'operator' => 'NOT EXISTS',
-				),
-			),
 		) );
 		
-		if ( empty( $variants ) && empty( get_transient( 'wooms_end_timestamp' ) ) ) {
+		$timestamp = get_transient( 'wooms_end_timestamp' );
+		if ( empty( $variants ) && (  empty($timestamp) || ! isset( $timestamp ) )) {
 			return false;
 		} else {
 			return true;
