@@ -221,6 +221,10 @@ class WooMS_Product_Variations {
 		
 		$variation->save();
 		
+		if ( $session_id = get_option( 'wooms_session_id' ) ) {
+			update_post_meta( $product_id, 'wooms_session_id', $session_id );
+		}
+		
 		do_action( 'wooms_variation_id', $variation_id, $value );
 	}
 	
