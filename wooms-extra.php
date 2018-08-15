@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WooMS Extra
+ * Plugin Name: WooMS XT
  * Plugin URI: https://wpcraft.ru/product/wooms-extra/
  * Description: Расширение для синхронизации МойСклад и WooCommerce
  * Author: WPCraft
@@ -8,7 +8,7 @@
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
  * Version: 1.7.8
- * Text Domain: wooms-extra
+ * Text Domain: wooms-xt
  * Domain Path: /languages
  *
  * WC requires at least: 3.0
