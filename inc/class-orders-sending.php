@@ -577,7 +577,7 @@ class WooMS_Orders_Sender {
 		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
 		add_settings_field(
 			$id = 'wooms_enable_webhooks',
-			$title = 'Передатчик Статусов из Мой Склада на Сайт',
+			$title = 'Передатчик Статусов из МойСклада на Сайт',
 			$callback = array($this , 'display_wooms_enable_webhooks'),
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
