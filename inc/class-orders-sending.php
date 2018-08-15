@@ -294,13 +294,7 @@ class WooMS_Orders_Sender {
 				continue;
 			}
 			$price    = $item->get_total();
-			
-			if (empty(get_option('wooms_orders_send_reserved'))){
-				$quantity = $item->get_quantity();
-			} else {
-				$quantity = '';
-			}
-			
+			$quantity = $item->get_quantity();
 			$data[] = array(
 				'quantity'   => $quantity,
 				'price'      => ( $price / $quantity ) * 100,
@@ -612,14 +606,6 @@ class WooMS_Orders_Sender {
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
 		);
-		register_setting( 'mss-settings', 'wooms_orders_send_reserved' );
-		add_settings_field(
-			$id = 'wooms_orders_send_reserved',
-			$title = 'Выключить резервирование товаров',
-			$callback = array($this , 'display_wooms_orders_send_reserved'),
-			$page = 'mss-settings',
-			$section = 'wooms_section_orders'
-		);
 	}
 	
 	/**
@@ -786,15 +772,6 @@ class WooMS_Orders_Sender {
 		</select>
 		<?php
 		echo '<p><small>Выберите как выводить уникальную приставку: перед номером заказа (префикс) или после номера заказа (постфикс)</small></p>';
-	}
-	
-	/**
-	 *
-	 */
-	public function display_wooms_orders_send_reserved() {
-		$option = 'wooms_orders_send_reserved';
-		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-	
 	}
 	
 	/**
