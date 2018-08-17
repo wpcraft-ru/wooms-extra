@@ -177,14 +177,14 @@ class WooMS_Orders_Sender {
 			$date_from = '2 day ago';
 		} else {
 			$date_from = get_option( 'wooms_orders_send_from' );
-
+			
 		}
 		$args['date_query'] = array(
 			'after' => $date_from,
 		);
 		
 		$orders = get_posts( $args );
-
+		
 		if ( empty( $orders ) ) {
 			false;
 		}
@@ -285,16 +285,25 @@ class WooMS_Orders_Sender {
 				$product_id = $item["product_id"];
 				$product_type = 'product';
 			}
+			
 			$uuid       = get_post_meta( $product_id, 'wooms_id', true );
 			
 			if ( empty( $uuid ) ) {
 				continue;
 			}
+			
 			if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
 				continue;
 			}
+			
 			$price    = $item->get_total();
-			$quantity = $item->get_quantity();
+			
+			if ( empty( get_option( 'wooms_orders_send_reserved' ) ) ) {
+				$quantity = $item->get_quantity();
+			} else {
+				$quantity = '';
+			}
+			
 			$data[] = array(
 				'quantity'   => $quantity,
 				'price'      => ( $price / $quantity ) * 100,
@@ -310,7 +319,7 @@ class WooMS_Orders_Sender {
 				'reserve'    => $quantity,
 			);
 		}
-	
+		
 		return $data;
 	}
 	
@@ -383,7 +392,7 @@ class WooMS_Orders_Sender {
 			"phone"         => $this->get_data_order_phone( $order_id ),
 			"email"         => $email,
 		);
-
+		
 		$meta = $this->get_agent_meta_by_email( $email );
 		if ( empty( $meta ) ) {
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
@@ -577,7 +586,7 @@ class WooMS_Orders_Sender {
 		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
 		add_settings_field(
 			$id = 'wooms_enable_webhooks',
-			$title = 'Передатчик Статусов из Мой Склада на Сайт',
+			$title = 'Передатчик Статусов из МойСклада на Сайт',
 			$callback = array($this , 'display_wooms_enable_webhooks'),
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
@@ -606,6 +615,14 @@ class WooMS_Orders_Sender {
 			$page = 'mss-settings',
 			$section = 'wooms_section_orders'
 		);
+		register_setting( 'mss-settings', 'wooms_orders_send_reserved' );
+		add_settings_field(
+			$id = 'wooms_orders_send_reserved',
+			$title = 'Выключить резервирование товаров',
+			$callback = array($this , 'display_wooms_orders_send_reserved'),
+			$page = 'mss-settings',
+			$section = 'wooms_section_orders'
+		);
 	}
 	
 	/**
@@ -631,7 +648,7 @@ class WooMS_Orders_Sender {
 			<?php
 		} else {
 			?>
-				<small>Передатчик статусов из Мой Склад может работать только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.</small>
+			<small>Передатчик статусов из Мой Склад может работать только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.</small>
 			<?php
 		}
 	}
@@ -772,6 +789,15 @@ class WooMS_Orders_Sender {
 		</select>
 		<?php
 		echo '<p><small>Выберите как выводить уникальную приставку: перед номером заказа (префикс) или после номера заказа (постфикс)</small></p>';
+	}
+	
+	/**
+	 *
+	 */
+	public function display_wooms_orders_send_reserved() {
+		$option = 'wooms_orders_send_reserved';
+		printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+		
 	}
 	
 	/**

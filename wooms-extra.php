@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: WooMS Extra
+ * Plugin Name: WooMS XT
  * Plugin URI: https://wpcraft.ru/product/wooms-extra/
  * Description: Расширение для синхронизации МойСклад и WooCommerce
  * Author: WPCraft
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.7.8
- * Text Domain: wooms-extra
+ * Version: 1.7.9
+ * Text Domain: wooms-xt
  * Domain Path: /languages
  *
  * WC requires at least: 3.0
@@ -64,3 +64,4 @@ require_once 'inc/class-products-bundles.php';
 require_once 'inc/class-orders-sending.php';
 require_once 'inc/class-import-sale-prices.php';
 require_once 'inc/class-import-product-choice-categories.php';
+require_once 'inc/class-hide-old-variables.php';
