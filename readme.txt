@@ -69,8 +69,8 @@ PHP 5.6
 == Changelog ==
 
 = 1.8.0 =
-- сделан обмен доступными остатками с учетом резервов https://github.com/uptimizt/wooms/issues/29
-- добавили хук wooms_stock_type для переключения типов остатков
+* сделан обмен доступными остатками с учетом резервов https://github.com/uptimizt/wooms/issues/29
+* добавили хук wooms_stock_type для переключения типов остатков
 
 = 1.7.9 =
 * Переименован плагин с WooMS Extra на WooMS XT
