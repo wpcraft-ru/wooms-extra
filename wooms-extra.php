@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.7.9
+ * Version: 1.8.0
  * Text Domain: wooms-xt
  * Domain Path: /languages
  *
@@ -33,13 +33,13 @@ function wooms_check_base_plugin() {
 
 	if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
 
-		$error_text = 'Для работы плагина WooMS Extra требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
+		$error_text = 'Для работы плагина WooMS XT требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
 
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
 
 	} elseif ( version_compare( WOOMS_PLUGIN_VER, $wooms_version['wooms_ver'], '<' ) ) {
 
-		$error_text = 'Для работы плагина WooMS Extra требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
+		$error_text = 'Для работы плагина WooMS XT требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a> версии ' .
 		              $wooms_version['wooms_ver'] . '</strong> или выше';
 
 		set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
