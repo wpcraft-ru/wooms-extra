@@ -346,6 +346,7 @@ class WooMS_Orders_Sender {
 		
 		return apply_filters( 'wooms_order_name', (string) $name_order );
 	}
+	
 	/**
 	 * Get meta for organization
 	 *
@@ -362,6 +363,27 @@ class WooMS_Orders_Sender {
 		return array( 'meta' => $meta );
 	}
 	
+	
+	/**
+	 * Processing an empty email
+	 *
+	 * @param $order
+	 *
+	 * @return string
+	 */
+	public function get_empty_email($order) {
+		$country = $order->get_billing_country();
+		$phone = $order->get_billing_phone() ? str_replace(' ','',$order->get_billing_phone()) : '';
+		$site_name = get_option('home') ? parse_url(get_option('home'), PHP_URL_HOST) : '';
+		
+		if ( $phone ) {
+			$email = sprintf( 'no-reply-%s@%s',$phone,$site_name );
+		} else {
+			$email = sprintf( 'no-reply-%s@%s',$country,$site_name );
+		}
+		
+		return $email;
+	}
 	/**
 	 * Get data counterparty for send MoySklad
 	 *
@@ -374,6 +396,7 @@ class WooMS_Orders_Sender {
 		$order = wc_get_order( $order_id );
 		$user  = $order->get_user();
 		$email = '';
+		
 		if ( empty( $user ) ) {
 			if ( ! empty( $order->get_billing_email() ) ) {
 				$email = $order->get_billing_email();
@@ -381,9 +404,11 @@ class WooMS_Orders_Sender {
 		} else {
 			$email = $user->user_email;
 		}
+		
 		if ( empty( $email ) ) {
-			$email = get_option('admin_email');
+			$email = $this->get_empty_email( $order );
 		}
+		
 		$data = array(
 			"name"          => $this->get_data_order_name( $order_id ),
 			"companyType"   => $this->get_data_order_company_type( $order_id ),
@@ -394,9 +419,10 @@ class WooMS_Orders_Sender {
 		);
 		
 		$meta = $this->get_agent_meta_by_email( $email );
+		
 		if ( empty( $meta ) ) {
 			$url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
-			$result = wooms_request( $url, $data);
+			$result = wooms_request( $url, $data );
 			if ( empty( $result["meta"] ) ) {
 				return false;
 			}

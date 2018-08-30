@@ -68,9 +68,12 @@ PHP 5.6
 
 == Changelog ==
 
+= 1.8.1 =
+* Изменен способ проверки, если отсутствует поле email при создании заказов https://github.com/uptimizt/wooms/issues/40
+
 = 1.8.0 =
-* сделан обмен доступными остатками с учетом резервов https://github.com/uptimizt/wooms/issues/29
-* добавили хук wooms_stock_type для переключения типов остатков
+* Сделан обмен доступными остатками с учетом резервов https://github.com/uptimizt/wooms/issues/29
+* Добавили хук wooms_stock_type для переключения типов остатков
 
 = 1.7.9 =
 * Переименован плагин с WooMS Extra на WooMS XT
