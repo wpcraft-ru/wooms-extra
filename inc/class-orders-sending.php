@@ -322,11 +322,11 @@ class WooMS_Orders_Sender {
 			}
 			
 			$price = $item->get_total();
-			
+			$quantity = $item->get_quantity();
 			if ( empty( get_option( 'wooms_orders_send_reserved' ) ) ) {
-				$quantity = $item->get_quantity();
+				$reserve_qty = $quantity;
 			} else {
-				$quantity = '';
+				$reserve_qty = 0;
 			}
 			
 			$data[] = array(
@@ -341,7 +341,7 @@ class WooMS_Orders_Sender {
 						"mediaType" => "application/json",
 					),
 				),
-				'reserve'    => $quantity,
+				'reserve'    => $reserve_qty,
 			);
 		}
 		
