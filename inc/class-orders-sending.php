@@ -408,7 +408,7 @@ class WooMS_Orders_Sender {
 		$name = $this->get_data_order_name( $order_id );
 		
 		if ( empty( $name ) ) {
-			$name = 'Unknown';
+			$name = 'Клиент по заказу №' . $order->get_order_number();
 		}
 		
 		$data = array(
