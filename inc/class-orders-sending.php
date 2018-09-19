@@ -16,6 +16,7 @@ class WooMS_Orders_Sender {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_date_picker' ) );
 		add_action( 'rest_api_init', array( $this, 'rest_api_init_callback_endpoint' ) );
 		add_action( 'admin_init', array( $this, 'settings_init' ), 100 );
+		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes_order' ) );
 	}
 	
 	
@@ -841,8 +842,29 @@ class WooMS_Orders_Sender {
 			}
 		}
 	}
+	/**
+	 * Add metaboxes
+	 */
+	public function add_meta_boxes_order() {
+		add_meta_box( 'metabox_order', 'МойСклад', array( $this, 'add_meta_box_data_order' ), 'shop_order', 'side', 'low' );
+	}
 	
-	
+	/**
+	 * Meta box in order
+	 */
+	public function add_meta_box_data_order() {
+		$post      = get_post();
+		$data_id = get_post_meta( $post->ID, 'wooms_id', true );
+		if ( $data_id ) {
+			$meta_data = sprintf( '<div>ID заказа в МойСклад: <div><strong>%s</strong></div></div>', $data_id );
+			$meta_data .= sprintf( '<p><a href="https://online.moysklad.ru/app/#customerorder/edit?id=%s" target="_blank">Посмотреть заказ в МойСклад</a></p>', $data_id );
+		} else {
+			$meta_data = 'Заказ не передан в МойСклад';
+			$meta_data .= sprintf( '<p><a href="%s">Управление синхронизацией</a></p>', admin_url('tools.php?page=moysklad'));
+		}
+		echo $meta_data;
+		
+	}
 	/**
 	 * Add jQuery date picker for select start-date sending orders to MoySklad
 	 */
