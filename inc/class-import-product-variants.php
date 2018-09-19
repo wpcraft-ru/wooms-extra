@@ -676,7 +676,12 @@ class WooMS_Product_Variations {
 		if ( empty( get_transient( 'wooms_variant_start_timestamp' ) ) ) {
 			echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
 			echo "<p><strong>Внимание!</strong> Синхронизацию вариативных товаров необходимо поводить <strong>после</strong> общей синхронизации товаров</p>";
-			printf( '<a href="%s" class="button button-primary">Старт импорта вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'tools.php?page=moysklad' ) ) );
+			if (empty( get_transient( 'wooms_start_timestamp' ) )){
+				printf( '<a href="%s" class="button button-primary">Старт импорта вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'tools.php?page=moysklad' ) ) );
+			} else {
+				printf( '<span href="%s" class="button button-secondary" style="display:inline-block">Старт импорта вариаций</span>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'tools.php?page=moysklad' ) ) );
+			}
+			
 		} else {
 			printf( '<a href="%s" class="button button-secondary">Остановить импорт вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_stop', admin_url( 'tools.php?page=moysklad' ) ) );
 		}
