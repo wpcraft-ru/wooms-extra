@@ -216,7 +216,13 @@ class WooMS_Import_Product_Choice_Categories {
 			endforeach;
 			?>
 		</select>
-		
+		<p><small>После включения опции, старые товары будут помечаться как отсутствующие. Чтобы они пропали с сайта нужно убедиться, что:</small></p>
+		<ul style="margin-left: 18px;">
+			<li><small>&mdash;&nbsp;включена опция <a href="admin.php?page=wc-settings" target="_blank">управления запасами</a></small></li>
+			<li><small>&mdash;&nbsp;стоит опция сокрытия отсутствующих товаров</small></li>
+			<li><small>&mdash;&nbsp;в виджете категорий стоит опция скрывать пустые категории</small></li>
+		</ul>
+		<p><small>Также для ускорения, рекоендуется выполнить команду пересчета счетчиков в разделе Статуса по адресу <a href="admin.php?page=wc-status&tab=tools" target="_blank">WooCommerce -> Статусы -> Инструменты</a>.</small></p>
 		<?php
 	}
 }
