@@ -116,29 +116,35 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$session_id = get_option( 'wooms_session_id' );
 		if ( empty( $session_id ) ) {
-			return false;
+			return;
 		}
 		
 		$term_select = wooms_request( $this->select_category() );
-		
+
 		$term = get_terms( array(
 			'taxonomy'     => array( 'product_cat' ),
 			'hide_empty'   => 0,
-			'parent'       => 0,
+			//'parent'       => 0,
 			'hierarchical' => false,
-			'meta_query'   => array(
-				/*array(
+			/*'meta_query'   => array(
+				array(
 					'key'     => 'wooms_session_id',
 					'value'   => $session_id,
 					'compare' => '!=',
-				),*/
+				),
 				array(
 					'key'   => 'wooms_id',
 					'value' => $term_select['id'],
 				),
-			),
+			),*/
 		) );
+		do_action("logger_u7", [ $term, $this->select_category()] );
+		/*$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
+		$errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
+		$errors .= $result['errors'][0]['error'];*/
 		
+		$logger = wc_get_logger();
+		$logger->debug( $term, array( 'source' => 'wooms-data-debug' ) );
 		$this->update_subcategory_meta( $term[0]->term_id );
 		
 		$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
@@ -187,10 +193,9 @@ class WooMS_Import_Product_Choice_Categories {
 	}
 	
 	
-	//Display field
-	public function display_woomss_include_categories_sync() {
-		$option         = 'woomss_include_categories_sync';
-		$checked_choice = get_option( $option );
+	public function setting_request_category( ){
+		//$option         = 'woomss_include_categories_sync';
+		//$checked_choice = get_option( $option_name );
 		$offset         = 0;
 		$limit          = 100;
 		$ms_api_args    = apply_filters( 'wooms_product_ms_api_arg_category', array(
@@ -202,20 +207,41 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$data = wooms_request( $url_api );
 		if ( empty( $data['rows'] ) ) {
+			return false;
+		}
+		
+		return $data['rows'];
+	}
+	//Display field
+	public function display_woomss_include_categories_sync() {
+		$checked_choice   = get_option( 'woomss_include_categories_sync' );
+		$request_category = $this->setting_request_category();
+		
+		if ( false === $request_category ) {
 			return;
 		}
+		
+		echo '<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">';
+		echo '<option value="">Выберите группу</option>';
+		foreach ( $request_category as $value ) {
+			if ( ! empty( $value['pathName'] ) ) {
+				$path_name = explode( '/', $value['pathName'] );
+			} else {
+				$path_name        = '';
+				$path_name_margin = '';
+			}
+			
+			if ( is_array( $path_name ) && ( count( $path_name ) == 1 ) ) {
+				$path_name_margin = '&mdash;&nbsp;';
+			} elseif ( is_array( $path_name ) && ( count( $path_name ) >= 2 ) ) {
+				$path_name_margin = '&mdash;&mdash;&nbsp;';
+			}
+			printf( '<option value="%s" %s>%s</option>', esc_attr( $value['meta']['href'] ), selected( $checked_choice, $value['meta']['href'], false ), $path_name_margin . $value['name'] );
+			
+		}
+		echo '</select>';
 		?>
 		
-		<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">
-			<option value="">Выберите группу</option>
-			<?php
-			foreach ( $data['rows'] as $value ):
-				if ( empty( $value['pathName'] ) ) :
-					printf( '<option value="%s" %s>%s</option>', esc_attr( $value['meta']['href'] ), selected( $checked_choice, $value['meta']['href'], false ), $value['name'] );
-				endif;
-			endforeach;
-			?>
-		</select>
 		<p><small>После включения опции, старые товары будут помечаться как отсутствующие. Чтобы они пропали с сайта нужно убедиться, что:</small></p>
 		<ul style="margin-left: 18px;">
 			<li><small>&mdash;&nbsp;включена опция <a href="admin.php?page=wc-settings" target="_blank">управления запасами</a></small></li>
