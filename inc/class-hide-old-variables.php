@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Hide old мфкшфешщты
+ * Hide old variations
  */
 class WooMS_Hide_Old_Variations {
 	/**
@@ -11,19 +11,22 @@ class WooMS_Hide_Old_Variations {
 		add_action( 'wooms_hide_old_product', array( $this, 'set_hide_old_variable' ), 20, 2 );
 	}
 	
-
-
+	
 	/**
 	 * Adding hiding attributes to variations
 	 */
-	public function set_hide_old_variable($product_parent, $offset) {
-
+	public function set_hide_old_variable( $product_parent, $offset ) {
+		
+		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
+			return;
+		}
+		
 		if ( ! $offset = get_transient( 'wooms_offset_hide_variations' ) ) {
 			$offset = 0;
 			set_transient( 'wooms_offset_hide_variations', $offset );
 		}
 		
-		$variations = $this->get_variations_old_session(  $offset, $product_parent );
+		$variations = $this->get_variations_old_session( $offset, $product_parent );
 		
 		$i = 0;
 		
@@ -33,7 +36,7 @@ class WooMS_Hide_Old_Variations {
 			$variation->save();
 			$i ++;
 		}
-
+		
 		set_transient( 'wooms_offset_hide_variations', $offset + $i );
 		
 		if ( empty( $product_parent ) ) {
@@ -48,9 +51,9 @@ class WooMS_Hide_Old_Variations {
 	 *
 	 * @return array
 	 */
-	public function get_variations_old_session( $offset = 0, $product_parent = '') {
+	public function get_variations_old_session( $offset = 0, $product_parent = '' ) {
 		$args = array(
-			'post_type'=>'product_variation',
+			'post_type'   => 'product_variation',
 			'post_parent' => $product_parent,
 			'numberposts' => 20,
 			'fields'      => 'ids',
