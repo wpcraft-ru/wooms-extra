@@ -124,21 +124,21 @@ class WooMS_Import_Product_Choice_Categories {
 		$term = get_terms( array(
 			'taxonomy'     => array( 'product_cat' ),
 			'hide_empty'   => 0,
-			//'parent'       => 0,
+			'parent'       => 0,
 			'hierarchical' => false,
-			/*'meta_query'   => array(
-				array(
+			'meta_query'   => array(
+				/*array(
 					'key'     => 'wooms_session_id',
 					'value'   => $session_id,
 					'compare' => '!=',
-				),
+				),*/
 				array(
 					'key'   => 'wooms_id',
 					'value' => $term_select['id'],
 				),
-			),*/
+			),
 		) );
-		do_action("logger_u7", [ $term, $this->select_category()] );
+		//do_action("logger_u7", [ $term, $this->select_category()] );
 		/*$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
 		$errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
 		$errors .= $result['errors'][0]['error'];*/
