@@ -17,9 +17,9 @@ class WooMS_Import_Product_Choice_Categories {
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
 		
-		add_action( 'wooms_walker_finish', array( $this, 'update_parent_category' ), 10);
+		add_action( 'wooms_walker_finish', array( $this, 'update_parent_category' ), 10 );
 		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20 );
-
+		
 		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ) );
 		
 	}
@@ -115,9 +115,11 @@ class WooMS_Import_Product_Choice_Categories {
 	/**
 	 * Delete the parent category
 	 *
+	 * @since 1.8.6
+	 *
 	 * @return bool|void
 	 */
-	public function remove_parent_category() {
+	public function remove_parent_category( $url = '' ) {
 		
 		if ( empty( $this->select_category() ) ) {
 			return;
@@ -130,33 +132,38 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$term_select = wooms_request( $this->select_category() );
 		
-		$term = get_terms( array(
+		$arg = array(
 			'taxonomy'     => array( 'product_cat' ),
-			'hide_empty'   => 0,
-			'parent'       => 0,
 			'hierarchical' => false,
 			'meta_query'   => array(
-				/*array(
-					'key'     => 'wooms_session_id',
-					'value'   => $session_id,
-					'compare' => '!=',
-				),*/
 				array(
 					'key'   => 'wooms_id',
 					'value' => $term_select['id'],
 				),
 			),
-		) );
-		//do_action("logger_u7", [ $term, $this->select_category()] );
-		/*$errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
-		$errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
-		$errors .= $result['errors'][0]['error'];*/
+		);
+		if ( ! isset( $term_select['productFolder']['meta']['href'] ) ) {
+			$arg_parent = array(
+				'hide_empty' => 0,
+				'parent'     => 0,
+			);
+			$arg        = array_merge( $arg, $arg_parent );
+		}
 		
-		$logger = wc_get_logger();
-		$logger->debug( $term, array( 'source' => 'wooms-data-debug' ) );
+		$term = get_terms( $arg );
+		
+		//$term_parents = get_ancestors( $term[0]->term_id, 'product_cat' );
+		
+		$term_children = get_term_children( $term[0]->term_id, 'product_cat' );
+		
 		$this->update_subcategory_meta( $term[0]->term_id );
 		
-		$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+		if ( ! empty( $term_children ) && 0 != $term[0]->parent ) {
+			wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+			wp_delete_term( $term[0]->parent, 'product_cat', array( 'force_default' => true ) );
+		} else {
+			$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+		}
 		
 	}
 	
@@ -167,7 +174,7 @@ class WooMS_Import_Product_Choice_Categories {
 	 * @param null $term_id
 	 */
 	public function update_subcategory_meta( $term_id = null ) {
-
+		
 		
 		$terms_sub = get_terms( array(
 			'taxonomy' => array( 'product_cat' ),
@@ -187,6 +194,7 @@ class WooMS_Import_Product_Choice_Categories {
 			}
 		}
 	}
+	
 	/**
 	 * Creating a parent category, if it is not
 	 */
@@ -331,7 +339,7 @@ class WooMS_Import_Product_Choice_Categories {
 	}
 	
 	//Display field
-
+	
 	public function setting_request_category() {
 		
 		$offset      = 0;
