@@ -38,7 +38,7 @@ class WooMS_Import_Sale_Prices {
 			foreach ( $value['salePrices'] as $price ) {
 
 				if($price['priceType'] == $price_name && floatval($price['value']) > 0){
-					$product->set_sale_price( floatval($price['value']/100) );
+					$product->set_sale_price( apply_filters('wooms_sale_price', floatval($price['value']/100)) );
 					$product->save();
 					return;
 				} elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
