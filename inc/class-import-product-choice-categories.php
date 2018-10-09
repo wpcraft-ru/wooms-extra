@@ -184,11 +184,9 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$checked_choice   = get_option( 'woomss_include_categories_sync' );
 		$request_category = $this->setting_request_category();
-		
-		if ( false === $request_category ) {
-			return;
-		}
-		
+
+		if ( $request_category && is_array($request_category) ) {
+
 		echo '<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">';
 		echo '<option value="">Выберите группу</option>';
 		foreach ( $request_category as $value ) {
@@ -209,8 +207,12 @@ class WooMS_Import_Product_Choice_Categories {
 			
 		}
 		echo '</select>';
-		?>
 		
+		} else {
+			echo '<p><small>Сервер не отвечает. Требуется подождать. Обновить страницу через некоторое время</small></p>';
+		}
+		
+		?>
 		<p>
 			<small>После включения опции, старые товары будут помечаться как отсутствующие. Чтобы они пропали с сайта нужно убедиться, что:</small>
 		</p>
