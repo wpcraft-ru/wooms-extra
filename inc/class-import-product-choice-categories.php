@@ -141,6 +141,7 @@ class WooMS_Import_Product_Choice_Categories {
 				),
 			),
 		);
+		
 		if ( ! isset( $term_select['productFolder']['meta']['href'] ) ) {
 			$arg_parent = array(
 				'hide_empty' => 0,
@@ -151,17 +152,46 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$term = get_terms( $arg );
 		
-		//$term_parents = get_ancestors( $term[0]->term_id, 'product_cat' );
-		
-		$term_children = get_term_children( $term[0]->term_id, 'product_cat' );
-		
-		if ( ! empty( $term_children ) && 0 != $term[0]->parent ) {
-			wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
-			wp_delete_term( $term[0]->parent, 'product_cat', array( 'force_default' => true ) );
-		} else {
-			$term_remove = wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+		if ( false != $term ) {
+			
+			if ( 0 == $term[0]->parent ) {
+				$term_children = get_terms( array(
+					'taxonomy' => array( 'product_cat' ),
+					'parent'   => $term[0]->parent,
+					'fields'   => 'id',
+				
+				) );
+			} else {
+				$term_children = get_term_children( $term[0]->term_id, 'product_cat' );
+			}
+			
+			$term_parents = get_ancestors( $term[0]->term_id, 'product_cat' );
+			
+			if ( ! empty( $term_children ) && 0 == $term[0]->parent ) {
+				$this->update_term_children( $term_children, array( 'parent' => 0 )  );
+			} elseif ( 0 != $term[0]->parent && ! empty( $term_children ) ) {
+				wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+				wp_delete_term( $term[0]->parent, 'product_cat', array( 'force_default' => true ) );
+			} else {
+				wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+			}
 		}
 		
+	}
+	
+	/**
+	 * Update children terms
+	 *
+	 * @since 1.8.7
+	 *
+	 * @param $term_children
+	 */
+	public function update_term_children( $terms_id, $arg = array() ) {
+		
+		foreach ( $terms_id as $term_id ) {
+			
+			wp_update_term( $term_id, 'product_cat', $arg );
+		}
 	}
 	
 	/**
@@ -184,30 +214,30 @@ class WooMS_Import_Product_Choice_Categories {
 		
 		$checked_choice   = get_option( 'woomss_include_categories_sync' );
 		$request_category = $this->setting_request_category();
-
-		if ( $request_category && is_array($request_category) ) {
-
-		echo '<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">';
-		echo '<option value="">Выберите группу</option>';
-		foreach ( $request_category as $value ) {
-			if ( ! empty( $value['pathName'] ) ) {
-				$path_name = explode( '/', $value['pathName'] );
-			} else {
-				$path_name        = '';
-				$path_name_margin = '';
-			}
-			
-			if ( is_array( $path_name ) && ( count( $path_name ) == 1 ) ) {
-				$path_name_margin = '&mdash;&nbsp;';
-			} elseif ( is_array( $path_name ) && ( count( $path_name ) >= 2 ) ) {
-				$path_name_margin = '&mdash;&mdash;&nbsp;';
-			}
-			printf( '<option value="%s" %s>%s</option>', esc_attr( $value['meta']['href'] ), selected( $checked_choice, $value['meta']['href'], false ), $path_name_margin .
-			                                                                                                                                             $value['name'] );
-			
-		}
-		echo '</select>';
 		
+		if ( $request_category && is_array( $request_category ) ) {
+			
+			echo '<select class="woomss_include_categories_sync" name="woomss_include_categories_sync">';
+			echo '<option value="">Выберите группу</option>';
+			foreach ( $request_category as $value ) {
+				if ( ! empty( $value['pathName'] ) ) {
+					$path_name = explode( '/', $value['pathName'] );
+				} else {
+					$path_name        = '';
+					$path_name_margin = '';
+				}
+				
+				if ( is_array( $path_name ) && ( count( $path_name ) == 1 ) ) {
+					$path_name_margin = '&mdash;&nbsp;';
+				} elseif ( is_array( $path_name ) && ( count( $path_name ) >= 2 ) ) {
+					$path_name_margin = '&mdash;&mdash;&nbsp;';
+				}
+				printf( '<option value="%s" %s>%s</option>', esc_attr( $value['meta']['href'] ), selected( $checked_choice, $value['meta']['href'], false ), $path_name_margin .
+				                                                                                                                                             $value['name'] );
+				
+			}
+			echo '</select>';
+			
 		} else {
 			echo '<p><small>Сервер не отвечает. Требуется подождать. Обновить страницу через некоторое время</small></p>';
 		}
@@ -235,7 +265,6 @@ class WooMS_Import_Product_Choice_Categories {
 		<?php
 		
 	}
-	
 	
 	/**
 	 * Requests category to settings
