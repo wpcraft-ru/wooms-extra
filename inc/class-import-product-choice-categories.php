@@ -234,8 +234,14 @@ class WooMS_Import_Product_Choice_Categories {
 		
 	}
 	
-	//Display field
 	
+	/**
+	 * Requests category to settings
+	 *
+	 * @since 1.8.6
+	 *
+	 * @return bool
+	 */
 	public function setting_request_category() {
 		
 		$offset      = 0;
@@ -247,7 +253,11 @@ class WooMS_Import_Product_Choice_Categories {
 		$url         = apply_filters( 'wooms_product_ms_api_url_category', 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder' );
 		$url_api     = add_query_arg( $ms_api_args, $url );
 		
-		$data = wooms_request( $url_api );
+		if ( ! $data = get_transient( 'wooms_settings_categories' ) ) {
+			$data = wooms_request( $url_api );
+			set_transient( 'wooms_settings_categories', $data, 60 * 60 * 12 );
+		}
+		
 		if ( empty( $data['rows'] ) ) {
 			return false;
 		}
