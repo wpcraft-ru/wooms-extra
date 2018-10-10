@@ -7,12 +7,12 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.8.6
+ * Version: 1.8.7
  * Text Domain: wooms-xt
  * Domain Path: /languages
  *
  * WC requires at least: 3.0
- * WC tested up to: 3.4.4
+ * WC tested up to: 3.4.5
  *
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
