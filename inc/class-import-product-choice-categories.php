@@ -17,7 +17,7 @@ class WooMS_Import_Product_Choice_Categories {
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
 		
-		add_action( 'wooms_walker_finish', array( $this, 'remove_parent_category' ), 20 );
+		add_action( 'wooms_walker_start', array( $this, 'update_category' ), 20 );
 		
 		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ) );
 		
@@ -81,21 +81,18 @@ class WooMS_Import_Product_Choice_Categories {
 	
 	
 	/**
-	 * Skipping the parent category by sync time
+	 * Skipping the update category by sync time
 	 *
 	 * @param $bool
 	 * @param $url
 	 * @param $path_name
 	 *
+	 * @since 1.8.7
+	 *
 	 * @return bool
 	 */
-	public function skip_base_parent_category( $bool, $url, $path_name ) {
-		
-		if ( $url !== $this->select_category() && empty( $path_name ) ) {
-			$bool = false;
-		}
-		
-		return $bool;
+	public function skip_update_category() {
+			return false;
 	}
 	
 	
@@ -118,7 +115,7 @@ class WooMS_Import_Product_Choice_Categories {
 	 *
 	 * @return bool|void
 	 */
-	public function remove_parent_category( $url = '' ) {
+	public function update_category() {
 		
 		if ( empty( $this->select_category() ) ) {
 			return;
@@ -157,28 +154,66 @@ class WooMS_Import_Product_Choice_Categories {
 			if ( 0 == $term[0]->parent ) {
 				$term_children = get_terms( array(
 					'taxonomy' => array( 'product_cat' ),
-					'parent'   => $term[0]->parent,
-					'fields'   => 'id',
-				
+					'parent'   => $term[0]->term_id,
+					'fields'   => 'ids',
 				) );
 			} else {
 				$term_children = get_term_children( $term[0]->term_id, 'product_cat' );
 			}
 			
-			$term_parents = get_ancestors( $term[0]->term_id, 'product_cat' );
+			if ( 0 == $term[0]->parent && ! empty( $term_children ) ) {
+				$this->update_term_children( $term_children, array( 'parent' => 0 ) );
+				wp_update_term_count( $term[0]->term_id, $taxonomy = 'product_cat' );
+			}
 			
-			if ( ! empty( $term_children ) && 0 == $term[0]->parent ) {
-				$this->update_term_children( $term_children, array( 'parent' => 0 )  );
-			} elseif ( 0 != $term[0]->parent && ! empty( $term_children ) ) {
-				wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
-				wp_delete_term( $term[0]->parent, 'product_cat', array( 'force_default' => true ) );
-			} else {
-				wp_delete_term( $term[0]->term_id, 'product_cat', array( 'force_default' => true ) );
+			if ( 0 != $term[0]->parent && ! empty( $term_children ) ) {
+				$this->update_term_children( $term_children, array( 'parent' => 0 ) );
+				$this->update_term_children( $term[0]->parent, array( 'count' => 0 ) );
+				wp_update_term_count( $term[0]->parent, $taxonomy = 'product_cat' );
+				$this->delete_relationship( $term[0]->term_id );
+			}
+			
+			if ( 0 != $term[0]->parent && empty( $term_children ) ) {
+				apply_filters( 'wooms_skip_update_select_category', array( $this, 'skip_update_category' ) );
+				$this->delete_relationship( $term[0]->term_id );
 			}
 		}
-		
 	}
 	
+	/**
+	 * Delete relationship product and term
+	 *
+	 * @since 1.8.7
+	 *
+	 * @param     $term_id
+	 * @param int $offset
+	 */
+	public function delete_relationship( $term_id, $offset = 0 ) {
+		$args = array(
+			'post_type'   => 'product',
+			'numberposts' => 600,
+			'fields'      => 'ids',
+			'offset'      => $offset,
+			'tax_query' => array(
+				array(
+					'taxonomy' => 'product_cat',
+					'field'    => 'id',
+					'terms'    => $term_id
+				)
+			),
+			'no_found_rows' => true,
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+			'cache_results' => false
+		);
+		
+		$products = get_posts( $args );
+		if ( $products ) {
+			foreach ( $products as $product ) {
+				wp_remove_object_terms( $product, $term_id, 'product_cat' );
+			}
+		}
+	}
 	/**
 	 * Update children terms
 	 *
@@ -188,9 +223,12 @@ class WooMS_Import_Product_Choice_Categories {
 	 */
 	public function update_term_children( $terms_id, $arg = array() ) {
 		
-		foreach ( $terms_id as $term_id ) {
-			
-			wp_update_term( $term_id, 'product_cat', $arg );
+		if ( is_array( $terms_id ) ) {
+			foreach ( $terms_id as $term_id ) {
+				wp_update_term( $term_id, 'product_cat', $arg );
+			}
+		} else {
+			wp_update_term( $terms_id, 'product_cat', $arg);
 		}
 	}
 	
