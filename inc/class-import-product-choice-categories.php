@@ -17,7 +17,7 @@ class WooMS_Import_Product_Choice_Categories {
 		add_filter( 'wooms_variant_ms_api_url', array( $this, 'change_ms_api_url_variant' ), 10 );
 		add_filter( 'wooms_product_ms_api_url', array( $this, 'change_ms_api_url_simple' ), 10 );
 		
-		add_action( 'wooms_walker_start', array( $this, 'update_category' ), 20 );
+		add_action( 'wooms_walker_finish', array( $this, 'update_category' ) );
 		
 		add_action( 'wooms_update_category', array( $this, 'update_meta_session_term' ) );
 		
@@ -92,7 +92,8 @@ class WooMS_Import_Product_Choice_Categories {
 	 * @return bool
 	 */
 	public function skip_update_category() {
-			return false;
+		
+		return false;
 	}
 	
 	
@@ -112,7 +113,7 @@ class WooMS_Import_Product_Choice_Categories {
 	 * Delete the parent category
 	 *
 	 * @since 1.8.6
-	 *
+	 * @version 1.8.8
 	 * @return bool|void
 	 */
 	public function update_category() {
@@ -162,58 +163,35 @@ class WooMS_Import_Product_Choice_Categories {
 			}
 			
 			if ( 0 == $term[0]->parent && ! empty( $term_children ) ) {
+				
 				$this->update_term_children( $term_children, array( 'parent' => 0 ) );
-				wp_update_term_count( $term[0]->term_id, $taxonomy = 'product_cat' );
+				wp_update_term_count( $term[0]->term_id, 'product_cat' );
+				
 			}
 			
 			if ( 0 != $term[0]->parent && ! empty( $term_children ) ) {
+				
 				$this->update_term_children( $term_children, array( 'parent' => 0 ) );
 				$this->update_term_children( $term[0]->parent, array( 'count' => 0 ) );
-				wp_update_term_count( $term[0]->parent, $taxonomy = 'product_cat' );
-				$this->delete_relationship( $term[0]->term_id );
+				wp_update_term_count( $term[0]->parent, 'product_cat' );
+				$this->delete_relationship( $term[0] );
+				
 			}
 			
 			if ( 0 != $term[0]->parent && empty( $term_children ) ) {
+				
 				apply_filters( 'wooms_skip_update_select_category', array( $this, 'skip_update_category' ) );
-				$this->delete_relationship( $term[0]->term_id );
+				$this->delete_relationship( $term[0] );
+				
+			}
+			if ( 0 == $term[0]->parent && empty( $term_children ) ) {
+
+				$this->delete_relationship( $term[0] );
+				
 			}
 		}
 	}
 	
-	/**
-	 * Delete relationship product and term
-	 *
-	 * @since 1.8.7
-	 *
-	 * @param     $term_id
-	 * @param int $offset
-	 */
-	public function delete_relationship( $term_id, $offset = 0 ) {
-		$args = array(
-			'post_type'   => 'product',
-			'numberposts' => 600,
-			'fields'      => 'ids',
-			'offset'      => $offset,
-			'tax_query' => array(
-				array(
-					'taxonomy' => 'product_cat',
-					'field'    => 'id',
-					'terms'    => $term_id
-				)
-			),
-			'no_found_rows' => true,
-			'update_post_term_cache' => false,
-			'update_post_meta_cache' => false,
-			'cache_results' => false
-		);
-		
-		$products = get_posts( $args );
-		if ( $products ) {
-			foreach ( $products as $product ) {
-				wp_remove_object_terms( $product, $term_id, 'product_cat' );
-			}
-		}
-	}
 	/**
 	 * Update children terms
 	 *
@@ -228,7 +206,45 @@ class WooMS_Import_Product_Choice_Categories {
 				wp_update_term( $term_id, 'product_cat', $arg );
 			}
 		} else {
-			wp_update_term( $terms_id, 'product_cat', $arg);
+			wp_update_term( $terms_id, 'product_cat', $arg );
+		}
+	}
+	
+	/**
+	 * Delete relationship product and term
+	 *
+	 * @since 1.8.6
+	 * @version 1.8.8
+	 * @param     $term
+	 *
+	 */
+	public function delete_relationship( $term ) {
+		
+		$args = array(
+			'post_type'              => 'product',
+			'post_status'            => 'publish',
+			'numberposts'            => -1,
+			'fields'                 => 'ids',
+			'offset'                 => 0,
+			'tax_query'              => array(
+				array(
+					'taxonomy' => 'product_cat',
+					'field'    => 'ids',
+					'terms'    => $term->term_id,
+				),
+			),
+			'no_found_rows'          => 1,
+			'update_post_term_cache' => 0,
+			'update_post_meta_cache' => 0,
+			'cache_results'          => 0,
+		);
+		
+		$products = get_posts( $args );
+		
+		if ( $products ) {
+			foreach ( $products as $product ) {
+				wp_remove_object_terms( $product, $term->term_id, 'product_cat' );
+			}
 		}
 	}
 	
