@@ -141,7 +141,6 @@ class WooMS_Product_Variations {
         }
 
 		foreach ( $ms_attributes as $key => $value ) {
-
             $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($value['name']);
 
             $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
@@ -157,6 +156,12 @@ class WooMS_Product_Variations {
     			$attributes[$attribute_slug] = $attribute_object;
 
             } else {
+
+                //Очищаем индивидуальный атрибут с таким именем если есть
+                if(isset($attributes[$attribute_slug])){
+                    unset($attributes[$attribute_slug]);
+                }
+
                 $attribute_object = new WC_Product_Attribute();
     			$attribute_object->set_id( $attribute_taxonomy_id );
     			$attribute_object->set_name( $taxonomy_name );
@@ -165,6 +170,7 @@ class WooMS_Product_Variations {
     			$attribute_object->set_visible( 1 );
     			$attribute_object->set_variation( 1 );
     			$attributes[$taxonomy_name] = $attribute_object;
+
             }
 		}
 
@@ -314,13 +320,35 @@ class WooMS_Product_Variations {
 	 * @param $characteristics
 	 */
 	public function set_variation_attributes( $variation_id, $characteristics ) {
-		$attributes = [];
+
+        $variation = wc_get_product( $variation_id );
+
+        $parent_id = $variation->get_parent_id();
+
+        $attributes = array();
+
 		foreach ( $characteristics as $key => $characteristic ) {
-			$attribute_name                = sanitize_title( $characteristic['name'] );
-			$attributes[ $attribute_name ] = $characteristic['value'];
+			$attribute_name = $characteristic['name'];
+            $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
+            $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+            $attribute_slug = sanitize_title( $attribute_name );
+
+            if(empty($attribute_taxonomy_id)){
+    			$attributes[$attribute_slug] = $characteristic['value'];
+
+            } else {
+
+                //Очищаем индивидуальный атрибут с таким именем если есть
+                if(isset($attributes[$attribute_slug])){
+                    unset($attributes[$attribute_slug]);
+                }
+
+    			$attributes[$taxonomy_name] = sanitize_title($characteristic['value']);
+
+            }
+
 		}
 
-		$variation = wc_get_product( $variation_id );
 		$variation->set_attributes( $attributes );
 		$variation->save();
 	}
