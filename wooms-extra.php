@@ -7,7 +7,7 @@
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
  * Developer URI: https://wpcraft.ru/
- * Version: 1.8.8
+ * Version: 3.0.0
  * Text Domain: wooms-xt
  * Domain Path: /languages
  *
@@ -59,6 +59,7 @@ function wooms_check_base_plugin() {
 
 require_once 'inc/class-cron.php';
 require_once 'inc/class-import-product-stocks.php';
+require_once 'inc/class-import-product-attributes.php';
 require_once 'inc/class-import-product-variants.php';
 require_once 'inc/class-products-bundles.php';
 require_once 'inc/class-orders-sending.php';
