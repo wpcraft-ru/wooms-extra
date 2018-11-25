@@ -30,7 +30,7 @@ class WooMS_Product_Attributes
       $product = wc_get_product($product_id);
 
       if( ! empty($item['weight']) ){
-          $product->set_weight($item[weight]);
+          $product->set_weight($item['weight']);
       }
 
       if( ! empty($item['attributes']) ){
