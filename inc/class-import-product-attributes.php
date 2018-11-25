@@ -1,19 +1,21 @@
 <?php
 /**
- * Update attributes for products
+ * Update attributes for products from custom fields MoySklad
  */
 class WooMS_Product_Attributes
 {
-  function __construct()
+  /**
+   * The Init
+   */
+  public static function init()
   {
     //Use hook do_action('wooms_product_update', $product_id, $value, $data);
-    add_action('wooms_product_update', [$this, 'update_data'], 10, 3);
+    add_action('wooms_product_update', array(__CLASS__, 'update_data'), 10, 3);
 
-    add_filter('wooms_attributes', [$this, 'update_base_attributes'], 10, 3);
-    add_filter('wooms_attributes', [$this, 'update_custtom_attributes'], 10, 3);
-    add_filter('wooms_attributes', [$this, 'update_country'], 10, 3);
+    add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
+    add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
 
-    add_action( 'admin_init', array($this, 'settings_init'), 150 );
+    add_action( 'admin_init', array(__CLASS__, 'settings_init'), 150 );
   }
 
   /**
@@ -26,6 +28,36 @@ class WooMS_Product_Attributes
       }
 
       $product = wc_get_product($product_id);
+
+      if( ! empty($item['weight']) ){
+          $product->set_weight($item[weight]);
+      }
+
+      if( ! empty($item['attributes']) ){
+          foreach ($item['attributes'] as $attribute) {
+              if(empty($attribute['name'])){
+                  continue;
+              }
+
+              if($attribute['name'] == 'Ширина'){
+                  $product->set_width($attribute['value']);
+                  continue;
+              }
+
+              if($attribute['name'] == 'Высота'){
+                  $product->set_height($attribute['value']);
+                  continue;
+              }
+
+              if($attribute['name'] == 'Длина'){
+                  $product->set_length($attribute['value']);
+                  continue;
+              }
+
+          }
+      }
+
+
       $product_attributes = $product->get_attributes('edit');
 
       if(empty($product_attributes)){
@@ -39,59 +71,43 @@ class WooMS_Product_Attributes
 
    }
 
-  //Update base attributes from MoySklad
-  function update_base_attributes($product_attributes, $product_id, $value){
 
-     if( ! empty($value['weight'])){
-       $attribute_object = new WC_Product_Attribute();
-  		 $attribute_object->set_name( "Вес" );
-  		 $attribute_object->set_options( array($value['weight']) );
-  		 $attribute_object->set_position( '0' );
-  		 $attribute_object->set_visible( 1 );
-  		 $attribute_object->set_variation( 0 );
-  		 $product_attributes[] = $attribute_object;
-     }
-
-     if( ! empty($value['volume'])){
-       $attribute_object = new WC_Product_Attribute();
-  		 $attribute_object->set_name( "Объем" );
-  		 $attribute_object->set_options( array($value['volume']) );
-  		 $attribute_object->set_position( '0' );
-  		 $attribute_object->set_visible( 1 );
-  		 $attribute_object->set_variation( 0 );
-  		 $product_attributes[] = $attribute_object;
-     }
-
-    return $product_attributes;
-
-  }
-
-  // Custom fields update from MoySklad
-  function update_custtom_attributes($product_attributes, $product_id, $value)
+  /**
+  * Сохраняем прочие атрибуты, не попавшивае под базовые условия
+  */
+  public static function save_other_attributes($product_attributes, $product_id, $value)
   {
+      if( ! empty($value['attributes']) ){
+          foreach ($value['attributes'] as $attribute) {
+              if(empty($attribute['name'])){
+                  continue;
+              }
 
-    if(empty($value['attributes'])){
+              if(in_array($attribute['name'], array('Ширина', 'Высота', 'Длина', 'Страна') )){
+                  continue;
+              }
+
+              //Если это не число и не строка - пропуск, тк другие типы надо обрабатывать иначе
+              if( ! in_array($attribute['type'], array('string', 'number')) ){
+                  continue;
+              }
+
+              $attribute_object = new WC_Product_Attribute();
+              $attribute_object->set_name( $attribute['name'] );
+              $attribute_object->set_options( array($attribute['value']) );
+              $attribute_object->set_position( 0 );
+              $attribute_object->set_visible( 1 );
+              $attribute_object->set_variation( 0 );
+              $product_attributes[] = $attribute_object;
+          }
+      }
       return $product_attributes;
-    }
-
-    foreach ($value['attributes'] as $key => $value) {
-      $attribute_object = new WC_Product_Attribute();
-      $attribute_object->set_name( "Объем" );
-      $attribute_object->set_options( array($value['value']) );
-      $attribute_object->set_position( '0' );
-      $attribute_object->set_visible( 1 );
-      $attribute_object->set_variation( 0 );
-      $product_attributes[] = $attribute_object;
-    }
-
-    return $product_attributes;
-
   }
 
-   /**
-   * Country - update
-   */
-  function update_country($product_attributes, $product_id, $value)
+  /**
+  * Country - update
+  */
+  public static function update_country($product_attributes, $product_id, $value)
   {
     if( empty($value['country']["meta"]["href"]) ) {
       return $product_attributes;
@@ -121,13 +137,13 @@ class WooMS_Product_Attributes
   /**
    * Settings UI
    */
-  public function settings_init()
+  public static function settings_init()
   {
     register_setting('mss-settings', 'wooms_attr_enabled');
     add_settings_field(
       $id = 'wooms_attr_enabled',
-      $title = 'Включить синхронизацию атрибутов',
-      $callback = [$this, 'wooms_attr_enabled_display'],
+      $title = 'Включить синхронизацию доп. полей как атрибутов',
+      $callback = [__CLASS__, 'wooms_attr_enabled_display'],
       $page = 'mss-settings',
       $section = 'woomss_section_other'
     );
@@ -136,12 +152,13 @@ class WooMS_Product_Attributes
   /**
    * Field display
    */
-  public function wooms_attr_enabled_display()
+  public static function wooms_attr_enabled_display()
   {
     $option = 'wooms_attr_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
+    echo '<p>Позволчет синхронизировать доп поля МойСклад как атрибуты продукта. Вес, ДВШ - сохраняются в базовые поля продукта, остальные поля как индивидуальные атрибуты.</p>';
     echo '<p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.</strong></p>';
   }
 }
 
-new WooMS_Product_Attributes;
+WooMS_Product_Attributes::init();
