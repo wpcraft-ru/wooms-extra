@@ -32,25 +32,81 @@ class WooMS_Product_Variations {
 
         add_shortcode('test', function(){
 
-            $product = wc_get_product(1178);
+            $product = wc_get_product(1195);
+
+
+            $current_attributes = $product->get_attributes('edit');
+            if(empty($current_attributes)){
+                $current_attributes = array();
+            }
+
+            //XXX 1 пилим новый атрибут
+            $new_attribute = new WC_Product_Attribute();
+
+            $name_attribute = "Цветик";
+
+            $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($name_attribute);
+            $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+            $attribute_taxonomy = self::get_attribute_taxonomy_by_id($attribute_taxonomy_id);
+
+            $options = array('Мегабелый');
+            $values = array_map( 'wc_sanitize_term_text_based', $options );
+            $values = array_filter( $values, 'strlen' );
+            // $values = array();
+
+            // wp_set_object_terms( $product->get_id(), $values, $attribute_taxonomy->slug );
+            //
+            // $new_attribute->set_id( $attribute_taxonomy_id );
+			// $new_attribute->set_name( $taxonomy_name );
+			// $new_attribute->set_options( $values );
+			// $new_attribute->set_position( 0 );
+			// $new_attribute->set_visible( 1 );
+			// $new_attribute->set_variation( 1 );
+            //
+            // $current_attributes[] = $new_attribute;
+            //
+            // $r1 = $product->set_attributes($current_attributes);
+            // $r1 = $product->set_default_attributes($current_attributes);
+            // $r2 = $product->save();
+
             echo '<pre>';
+
+            //
+            // echo '# $attribute_taxonomy' . PHP_EOL;
+            // var_dump($attribute_taxonomy);
+
+            echo '# $current_attributes' . PHP_EOL;
+            var_dump($current_attributes);
+
+            echo '# product' . PHP_EOL;
             var_dump($product);
             echo '</pre>';
 
         });
 	}
 
-    /**
-     * Получаем атрибуты которые должны быть таксономиями
-     */
-    public function get_attributes_as_taxonomy(){
-        $attributes_as_taxonomy = array(
-            'Цветик',
-            // 'Размер',
-        );
 
-        return apply_filters('wooms_attributes_as_taxonomy', $attributes_as_taxonomy);
-    }
+    private function get_attribute_taxonomy_by_id( $id = 0 ) {
+
+        if(empty($id)){
+            return false;
+        }
+
+		$taxonomy = null;
+		$attribute_taxonomies = wc_get_attribute_taxonomies();
+
+		foreach ( $attribute_taxonomies as $key => $tax ) {
+			if ( $id == $tax->attribute_id ) {
+				$taxonomy = $tax;
+                $taxonomy->slug = 'pa_' . $tax->attribute_name;
+
+				break;
+			}
+		}
+
+		return $taxonomy;
+	}
+
 
 	/**
 	 * Load data and set product type variable
@@ -161,14 +217,31 @@ class WooMS_Product_Variations {
 
 		foreach ( $ms_attributes as $key => $value ) {
 
-			$attribute_object = new WC_Product_Attribute();
-			// $attribute_object->set_id( $key );
-			$attribute_object->set_name( $value['name'] );
-			$attribute_object->set_options( $value['values'] );
-			$attribute_object->set_position( 0 );
-			$attribute_object->set_visible( 1 );
-			$attribute_object->set_variation( 1 );
-			$attributes[] = $attribute_object;
+            $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($value['name']);
+            $attribute_taxonomy_data = self::get_attribute_taxonomy_by_id($attribute_taxonomy_id);
+
+            $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+            $attribute_slug = sanitize_title( $value['name'] );
+
+            if(empty($attribute_taxonomy_id)){
+                $attribute_object = new WC_Product_Attribute();
+    			$attribute_object->set_name( $value['name'] );
+    			$attribute_object->set_options( $value['values'] );
+    			$attribute_object->set_position( 0 );
+    			$attribute_object->set_visible( 1 );
+    			$attribute_object->set_variation( 1 );
+    			$attributes[$attribute_slug] = $attribute_object;
+
+            } else {
+                $attribute_object = new WC_Product_Attribute();
+    			$attribute_object->set_id( $attribute_taxonomy_id );
+    			$attribute_object->set_name( $taxonomy_name );
+    			$attribute_object->set_options( $value['values'] );
+    			$attribute_object->set_position( 0 );
+    			$attribute_object->set_visible( 1 );
+    			$attribute_object->set_variation( 1 );
+    			$attributes[$taxonomy_name] = $attribute_object;
+            }
 		}
 
 		$product->set_attributes( $attributes );
