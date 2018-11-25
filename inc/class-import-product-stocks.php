@@ -11,7 +11,7 @@ class WooMS_Stock {
 		//Use hook do_action('wooms_variation_id', $variation_id, $value);
 		add_action( 'wooms_variation_id', array( __CLASS__, 'load_data' ), 10, 2 );
 		//Settings
-		add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 100 );
+		add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 30 );
 	}
 
 

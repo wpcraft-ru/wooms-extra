@@ -15,7 +15,7 @@ class WooMS_Orders_Sender {
 		add_action( 'wooms_cron_order_sender', array( $this, 'cron_starter_walker' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_date_picker' ) );
 		add_action( 'rest_api_init', array( $this, 'rest_api_init_callback_endpoint' ) );
-		add_action( 'admin_init', array( $this, 'settings_init' ), 100 );
+		add_action( 'admin_init', array( $this, 'settings_init' ), 40);
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes_order' ) );
 	}
 	
