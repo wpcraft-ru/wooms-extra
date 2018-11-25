@@ -21,7 +21,7 @@ class WooMS_Product_Attributes
   /**
    * Sync attributes
    */
-  public function update_data($product_id, $item, $data)
+  public static function update_data($product_id, $item, $data)
   {
       if(empty(get_option('wooms_attr_enabled'))){
         return;
