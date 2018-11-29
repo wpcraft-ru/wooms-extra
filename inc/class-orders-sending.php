@@ -17,23 +17,66 @@ class WooMS_Orders_Sender {
 		add_action( 'rest_api_init', array( $this, 'rest_api_init_callback_endpoint' ) );
 		add_action( 'admin_init', array( $this, 'settings_init' ), 40);
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes_order' ) );
+
+		/**
+		 * Сохраняем обновления статусов в мету по мере обработки
+		 * Далее передаем данные в МойСклад
+		 */
+		add_action( 'woocommerce_order_status_changed', array($this, 'add_task_for_update_order_status_in_moysklad'), 10, 4);
+		add_action( 'wooms_cron_order_sender', array( $this, 'status_updates' ) );
+
 	}
 
+    /**
+     * Add tast for update status order in MoySklad
+     */
+    public static function add_task_for_update_order_status_in_moysklad($order_id, $status_transition_from, $status_transition_to, $instance){
+
+        if(empty(get_option('wooms_enable_orders_statuses_updater'))){
+            return;
+        }
+
+    	update_post_meta($order_id, 'wooms_changed_status', $status_transition_to);
+    }
+
+	/**
+	 * Получаем мету статуса для заказов
+	 * Нужна для обновления статуса Заказа из Сайта на Склад
+	 */
+	public function get_meta_status_for_orders($changed_status = ''){
+		if(empty($changed_status)){
+			return false;
+		}
+
+		$statuses = get_transient('wooms_order_statuses');
+		if(empty($statuses)){
+			$url_statuses = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/metadata';
+			$statuses = wooms_request($url_statuses);
+			$statuses = $statuses["states"];
+			set_transient('wooms_order_statuses', $statuses, 600);
+		}
+
+		foreach ($statuses as $statuse) {
+			if($statuse['name'] == $changed_status){
+				$meta_status = $statuse["meta"];
+				return $meta_status;
+			}
+		}
+
+		return false;
+	}
 
 	/**
 	 * Add endpoint /wp-json/wooms/v1/order-update/
 	 */
 	public function rest_api_init_callback_endpoint() {
 		register_rest_route( 'wooms/v1', '/order-update/', array(
-			// 'methods' => WP_REST_Server::READABLE,
 			'methods'  => WP_REST_Server::EDITABLE,
 			'callback' => array( $this, 'get_data_order_from_moysklad' ),
 		) );
 	}
 
-
 	/**
-	 *
 	 * Get data from MoySkald and start update order
 	 *
 	 * @param $data_request
@@ -77,6 +120,109 @@ class WooMS_Orders_Sender {
 		}
 	}
 
+	/**
+	 * Обновляем статусы заказов в МойСклад раз в минуту
+	 */
+	public function status_updates(){
+
+        if(empty(get_option('wooms_enable_orders_statuses_updater'))){
+            return;
+        }
+
+		$args   = array(
+			'numberposts' => 5,
+			'post_type'   => 'shop_order',
+			'post_status' => 'any',
+			'meta_query' => array(
+					array(
+					 'key' => 'wooms_changed_status',
+					 'compare' => 'EXISTS' // doesn't work
+					),
+			),
+		);
+
+		$orders = get_posts($args);
+
+		if(empty($orders)){
+			return;
+		}
+
+		foreach ($orders as $order) {
+			$order_id = $order->ID;
+			$order = wc_get_order($order_id);
+			$changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
+
+			switch ( $changed_status ) {
+				case "processing":
+					$ms_status = 'Новый';
+					break;
+				case "on-hold":
+					$ms_status = 'Новый';
+					break;
+				case "pending":
+					$ms_status = 'Новый';
+					break;
+                case "completed":
+					$ms_status = 'Отгружен';
+					break;
+				case "cancelled":
+					$ms_status = 'Отменен';
+					break;
+				case "refunded":
+					$ms_status = 'Возврат';
+					break;
+				default:
+					$ms_status = false;
+					break;
+			}
+
+			/**
+			 * Возможность поменять связку статуса на Сайте и Складе
+			 */
+			$ms_status = apply_filters('wooms_order_ms_status', $ms_status, $changed_status);
+
+			if($ms_status){
+				$meta_status = $this->get_meta_status_for_orders($ms_status);
+			} else {
+				delete_post_meta($order_id, 'wooms_changed_status');
+				continue;
+			}
+
+
+			/**
+			 * Возможность перехватить метастатус для сторонних плагинов
+			 */
+			$meta_status = apply_filters('wooms_order_meta_status', $meta_status, $order_id, $changed_status);
+
+			/**
+			 * Если с таким статусом ничего не вышло, то удаляем мету
+			 */
+			if($meta_status === false){
+				delete_post_meta($order_id, 'wooms_changed_status');
+			}
+
+			$data = array(
+				"state" => array(
+					'meta' => $meta_status
+				),
+			);
+
+			$uuid = get_post_meta($order_id, 'wooms_id', true);
+			if(empty($uuid)){
+				continue;
+			}
+
+			$url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
+			$result = wooms_request( $url, $data, 'PUT' );
+
+			if(empty($result["id"])){
+				set_transient('wooms_error_send_order_status', $result, DAY_IN_SECONDS);
+			} else {
+				delete_post_meta($order_id, 'wooms_changed_status');
+				$order->add_order_note( sprintf('Обновлен статус в МойСклад - %s', $ms_status) );
+			}
+		}
+	}
 
 	/**
 	 * Update order by data from MoySklad
@@ -87,6 +233,7 @@ class WooMS_Orders_Sender {
 	 * @return bool
 	 */
 	public function check_and_update_order_status( $order_uuid, $state_name ) {
+
 
 		$args   = array(
 			'numberposts' => 1,
@@ -620,16 +767,28 @@ class WooMS_Orders_Sender {
 	public function settings_init() {
 
 		add_settings_section( 'wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings' );
+
 		register_setting( 'mss-settings', 'wooms_orders_sender_enable' );
 		add_settings_field( $id = 'wooms_orders_sender_enable', $title = 'Включить синхронизацию заказов в МойСклад', $callback = array(
 			$this,
 			'display_wooms_orders_sender_enable',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
-		register_setting( 'mss-settings', 'wooms_enable_webhooks' );
-		add_settings_field( $id = 'wooms_enable_webhooks', $title = 'Передатчик Статусов из МойСклада на Сайт', $callback = array(
+
+        register_setting( 'mss-settings', 'wooms_enable_webhooks' );
+        add_settings_field( $id = 'wooms_enable_webhooks', $title = 'Передатчик Статусов из МойСклада на Сайт', $callback = array(
 			$this,
 			'display_wooms_enable_webhooks',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
+
+        register_setting( 'mss-settings', 'wooms_enable_orders_statuses_updater' );
+        add_settings_field(
+            $id = 'wooms_enable_orders_statuses_updater',
+            $title = 'Передатчик Статусов из Сайта в МойСклада', $callback = array(
+			$this,
+			'display_enable_orders_statuses_updater',
+		), $page = 'mss-settings', $section = 'wooms_section_orders' );
+
+
 		register_setting( 'mss-settings', 'wooms_orders_send_from' );
 		add_settings_field( $id = 'wooms_orders_send_from', $title = 'Дата, с которой берутся Заказы для отправки', $callback = array(
 			$this,
@@ -682,6 +841,19 @@ class WooMS_Orders_Sender {
 			<?php
 		}
 	}
+
+    /**
+     * Send statuses to MoySklad
+     */
+    public function display_enable_orders_statuses_updater() {
+        $option = 'wooms_enable_orders_statuses_updater';
+        printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+        ?>
+        <p><small>Передатчик статусов с Сайта в МойСклад при активации будет выполняться 1 раз в минуту. Можно менять механизм с помощью программистов через хуки WP.</small></p>
+
+        <?php
+    }
+
 
 	/**
 	 *
