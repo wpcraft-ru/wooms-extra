@@ -1,9 +1,11 @@
 <?php
 
+namespace WooMS\Orders;
+
 /**
  * Send orders to MoySklad
  */
-class WooMS_Orders_Sender {
+class Sender {
 
 	/**
 	 * WooMS_Orders_Sender constructor.
@@ -23,7 +25,7 @@ class WooMS_Orders_Sender {
 		 * Далее передаем данные в МойСклад
 		 */
 		add_action( 'woocommerce_order_status_changed', array(__CLASS__, 'add_task_for_update_order_status_in_moysklad'), 10, 4);
-		add_action( 'wooms_cron_order_sender', array( __CLASS__, 'status_updates' ) );
+		add_action( 'wooms_cron_order_sender', array( __CLASS__, 'send_status' ) );
 
 	}
 
@@ -121,9 +123,9 @@ class WooMS_Orders_Sender {
 	}
 
 	/**
-	 * Обновляем статусы заказов в МойСклад раз в минуту
+	 * Sending order statuses in MoySklad, 5 pieces at a time
 	 */
-	public static function status_updates(){
+	public static function send_status(){
 
         if(empty(get_option('wooms_enable_orders_statuses_updater'))){
             return;
@@ -147,34 +149,28 @@ class WooMS_Orders_Sender {
 			return;
 		}
 
+        $statuses_match_default = array(
+            'wc-pending' => 'Новый',
+            'wc-processing' => 'Подтвержден',
+            'wc-on-hold' => 'Новый',
+            'wc-completed' => 'Отгружен',
+            'wc-cancelled' => 'Отменен',
+            'wc-refunded' => 'Возврат',
+            'wc-failed' => 'Не удался',
+        );
+
+        $statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
+
 		foreach ($orders as $order) {
 			$order_id = $order->ID;
 			$order = wc_get_order($order_id);
 			$changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
 
-			switch ( $changed_status ) {
-                case "pending":
-					$ms_status = 'Новый';
-					break;
-                case "on-hold":
-					$ms_status = 'Новый';
-					break;
-				case "processing":
-					$ms_status = 'Подтвержден';
-					break;
-                case "completed":
-					$ms_status = 'Отгружен';
-					break;
-				case "cancelled":
-					$ms_status = 'Отменен';
-					break;
-				case "refunded":
-					$ms_status = 'Возврат';
-					break;
-				default:
-					$ms_status = false;
-					break;
-			}
+            if(empty($statuses_match['wc-' . $changed_status])){
+                $ms_status = '';
+            } else {
+                $ms_status = $statuses_match['wc-' . $changed_status];
+            }
 
 			/**
 			 * Возможность поменять связку статуса на Сайте и Складе
@@ -184,10 +180,10 @@ class WooMS_Orders_Sender {
 			if($ms_status){
 				$meta_status = self::get_meta_status_for_orders($ms_status);
 			} else {
-				delete_post_meta($order_id, 'wooms_changed_status');
+                $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад, не удалось получить название статуса в МойСклад для "%s"', $ms_status) );
+                delete_post_meta($order_id, 'wooms_changed_status');
 				continue;
 			}
-
 
 			/**
 			 * Возможность перехватить метастатус для сторонних плагинов
@@ -197,9 +193,12 @@ class WooMS_Orders_Sender {
 			/**
 			 * Если с таким статусом ничего не вышло, то удаляем мету
 			 */
-			if($meta_status === false){
+			if(empty($meta_status)){
 				delete_post_meta($order_id, 'wooms_changed_status');
+                $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад, не сработала мета для статуса - %s', $ms_status) );
+                continue;
 			}
+
 
 			$data = array(
 				"state" => array(
@@ -215,12 +214,16 @@ class WooMS_Orders_Sender {
 			$url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
 			$result = wooms_request( $url, $data, 'PUT' );
 
+
+
 			if(empty($result["id"])){
-				set_transient('wooms_error_send_order_status', $result, DAY_IN_SECONDS);
+                $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад - %s', print_r($result, true)) );
 			} else {
-				delete_post_meta($order_id, 'wooms_changed_status');
 				$order->add_order_note( sprintf('Обновлен статус в МойСклад - %s', $ms_status) );
 			}
+
+            delete_post_meta($order_id, 'wooms_changed_status');
+
 		}
 	}
 
@@ -749,43 +752,52 @@ class WooMS_Orders_Sender {
 
 		register_setting( 'mss-settings', 'wooms_orders_sender_enable' );
 		add_settings_field( $id = 'wooms_orders_sender_enable', $title = 'Включить синхронизацию заказов в МойСклад', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_orders_sender_enable',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 
         register_setting( 'mss-settings', 'wooms_enable_webhooks' );
         add_settings_field( $id = 'wooms_enable_webhooks', $title = 'Передатчик Статусов из МойСклада на Сайт', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_enable_webhooks',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 
         register_setting( 'mss-settings', 'wooms_enable_orders_statuses_updater' );
         add_settings_field(
             $id = 'wooms_enable_orders_statuses_updater',
-            $title = 'Передатчик Статусов из Сайта в МойСклада', $callback = array(
-			$this,
-			'display_enable_orders_statuses_updater',
-		), $page = 'mss-settings', $section = 'wooms_section_orders' );
+            $title = 'Передатчик Статусов из Сайта в МойСклада',
+            $callback = array(__CLASS__, 'display_enable_orders_statuses_updater', ),
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders'
+        );
 
+        register_setting( 'mss-settings', 'wooms_order_statuses_match' );
+        add_settings_field(
+            $id = 'wooms_order_statuses_match',
+            $title = 'Связь статусов Сайта и МойСклада',
+            $callback = array(__CLASS__, 'display_wooms_order_statuses_match', ),
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders'
+        );
 
 		register_setting( 'mss-settings', 'wooms_orders_send_from' );
 		add_settings_field( $id = 'wooms_orders_send_from', $title = 'Дата, с которой берутся Заказы для отправки', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_orders_send_from',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 		register_setting( 'mss-settings', 'wooms_orders_send_prefix_postfix' );
 		add_settings_field( $id = 'wooms_orders_send_prefix_postfix', $title = 'Префикс или постфикс к номеру заказа', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_orders_send_prefix_postfix',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 		register_setting( 'mss-settings', 'wooms_orders_send_check_prefix_postfix' );
 		add_settings_field( $id = 'wooms_orders_send_check_prefix_postfix', $title = 'Использовать как префикс или как постфикс', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_orders_send_check_prefix_postfix',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 		register_setting( 'mss-settings', 'wooms_orders_send_reserved' );
 		add_settings_field( $id = 'wooms_orders_send_reserved', $title = 'Выключить резервирование товаров', $callback = array(
-			$this,
+			__CLASS__,
 			'display_wooms_orders_send_reserved',
 		), $page = 'mss-settings', $section = 'wooms_section_orders' );
 	}
@@ -819,6 +831,85 @@ class WooMS_Orders_Sender {
             <div><?php self::get_status_order_webhook() ?></div>
 			<?php
 		}
+	}
+
+	/**
+	 * Match statuses from Site to MoySkald
+	 * XXX запилить опцию
+	 */
+	public static function display_wooms_order_statuses_match() {
+
+        if( empty(get_option('wooms_enable_orders_statuses_updater')) ){
+            printf('<p>%s</p>', __('Для связи статусов, нужно включить опцию передачи статусов из Сайта на Склад', 'wooms'));
+            return;
+        }
+
+		$option_key = 'wooms_order_statuses_match';
+
+        $statuses = wc_get_order_statuses();
+        if(empty($statuses) or ! is_array($statuses)){
+            printf(
+                '<p>%s</p>',
+                __('Что то пошло не так, сообщите о проблеме в тех поддержку', 'wooms')
+            );
+            return;
+        }
+
+        printf(
+            '<p>%s</p>',
+            __('Нужно написать какие статусы указывать в МойСклад, при смене статуса Заказов на Сайте, названия должны совпадать со статусами в МойСклад.', 'wooms')
+        );
+
+        $option_value = get_option( $option_key );
+        if(empty($option_value)){
+            $option_value = array();
+        }
+
+        foreach ($statuses as $status_key => $status_name) {
+
+            if( empty($option_value[$status_key]) ){
+                switch ($status_key) {
+                    case 'wc-pending':
+                        $option_value[$status_key] = 'Новый';
+                        break;
+
+                    case 'wc-processing':
+                        $option_value[$status_key] = 'Подтвержде';
+                        break;
+
+                    case 'wc-on-hold':
+                        $option_value[$status_key] = 'Новый';
+                        break;
+
+                    case 'wc-completed':
+                        $option_value[$status_key] = 'Отгружен';
+                        break;
+
+                    case 'wc-cancelled':
+                        $option_value[$status_key] = 'Отменен';
+                        break;
+
+                    case 'wc-refunded':
+                        $option_value[$status_key] = 'Возврат';
+                        break;
+
+                    case 'wc-failed':
+                        $option_value[$status_key] = 'Не удался';
+                        break;
+
+                    default:
+                        $option_value[$status_key] = 'Новый';
+                        break;
+                }
+            }
+
+
+            printf(
+                '<p><input type="text" name="%s[%s]" value="%s" /> %s (%s)</p>',
+                $option_key, $status_key, $option_value[$status_key], $status_name, $status_key
+            );
+        }
+
 	}
 
     /**
@@ -1007,7 +1098,7 @@ class WooMS_Orders_Sender {
 	 * Add metaboxes
 	 */
 	public static function add_meta_boxes_order() {
-		add_meta_box( 'metabox_order', 'МойСклад', array( $this, 'add_meta_box_data_order' ), 'shop_order', 'side', 'low' );
+		add_meta_box( 'metabox_order', 'МойСклад', array( __CLASS__, 'add_meta_box_data_order' ), 'shop_order', 'side', 'low' );
 	}
 
 	/**
@@ -1043,4 +1134,4 @@ class WooMS_Orders_Sender {
 
 }
 
-WooMS_Orders_Sender::init();
+Sender::init();

@@ -68,6 +68,9 @@ PHP 5.6
 
 == Changelog ==
 
+= 3.3 =
+* Опция выбора связки Статусов между Сайтов и Складом https://github.com/wpcraft-ru/wooms/issues/99
+
 = 3.2 =
 * Передача статусов Заказа из Сайта на Склад https://github.com/wpcraft-ru/wooms/issues/93
 
