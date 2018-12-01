@@ -153,14 +153,14 @@ class WooMS_Orders_Sender {
 			$changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
 
 			switch ( $changed_status ) {
+                case "pending":
+					$ms_status = 'Новый';
+					break;
+                case "on-hold":
+					$ms_status = 'Новый';
+					break;
 				case "processing":
-					$ms_status = 'Новый';
-					break;
-				case "on-hold":
-					$ms_status = 'Новый';
-					break;
-				case "pending":
-					$ms_status = 'Новый';
+					$ms_status = 'Подтвержден';
 					break;
                 case "completed":
 					$ms_status = 'Отгружен';
