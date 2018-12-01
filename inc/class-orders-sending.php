@@ -874,7 +874,7 @@ class Sender {
                         break;
 
                     case 'wc-processing':
-                        $option_value[$status_key] = 'Подтвержде';
+                        $option_value[$status_key] = 'Подтвержден';
                         break;
 
                     case 'wc-on-hold':
