@@ -835,7 +835,6 @@ class Sender {
 
 	/**
 	 * Match statuses from Site to MoySkald
-	 * XXX запилить опцию
 	 */
 	public static function display_wooms_order_statuses_match() {
 
