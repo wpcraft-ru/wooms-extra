@@ -731,15 +731,18 @@ class Sender {
 	 * Start manual send orders to MoySklad
 	 */
 	public static function ui_for_manual_start() {
+
 		if ( empty( get_option( 'wooms_orders_sender_enable' ) ) ) {
 			return;
 		}
+
 		?>
 		<h2>Отправка заказов в МойСклад</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
 		<p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
 		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'admin.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
 		<?php
+
 	}
 
 
