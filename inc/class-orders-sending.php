@@ -738,7 +738,7 @@ class Sender {
 		<h2>Отправка заказов в МойСклад</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
 		<p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
-		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'tools.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
+		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'admin.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
 		<?php
 	}
 
@@ -1111,7 +1111,7 @@ class Sender {
 			$meta_data .= sprintf( '<p><a href="https://online.moysklad.ru/app/#customerorder/edit?id=%s" target="_blank">Посмотреть заказ в МойСклад</a></p>', $data_id );
 		} else {
 			$meta_data = 'Заказ не передан в МойСклад';
-			$meta_data .= sprintf( '<p><a href="%s">Отправить в МойСклад</a></p>', admin_url( 'tools.php?page=moysklad' ) );
+			$meta_data .= sprintf( '<p><a href="%s">Отправить в МойСклад</a></p>', admin_url( 'admin.php?page=moysklad' ) );
 		}
 		echo $meta_data;
 

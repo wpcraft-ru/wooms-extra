@@ -364,7 +364,7 @@ class WooMS_Product_Variations {
 		delete_transient( 'wooms_variant_walker_stop' );
 		set_transient( 'wooms_variant_manual_sync', 1 );
 		$this->walker();
-		wp_redirect( admin_url( 'tools.php?page=moysklad' ) );
+		wp_redirect( admin_url( 'admin.php?page=moysklad' ) );
 	}
 
 	/**
@@ -490,7 +490,7 @@ class WooMS_Product_Variations {
 		delete_transient( 'wooms_variant_offset' );
 		delete_transient( 'wooms_variant_end_timestamp' );
 		delete_transient( 'wooms_variant_manual_sync' );
-		wp_redirect( admin_url( 'tools.php?page=moysklad' ) );
+		wp_redirect( admin_url( 'admin.php?page=moysklad' ) );
 	}
 
 	/**
@@ -578,7 +578,7 @@ class WooMS_Product_Variations {
 	 */
 	public function notice_variants_walker() {
 		$screen = get_current_screen();
-		if ( $screen->base != 'tools_page_moysklad' ) {
+		if ( $screen->base != 'mojsklad_page_moysklad' ) {
 			return;
 		}
 		if ( empty( get_transient( 'wooms_variant_start_timestamp' ) ) ) {
@@ -670,7 +670,7 @@ class WooMS_Product_Variations {
 	public function notice_variants_results() {
 
 		$screen = get_current_screen();
-		if ( $screen->base != 'tools_page_moysklad' ) {
+		if ( $screen->base != 'mojsklad_page_moysklad' ) {
 			return;
 		}
 
@@ -702,7 +702,7 @@ class WooMS_Product_Variations {
 	 */
 	public function notice_variants_errors() {
 		$screen = get_current_screen();
-		if ( $screen->base != 'tools_page_moysklad' ) {
+		if ( $screen->base != 'mojsklad_page_moysklad' ) {
 			return;
 		}
 		if ( empty( get_transient( 'wooms_error_background' ) ) ) {
@@ -731,13 +731,13 @@ class WooMS_Product_Variations {
 			echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
 			echo "<p><strong>Внимание!</strong> Синхронизацию вариативных товаров необходимо поводить <strong>после</strong> общей синхронизации товаров</p>";
 			if (empty( get_transient( 'wooms_start_timestamp' ) )){
-				printf( '<a href="%s" class="button button-primary">Старт импорта вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'tools.php?page=moysklad' ) ) );
+				printf( '<a href="%s" class="button button-primary">Старт импорта вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'admin.php?page=moysklad' ) ) );
 			} else {
-				printf( '<span href="%s" class="button button-secondary" style="display:inline-block">Старт импорта вариаций</span>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'tools.php?page=moysklad' ) ) );
+				printf( '<span href="%s" class="button button-secondary" style="display:inline-block">Старт импорта вариаций</span>', add_query_arg( 'a', 'wooms_import_variations_manual_start', admin_url( 'admin.php?page=moysklad' ) ) );
 			}
 
 		} else {
-			printf( '<a href="%s" class="button button-secondary">Остановить импорт вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_stop', admin_url( 'tools.php?page=moysklad' ) ) );
+			printf( '<a href="%s" class="button button-secondary">Остановить импорт вариаций</a>', add_query_arg( 'a', 'wooms_import_variations_manual_stop', admin_url( 'admin.php?page=moysklad' ) ) );
 		}
 	}
 

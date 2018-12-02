@@ -172,7 +172,7 @@ class WooMS_Products_Bundle
     ?>
     <h2>Импорт комплектов из МойСклад</h2>
     <p>Ручной запуск импорта комплектов из МойСклад в групповые продукты WooCommerce</p>
-    <a href="<?php echo add_query_arg('a', 'wooms_import_product_bundles', admin_url('tools.php?page=moysklad')) ?>" class="button">Выполнить</a>
+    <a href="<?php echo add_query_arg('a', 'wooms_import_product_bundles', admin_url('admin.php?page=moysklad')) ?>" class="button">Выполнить</a>
     <?php
   }
 

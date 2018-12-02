@@ -120,7 +120,7 @@ class WooMS_Stock {
 				сообщайте в техподдержку
 			</li>
 			<li>После изменения этих опций, следует обязательно <a
-					href="<?php echo admin_url( 'tools.php?page=moysklad' ) ?>" target="_blank">запускать обмен данными
+					href="<?php echo admin_url( 'admin.php?page=moysklad' ) ?>" target="_blank">запускать обмен данными
 					вручную</a>, чтобы статусы наличия продуктов обновились
 			</li>
 			<li>Перед включением опций, нужно настроить магазина на работу с <a
