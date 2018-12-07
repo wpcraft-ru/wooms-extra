@@ -68,6 +68,9 @@ PHP 5.6
 
 == Changelog ==
 
+= 3.4 =
+* Перенос страниц настроек и управления под единую страницу https://github.com/wpcraft-ru/wooms/issues/100
+
 = 3.3 =
 * Опция выбора связки Статусов между Сайтов и Складом https://github.com/wpcraft-ru/wooms/issues/99
 
