@@ -73,7 +73,7 @@ class Sender {
 	 */
 	public static function rest_api_init_callback_endpoint() {
 		register_rest_route( 'wooms/v1', '/order-update/', array(
-			'methods'  => WP_REST_Server::EDITABLE,
+			'methods'  => \WP_REST_Server::EDITABLE,
 			'callback' => array( __CLASS__, 'get_data_order_from_moysklad' ),
 		) );
 	}
@@ -107,17 +107,15 @@ class Sender {
 			$state_name = $state_data['name'];
 			$result     = self::check_and_update_order_status( $order_uuid, $state_name );
 			if ( $result ) {
-				$response = new WP_REST_Response( array( 'success', 'Data received successfully' ) );
+				$response = new \WP_REST_Response( array( 'success', 'Data received successfully' ) );
 				$response->set_status( 200 );
-
 				return $response;
 			} else {
-				throw new Exception( "Заказ не обновился" );
+				throw new \Exception( "Заказ не обновился" );
 			}
 		} catch ( Exception $e ) {
-			$response = new WP_REST_Response( array( 'fail', $e->getMessage() ) );
+			$response = new \WP_REST_Response( array( 'fail', $e->getMessage() ) );
 			$response->set_status( 500 );
-
 			return $response;
 		}
 	}
