@@ -735,10 +735,10 @@ class Sender {
 		}
 
 		?>
-		<h2>Отправка заказов в МойСклад</h2>
+		<h2>Заказы</h2>
 		<p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
 		<p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
-		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'admin.php?page=moysklad' ) ) ?>" class="button">Выполнить</a>
+		<a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'admin.php?page=moysklad' ) ) ?>" class="button button-primary">Выполнить</a>
 		<?php
 
 	}
