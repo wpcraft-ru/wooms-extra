@@ -578,7 +578,7 @@ class WooMS_Product_Variations {
 	 */
 	public function notice_variants_walker() {
 		$screen = get_current_screen();
-		if ( $screen->base != 'mojsklad_page_moysklad' ) {
+		if ( $screen->base != 'toplevel_page_moysklad' ) {
 			return;
 		}
 		if ( empty( get_transient( 'wooms_variant_start_timestamp' ) ) ) {
@@ -670,7 +670,7 @@ class WooMS_Product_Variations {
 	public function notice_variants_results() {
 
 		$screen = get_current_screen();
-		if ( $screen->base != 'mojsklad_page_moysklad' ) {
+		if ( $screen->base != 'toplevel_page_moysklad' ) {
 			return;
 		}
 
@@ -702,7 +702,7 @@ class WooMS_Product_Variations {
 	 */
 	public function notice_variants_errors() {
 		$screen = get_current_screen();
-		if ( $screen->base != 'mojsklad_page_moysklad' ) {
+		if ( $screen->base != 'toplevel_page_moysklad' ) {
 			return;
 		}
 		if ( empty( get_transient( 'wooms_error_background' ) ) ) {
