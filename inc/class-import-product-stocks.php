@@ -6,12 +6,6 @@
 class WooMS_Stock {
 
 	public static function init() {
-<<<<<<< Updated upstream
-		//Use hook do_action('wooms_product_update', $product_id, $value, $data);
-		add_action( 'wooms_product_update', array( __CLASS__, 'load_data' ), 10, 2 );
-		//Use hook do_action('wooms_variation_id', $variation_id, $value);
-		add_action( 'wooms_variation_id', array( __CLASS__, 'load_data' ), 10, 2 );
-=======
     add_filter( 'wooms_product_save', array( __CLASS__, 'update_product' ), 30, 3 );
 
 		//Use hook do_action('wooms_variation_id', $variation_id, $value);
@@ -21,13 +15,10 @@ class WooMS_Stock {
     add_filter( 'wooms_save_variation', array(__CLASS__, 'update_variation'), 10, 3);
     // add_filter('wooms_save_variation', array(__CLASS__, 'variation_update'), 10, 3);
 
->>>>>>> Stashed changes
 		//Settings
 		add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 30 );
 	}
 
-<<<<<<< Updated upstream
-=======
 
   /**
    * Update stock for variation
@@ -163,7 +154,6 @@ class WooMS_Stock {
   }
 
 
->>>>>>> Stashed changes
 
 	/**
 	 * Receive the balance of the warehouse and upload it to the goods

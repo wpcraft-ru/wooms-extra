@@ -9,15 +9,11 @@ class WooMS_Product_Variations {
 	/**
 	 * WooMS_Product_Variations constructor.
 	 */
-<<<<<<< Updated upstream
-	public function __construct() {
-=======
 	public static function init() {
 
     add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 20, 3 );
     add_filter( 'wooms_save_variation', array(__CLASS__, 'set_variation_attributes'), 10, 3);
     add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
->>>>>>> Stashed changes
 
 		//Use hook do_action('wooms_product_update', $product_id, $value, $data);
 		add_action( 'wooms_product_update', array( $this, 'load_data' ), 15, 3 );
