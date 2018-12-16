@@ -1,10 +1,19 @@
 <?php
 
+namespace WooMS\Products;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
+
 /**
  * Synchronization the stock of goods from MoySklad
  */
-class WooMS_Stock {
+class Stock {
 
+  /**
+   * The init
+   */
 	public static function init() {
     add_filter( 'wooms_product_save', array( __CLASS__, 'update_product' ), 30, 3 );
 
@@ -335,5 +344,4 @@ class WooMS_Stock {
 	}
 }
 
-WooMS_Stock::init();
-// new WooMS_Stock;
+Stock::init();

@@ -27,19 +27,46 @@ class Sender {
 		add_action( 'woocommerce_order_status_changed', array(__CLASS__, 'add_task_for_update_order_status_in_moysklad'), 10, 4);
 		add_action( 'wooms_cron_order_sender', array( __CLASS__, 'send_status' ) );
 
+    //Cron
+    add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
+    add_action('init', [__CLASS__, 'add_cron_hook']);
+
 	}
 
-    /**
-     * Add tast for update status order in MoySklad
-     */
-    public static function add_task_for_update_order_status_in_moysklad($order_id, $status_transition_from, $status_transition_to, $instance){
+ /**
+  * Регистрируем интервал для wp_cron в секундах
+  */
+  public static function add_schedule( $schedules ) {
 
-        if(empty(get_option('wooms_enable_orders_statuses_updater'))){
-            return;
-        }
+    $schedules['wooms_cron_worker'] = array(
+      'interval' => 60,
+      'display' => 'WooMS Cron Worker'
+    );
 
-    	update_post_meta($order_id, 'wooms_changed_status', $status_transition_to);
+    return $schedules;
+  }
+
+  /**
+   * add_cron_hook
+   */
+  public static function add_cron_hook(){
+
+    if ( ! wp_next_scheduled( 'wooms_cron_order_sender' ) ) {
+      wp_schedule_event( time(), 'wooms_cron_worker', 'wooms_cron_order_sender' );
     }
+  }
+
+  /**
+   * Add tast for update status order in MoySklad
+   */
+  public static function add_task_for_update_order_status_in_moysklad($order_id, $status_transition_from, $status_transition_to, $instance){
+
+      if(empty(get_option('wooms_enable_orders_statuses_updater'))){
+          return;
+      }
+
+  	update_post_meta($order_id, 'wooms_changed_status', $status_transition_to);
+  }
 
 	/**
 	 * Получаем мету статуса для заказов

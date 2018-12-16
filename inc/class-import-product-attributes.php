@@ -1,16 +1,25 @@
 <?php
+
+namespace WooMS\Products;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
+
 /**
  * Update attributes for products from custom fields MoySklad
  */
-class WooMS_Product_Attributes
+class Attributes
 {
   /**
    * The Init
    */
   public static function init()
   {
-    //Use hook do_action('wooms_product_update', $product_id, $value, $data);
-    add_action('wooms_product_update', array(__CLASS__, 'update_data'), 10, 3);
+    /**
+     * update product
+     */
+     add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 10, 3 );
 
     add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
     add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
@@ -19,7 +28,62 @@ class WooMS_Product_Attributes
   }
 
   /**
+   * Update product
+   */
+  public static function update_product( $product, $item, $data )
+  {
+    if(empty(get_option('wooms_attr_enabled'))){
+      return $product;
+    }
+    $product_id = $product->get_id();
+
+
+    if( ! empty($item['weight']) ){
+        $product->set_weight($item['weight']);
+    }
+
+    if( ! empty($item['attributes']) ){
+        foreach ($item['attributes'] as $attribute) {
+            if(empty($attribute['name'])){
+                continue;
+            }
+
+            if($attribute['name'] == 'Ширина'){
+                $product->set_width($attribute['value']);
+                continue;
+            }
+
+            if($attribute['name'] == 'Высота'){
+                $product->set_height($attribute['value']);
+                continue;
+            }
+
+            if($attribute['name'] == 'Длина'){
+                $product->set_length($attribute['value']);
+                continue;
+            }
+
+        }
+    }
+
+
+    $product_attributes = $product->get_attributes('edit');
+
+    if(empty($product_attributes)){
+      $product_attributes = array();
+    }
+
+    $product_attributes = apply_filters('wooms_attributes', $product_attributes, $product_id, $item, $data);
+
+    $product->set_attributes( $product_attributes );
+
+    return $product;
+  }
+
+  /**
    * Sync attributes
+   *
+   * TODO - delete
    */
   public static function update_data($product_id, $item, $data)
   {
@@ -92,7 +156,7 @@ class WooMS_Product_Attributes
                   continue;
               }
 
-              $attribute_object = new WC_Product_Attribute();
+              $attribute_object = new \WC_Product_Attribute();
               $attribute_object->set_name( $attribute['name'] );
               $attribute_object->set_options( array($attribute['value']) );
               $attribute_object->set_position( 0 );
@@ -122,7 +186,7 @@ class WooMS_Product_Attributes
     } else {
       $country = sanitize_text_field($data_api["name"]);
 
-      $attribute_object = new WC_Product_Attribute();
+      $attribute_object = new \WC_Product_Attribute();
       $attribute_object->set_name( "Страна" );
       $attribute_object->set_options( array($country) );
       $attribute_object->set_position( '0' );
@@ -161,4 +225,4 @@ class WooMS_Product_Attributes
   }
 }
 
-WooMS_Product_Attributes::init();
+Attributes::init();
