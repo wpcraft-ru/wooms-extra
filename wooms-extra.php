@@ -20,9 +20,15 @@
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
+
 
 add_action( 'admin_notices', 'wooms_check_base_plugin' );
 function wooms_check_base_plugin() {
