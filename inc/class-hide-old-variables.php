@@ -1,57 +1,59 @@
 <?php
 
+namespace WooMS\Products;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
+
 /**
  * Hide old variations
  */
-class WooMS_Hide_Old_Variations {
+class Hide_Old_Variations {
+
 	/**
-	 * WooMS_Hide_Old_Variations constructor.
+	 * The init
 	 */
-	public function __construct() {
-		add_action( 'wooms_hide_old_product', array( $this, 'set_hide_old_variable' ), 20, 2 );
+	public static function init() {
+		add_action( 'wooms_hide_old_product', array( __CLASS__, 'set_hide_old_variable' ), 20, 2 );
 	}
-	
-	
+
 	/**
 	 * Adding hiding attributes to variations
 	 */
-	public function set_hide_old_variable( $product_parent, $offset ) {
-		
+	public static function set_hide_old_variable( $product_parent, $offset ) {
+
 		if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
 			return;
 		}
-		
+
 		if ( ! $offset = get_transient( 'wooms_offset_hide_variations' ) ) {
 			$offset = 0;
 			set_transient( 'wooms_offset_hide_variations', $offset );
 		}
-		
-		$variations = $this->get_variations_old_session( $offset, $product_parent );
-		
+
+		$variations = self::get_variations_old_session( $offset, $product_parent );
+
 		$i = 0;
-		
+
 		foreach ( $variations as $variations_id ) {
 			$variation = wc_get_product( $variations_id );
 			$variation->set_stock_status( 'instock' );
 			$variation->save();
 			$i ++;
 		}
-		
+
 		set_transient( 'wooms_offset_hide_variations', $offset + $i );
-		
+
 		if ( empty( $product_parent ) ) {
 			delete_transient( 'wooms_offset_hide_variations' );
 		}
 	}
-	
+
 	/**
 	 * Obtaining variations with specific attributes
-	 *
-	 * @param int $offset
-	 *
-	 * @return array
 	 */
-	public function get_variations_old_session( $offset = 0, $product_parent = '' ) {
+	public static function get_variations_old_session( $offset = 0, $product_parent = '' ) {
 		$args = array(
 			'post_type'   => 'product_variation',
 			'post_parent' => $product_parent,
@@ -70,23 +72,21 @@ class WooMS_Hide_Old_Variations {
 				),
 			),
 		);
-		
+
 		return get_posts( $args );
 	}
-	
+
 	/**
 	 * Method for getting the value of an option
-	 *
-	 * @return bool|mixed
 	 */
-	public function get_session() {
+	public static function get_session() {
 		$session_id = get_option( 'wooms_session_id' );
 		if ( empty( $session_id ) ) {
 			return false;
 		}
-		
+
 		return $session_id;
 	}
 }
 
-new WooMS_Hide_Old_Variations;
+Hide_Old_Variations::init();
