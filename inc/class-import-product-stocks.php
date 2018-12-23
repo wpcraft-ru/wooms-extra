@@ -17,12 +17,7 @@ class Stock {
   public static function init() {
     add_filter( 'wooms_product_save', array( __CLASS__, 'update_product' ), 30, 3 );
 
-    //Use hook do_action('wooms_variation_id', $variation_id, $value);
-    // add_action( 'wooms_variation_id', array( __CLASS__, 'load_data' ), 10, 2 );
-
-    //XXX сделать обновление остатков для вариаций
     add_filter( 'wooms_save_variation', array(__CLASS__, 'update_variation'), 30, 3);
-    // add_filter('wooms_save_variation', array(__CLASS__, 'variation_update'), 10, 3);
 
     //Settings
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 30 );
