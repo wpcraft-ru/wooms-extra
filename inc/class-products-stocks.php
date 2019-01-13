@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Synchronization the stock of goods from MoySklad
  */
-class Stock {
+class Stocks {
 
   /**
    * The init
@@ -21,6 +21,19 @@ class Stock {
 
     //Settings
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 30 );
+
+    add_filter('wooms_stock_type', array(__CLASS__, 'select_type_stock'));
+  }
+
+  /**
+   * Select type stock
+   */
+  public static function select_type_stock($type_stock){
+    if(get_option('wooms_stocks_without_reserve')){
+      $type_stock = 'stock';
+    }
+
+    return $type_stock;
   }
 
 
@@ -236,35 +249,66 @@ class Stock {
    */
   public static function settings_init() {
 
-    add_settings_section( 'woomss_section_warehouses', 'Склад и остатки', $callback = array(
-      __CLASS__,
-      'display_woomss_section_warehouses',
-    ), 'mss-settings' );
+    add_settings_section(
+      'woomss_section_warehouses',
+      'Склад и остатки',
+      $callback = array( __CLASS__, 'display_woomss_section_warehouses'),
+      'mss-settings'
+    );
+
     register_setting( 'mss-settings', 'woomss_stock_sync_enabled' );
-    add_settings_field( $id = 'woomss_stock_sync_enabled', $title = 'Включить синхронизацию остатков', $callback = array(
-      __CLASS__,
-      'woomss_stock_sync_enabled_display',
-    ), $page = 'mss-settings', $section = 'woomss_section_warehouses' );
+    add_settings_field(
+      $id = 'woomss_stock_sync_enabled',
+      $title = 'Включить работу с остатками',
+      $callback = array( __CLASS__, 'woomss_stock_sync_enabled_display'),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
+    register_setting( 'mss-settings', 'wooms_stocks_without_reserve' );
+    add_settings_field(
+      $id = 'wooms_stocks_without_reserve',
+      $title = 'Остатки без резерва',
+      $callback = array( __CLASS__, 'display_field_wooms_stocks_without_reserve'),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
     register_setting( 'mss-settings', 'wooms_warehouse_count' );
-    add_settings_field( $id = 'wooms_warehouse_count', $title = 'Управление запасами', $callback = array(
-      __CLASS__,
-      'display_wooms_warehouse_count',
-    ), $page = 'mss-settings', $section = 'woomss_section_warehouses' );
+    add_settings_field(
+      $id = 'wooms_warehouse_count',
+      $title = 'Управление количеством остатков',
+      $callback = array( __CLASS__, 'display_wooms_warehouse_count' ),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
     register_setting( 'mss-settings', 'wooms_stock_empty_backorder' );
-    add_settings_field( $id = 'wooms_stock_empty_backorder', $title = 'Разрешать предазказ при 0 остатке', $callback = array(
-      __CLASS__,
-      'display_wooms_stock_empty_backorder',
-    ), $page = 'mss-settings', $section = 'woomss_section_warehouses' );
+    add_settings_field(
+      $id = 'wooms_stock_empty_backorder',
+      $title = 'Разрешать предазказ при 0 остатке',
+      $callback = array( __CLASS__, 'display_wooms_stock_empty_backorder' ),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
     register_setting( 'mss-settings', 'woomss_warehouses_sync_enabled' );
-    add_settings_field( $id = 'woomss_warehouses_sync_enabled', $title = 'Включить синхронизацию по складу', $callback = array(
-      __CLASS__,
-      'woomss_warehouses_sync_enabled_display',
-    ), $page = 'mss-settings', $section = 'woomss_section_warehouses' );
+    add_settings_field(
+      $id = 'woomss_warehouses_sync_enabled',
+      $title = 'Включить синхронизацию по складу',
+      $callback = array( __CLASS__, 'woomss_warehouses_sync_enabled_display' ),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+    );
+
     register_setting( 'mss-settings', 'woomss_warehouse_id' );
-    add_settings_field( $id = 'woomss_warehouse_id', $title = 'Выбрать склад для сайта', $callback = array(
-      __CLASS__,
-      'woomss_warehouse_id_display',
-    ), $page = 'mss-settings', $section = 'woomss_section_warehouses' );
+    add_settings_field(
+      $id = 'woomss_warehouse_id',
+      $title = 'Выбрать склад для сайта',
+      $callback = array( __CLASS__, 'woomss_warehouse_id_display' ),
+      $page = 'mss-settings',
+      $section = 'woomss_section_warehouses'
+     );
   }
 
   /**
@@ -295,6 +339,7 @@ class Stock {
   public static function woomss_stock_sync_enabled_display() {
     $option = 'woomss_stock_sync_enabled';
     printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+    echo '<p>При включении опции товары будут помечаться как в наличии или отсутствующие в зависимиости от числа остатков на складе</p>';
   }
 
   /**
@@ -304,6 +349,15 @@ class Stock {
     $option = 'wooms_stock_empty_backorder';
     printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
     echo '<p><small>Если включить опцию то система будет разрешать предзаказ при 0 остатках</small></p>';
+  }
+
+  /**
+   * display_field_wooms_stocks_without_reserve
+   */
+  public static function display_field_wooms_stocks_without_reserve() {
+    $option = 'wooms_stocks_without_reserve';
+    printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+    echo '<p><small>Если включить опцию то на сайте будут учитываться остатки без учета резерва</small></p>';
   }
 
   /**
@@ -353,4 +407,4 @@ class Stock {
   }
 }
 
-Stock::init();
+Stocks::init();

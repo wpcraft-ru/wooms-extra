@@ -15,7 +15,7 @@
  * WC tested up to: 3.5.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 3.9
+ * Version: 4.0
  */
 
 
@@ -23,39 +23,78 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
 }
 
+/**
+ * Description class
+ */
+class WooMS_XT {
 
-add_action( 'admin_notices', 'wooms_check_base_plugin' );
-function wooms_check_base_plugin() {
-  if ( ! function_exists( 'get_plugin_data' ) ) {
-    require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+  /**
+   * activate wooms
+   */
+  public static $is_core_exist = false;
+  /**
+   * The init
+   */
+  public static function init(){
+      add_action( 'admin_notices', array(__CLASS__, 'check_base_plugin') );
+      add_action( 'plugins_loaded', array(__CLASS__, 'load') );
   }
-  $wooms_version = get_file_data( __FILE__, array( 'wooms_ver' => 'WooMS requires at least' ) );
 
-  if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
+  /**
+   * load files
+   */
+  public static function load(){
 
-    $error_text = 'Для работы плагина WooMS XT требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
+    if( ! class_exists('WooMS_Core')){
+      self::$is_core_exist = false;
+      return;
+    }
 
-    set_transient( 'wooms_extra_activation_error_message', $error_text, 60 );
+    self::$is_core_exist = apply_filters('wooms_xt_load', true);
 
+    if(self::$is_core_exist){
+      require_once 'inc/class-products-stocks.php';
+      require_once 'inc/class-import-product-attributes.php';
+      require_once 'inc/class-import-product-variants.php';
+      require_once 'inc/class-products-bundles.php';
+      require_once 'inc/class-orders-sending.php';
+      require_once 'inc/class-import-sale-prices.php';
+      require_once 'inc/class-import-product-choice-categories.php';
+      require_once 'inc/class-hide-old-variables.php';
+    }
   }
 
-  $message = get_transient( 'wooms_extra_activation_error_message' );
+  /**
+   * check_base_plugin
+   */
+  public static function check_base_plugin() {
+    if ( ! function_exists( 'get_plugin_data' ) ) {
+      require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+    }
+    $wooms_version = get_file_data( __FILE__, array( 'wooms_ver' => 'WooMS requires at least' ) );
 
-  if ( ! empty( $message ) ) {
-    echo '<div class="notice notice-error">
-            <p><strong>Внимание!</strong> ' . $message . '</p>
-        </div>';
+    $error_text = '';
 
-    delete_transient( 'wooms_extra_activation_error_message' );
+    if ( ! is_plugin_active( 'wooms/wooms.php' ) ) {
+
+      $error_text = 'Для работы плагина WooMS XT требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
+
+    }
+
+    /**
+     * hook for change error message
+     */
+    $error_text = apply_filters('wooms_xt_error_msg', $error_text);
+
+    if ( ! empty( $error_text ) ) {
+      printf('
+        <div class="notice notice-error">
+            <p><strong>Внимание!</strong> %s</p>
+        </div>',
+        $error_text);
+    }
   }
+
 }
 
-require_once 'inc/class-cron.php';
-require_once 'inc/class-import-product-stocks.php';
-require_once 'inc/class-import-product-attributes.php';
-require_once 'inc/class-import-product-variants.php';
-require_once 'inc/class-products-bundles.php';
-require_once 'inc/class-orders-sending.php';
-require_once 'inc/class-import-sale-prices.php';
-require_once 'inc/class-import-product-choice-categories.php';
-require_once 'inc/class-hide-old-variables.php';
+WooMS_XT::init();
