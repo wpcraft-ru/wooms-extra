@@ -262,6 +262,7 @@ class Sender {
      */
     public static function check_and_update_order_status( $order_uuid, $state_name ) {
 
+        //XXX сделать Выполнен чтобы работало на основе опции
 
         $args   = array(
             'numberposts' => 1,
@@ -1002,13 +1003,17 @@ class Sender {
 
 
     /**
-     *
+     * get_status_order_webhook
      */
     public static function get_status_order_webhook() {
-        // echo "<hr>";
+        
         $check    = self::check_webhooks_and_try_fix();
         $url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
         $data     = wooms_request( $url );
+
+        if ( empty( $data['rows'] ) ) {
+            return false;
+        }
 
         $webhooks = array();
         foreach ( $data['rows'] as $row ) {
@@ -1047,7 +1052,7 @@ class Sender {
     public static function check_webhooks_and_try_fix() {
         $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
         $data = wooms_request( $url );
-        if ( empty( $data ) ) {
+        if ( empty( $data['rows'] ) ) {
             return false;
         }
 
