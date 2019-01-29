@@ -149,7 +149,7 @@ class Stocks {
       $stock = (int) $data['rows'][0][$stock_type];
     }
     if ( get_option( 'wooms_stock_empty_backorder' ) ) {
-      $product->set_backorders( 'yes' );
+      $product->set_backorders( 'notify' );
     } else {
       $product->set_backorders( 'no' );
     }
@@ -277,7 +277,7 @@ class Stocks {
     register_setting( 'mss-settings', 'wooms_warehouse_count' );
     add_settings_field(
       $id = 'wooms_warehouse_count',
-      $title = 'Управление количеством остатков',
+      $title = 'Управление запасами на уровне товаров',
       $callback = array( __CLASS__, 'display_wooms_warehouse_count' ),
       $page = 'mss-settings',
       $section = 'woomss_section_warehouses'
