@@ -31,6 +31,10 @@ class Sender {
       add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
       add_action('init', [__CLASS__, 'add_cron_hook']);
 
+      add_shortcode('test', function(){
+         $statuses_match = get_option('wooms_order_statuses_match');
+         var_dump($statuses_match);
+      });
     }
 
  /**
@@ -264,6 +268,18 @@ class Sender {
 
         //XXX сделать Выполнен чтобы работало на основе опции
 
+        $statuses_match_default = array(
+            'wc-pending' => 'Новый',
+            'wc-processing' => 'Подтвержден',
+            'wc-on-hold' => 'Новый',
+            'wc-completed' => 'Отгружен',
+            'wc-cancelled' => 'Отменен',
+            'wc-refunded' => 'Возврат',
+            'wc-failed' => 'Не удался',
+        );
+
+        $statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
+
         $args   = array(
             'numberposts' => 1,
             'post_type'   => 'shop_order',
@@ -278,32 +294,26 @@ class Sender {
         $order_id = $orders[0]->ID;
         $order    = wc_get_order( $order_id );
         switch ( $state_name ) {
-            case "Новый":
+            case $statuses_match['wc-pending']:
                 $check = $order->update_status( 'pending', 'Выбран статус "Новый" через МойСклад' );
                 break;
-            case "Подтвержден":
+            case $statuses_match['wc-processing']:
                 $check = $order->update_status( 'processing', 'Выбран статус "Подтвержден" через МойСклад' );
                 break;
-            case "Собран":
-                $check = $order->update_status( 'processing', 'Выбран статус "Собран" через МойСклад' );
-                break;
-            case "На удержании":
+            case $statuses_match['wc-on-hold']:
                 $check = $order->update_status( 'on-hold', 'Выбран статус "На удержании" через МойСклад' );
                 break;
-            case "Отменен":
+            case $statuses_match['wc-cancelled']:
                 $check = $order->update_status( 'cancelled', 'Отменен через МойСклад' );
                 break;
-            case "Не удался":
+            case $statuses_match['wc-failed']:
                 $check = $order->update_status( 'failed', 'Выбран статус "Не удался" через МойСклад' );
                 break;
-            case "Возврат":
+            case $statuses_match['wc-refunded']:
                 $check = $order->update_status( 'refunded', 'Статус "Возврат" через МойСклад' );
                 break;
-            case "Отгружен":
+            case $statuses_match['wc-completed']:
                 $check = $order->update_status( 'completed', 'Выбран статус "Отгружен" через МойСклад' );
-                break;
-            case "Доставлен":
-                $check = $order->update_status( 'completed', 'Выбран статус "Доставлен" через МойСклад' );
                 break;
             default:
                 $check = false;
@@ -1006,7 +1016,7 @@ class Sender {
      * get_status_order_webhook
      */
     public static function get_status_order_webhook() {
-        
+
         $check    = self::check_webhooks_and_try_fix();
         $url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
         $data     = wooms_request( $url );
