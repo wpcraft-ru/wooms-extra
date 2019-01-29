@@ -31,10 +31,6 @@ class Sender {
       add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
       add_action('init', [__CLASS__, 'add_cron_hook']);
 
-      add_shortcode('test', function(){
-         $statuses_match = get_option('wooms_order_statuses_match');
-         var_dump($statuses_match);
-      });
     }
 
  /**
@@ -265,8 +261,6 @@ class Sender {
      * @return bool
      */
     public static function check_and_update_order_status( $order_uuid, $state_name ) {
-
-        //XXX сделать Выполнен чтобы работало на основе опции
 
         $statuses_match_default = array(
             'wc-pending' => 'Новый',
