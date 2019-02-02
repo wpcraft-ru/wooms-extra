@@ -3,7 +3,7 @@
 namespace WooMS\Products;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly
+  exit; // Exit if accessed directly
 }
 
 /**
@@ -25,6 +25,79 @@ class Attributes
     add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
 
     add_action( 'admin_init', array(__CLASS__, 'settings_init'), 150 );
+
+  }
+
+  /**
+  * Сохраняем прочие атрибуты, не попавшивае под базовые условия
+  */
+  public static function save_other_attributes($product_attributes, $product_id, $value)
+  {
+      if( ! empty($value['attributes']) ){
+          foreach ($value['attributes'] as $attribute) {
+              if(empty($attribute['name'])){
+                  continue;
+              }
+
+              if(in_array($attribute['name'], array('Ширина', 'Высота', 'Длина', 'Страна') )){
+                  continue;
+              }
+
+              //Если это не число и не строка - пропуск, тк другие типы надо обрабатывать иначе
+              if( ! in_array($attribute['type'], array('string', 'number', 'customentity')) ){
+                  continue;
+              }
+
+              if( ! empty($attribute['value']['name'])){
+                $value = $attribute['value']['name'];
+              } else {
+                $value = $attribute['value'];
+              }
+
+              $attribute_name = $attribute['name'];
+
+              $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
+              if($attribute_taxonomy_id){
+                $taxonomy_slug = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+              }
+
+              $attribute_slug = sanitize_title( $attribute_name );
+
+              if(empty($attribute_taxonomy_id)){
+
+                $attribute_object = new \WC_Product_Attribute();
+                $attribute_object->set_name( $attribute_name );
+                $attribute_object->set_options( array($value) );
+                $attribute_object->set_position( 0 );
+                $attribute_object->set_visible( 1 );
+                // $attribute_object->set_variation( 0 );
+                $product_attributes[$attribute_slug] = $attribute_object;
+
+              } else {
+
+                //Очищаем индивидуальный атрибут с таким именем если есть
+                if(isset($product_attributes[$attribute_slug])){
+                    unset($product_attributes[$attribute_slug]);
+                }
+
+                $attribute_object = new \WC_Product_Attribute();
+                $attribute_object->set_id( $attribute_taxonomy_id );
+                $attribute_object->set_name( $taxonomy_slug );
+                $attribute_object->set_options( array($value) );
+                $attribute_object->set_position( 0 );
+                $attribute_object->set_visible( 1 );
+                $product_attributes[$taxonomy_slug] = $attribute_object;
+              }
+
+              do_action('wooms_logger',
+                '$product_attributes',
+                sprintf('$attribute_name %s', $attribute_name),
+                sprintf('Данные %s', PHP_EOL . print_r($product_attributes, true))
+              );
+
+          }
+      }
+      return $product_attributes;
   }
 
   /**
@@ -136,37 +209,6 @@ class Attributes
    }
 
 
-  /**
-  * Сохраняем прочие атрибуты, не попавшивае под базовые условия
-  */
-  public static function save_other_attributes($product_attributes, $product_id, $value)
-  {
-      if( ! empty($value['attributes']) ){
-          foreach ($value['attributes'] as $attribute) {
-              if(empty($attribute['name'])){
-                  continue;
-              }
-
-              if(in_array($attribute['name'], array('Ширина', 'Высота', 'Длина', 'Страна') )){
-                  continue;
-              }
-
-              //Если это не число и не строка - пропуск, тк другие типы надо обрабатывать иначе
-              if( ! in_array($attribute['type'], array('string', 'number')) ){
-                  continue;
-              }
-
-              $attribute_object = new \WC_Product_Attribute();
-              $attribute_object->set_name( $attribute['name'] );
-              $attribute_object->set_options( array($attribute['value']) );
-              $attribute_object->set_position( 0 );
-              $attribute_object->set_visible( 1 );
-              $attribute_object->set_variation( 0 );
-              $product_attributes[] = $attribute_object;
-          }
-      }
-      return $product_attributes;
-  }
 
   /**
   * Country - update
@@ -207,7 +249,7 @@ class Attributes
     add_settings_field(
       $id = 'wooms_attr_enabled',
       $title = 'Включить синхронизацию доп. полей как атрибутов',
-      $callback = [__CLASS__, 'wooms_attr_enabled_display'],
+      $callback = [__CLASS__, 'display_wooms_attr_enabled'],
       $page = 'mss-settings',
       $section = 'woomss_section_other'
     );
@@ -216,7 +258,7 @@ class Attributes
   /**
    * Field display
    */
-  public static function wooms_attr_enabled_display()
+  public static function display_wooms_attr_enabled()
   {
     $option = 'wooms_attr_enabled';
     printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
