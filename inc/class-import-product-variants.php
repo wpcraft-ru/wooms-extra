@@ -262,7 +262,7 @@ class Variations {
 
     $variation = wc_get_product( $variation_id );
     $variation->set_name( $variant_data['name'] );
-    
+
     $variation->set_stock_status( 'instock' );
 
     if ( ! empty( $variant_data["salePrices"][0]['value'] ) ) {
@@ -691,12 +691,15 @@ class Variations {
     $time_string = date( 'Y-m-d H:i:s', $time_stamp );
 
     $variation_count = get_transient( 'wooms_count_variant_stat' );
+    if(empty($variation_count)){
+      $variation_count = 'пока выполняется';
+    }
 
     $state = '<strong>Выполняется</strong>';
 
     $finish_timestamp = get_transient( 'wooms_variant_end_timestamp' );
     if(empty($finish_timestamp)){
-      $finish_timestamp = 'пока в работе';
+      $finish_timestamp = '';
     } else{
       $state = 'Выполнено';
     }
@@ -709,7 +712,9 @@ class Variations {
     <div class="wrap">
       <div id="message" class="notice notice-warning">
         <p>Статус: <?= $state ?></p>
-        <p>Последняя успешная синхронизация (отметка времени): <?= $finish_timestamp ?></p>
+        <?php if($finish_timestamp): ?>
+          <p>Последняя успешная синхронизация (отметка времени): <?= $finish_timestamp ?></p>
+        <?php endif; ?>
         <p>Количество обработанных записей: <?= $variation_count ?></p>
         <?php if( ! empty($time_stamp) ): ?>
           <p>Отметка времени о последней итерации: <?= $time_string ?></p>
