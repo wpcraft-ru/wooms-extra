@@ -70,7 +70,6 @@ class Attributes
                 $attribute_object->set_options( array($value) );
                 $attribute_object->set_position( 0 );
                 $attribute_object->set_visible( 1 );
-                // $attribute_object->set_variation( 0 );
                 $product_attributes[$attribute_slug] = $attribute_object;
 
               } else {
@@ -88,12 +87,6 @@ class Attributes
                 $attribute_object->set_visible( 1 );
                 $product_attributes[$taxonomy_slug] = $attribute_object;
               }
-
-              do_action('wooms_logger',
-                '$product_attributes',
-                sprintf('$attribute_name %s', $attribute_name),
-                sprintf('Данные %s', PHP_EOL . print_r($product_attributes, true))
-              );
 
           }
       }
