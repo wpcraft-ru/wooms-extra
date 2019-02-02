@@ -388,9 +388,10 @@ class Sender {
      * @return bool
      */
     public static function send_order( $order_id ) {
-        $data = self::get_data_order_for_moysklad( $order_id );
 
         $order = wc_get_order($order_id);
+
+        $data = self::get_data_order_for_moysklad( $order_id );
 
         if ( empty( $data ) ) {
           $order->update_meta_data( 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
@@ -400,8 +401,6 @@ class Sender {
             sprintf('Заказ - ошибка отправки %s', $order_id),
             sprintf('Данные %s', PHP_EOL . print_r($data, true))
           );
-
-          // update_post_meta( $order_id, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 
           return false;
         }
@@ -458,6 +457,8 @@ class Sender {
 
       if($state = self::get_date_order_new_state()){
         $data["state"] = $state;
+      } else {
+        return false;
       }
 
       return $data;
