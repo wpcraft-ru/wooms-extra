@@ -22,7 +22,7 @@ class Variations {
 
     // Cron
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
-    add_filter( 'cron_schedules', array( __CLASS__, 'add_schedule' ) );
+    // add_filter( 'cron_schedules', array( __CLASS__, 'add_schedule' ) );
     add_action( 'wooms_cron_variation_sync', array( __CLASS__, 'walker_starter' ) );
 
     //Other
@@ -462,6 +462,12 @@ class Variations {
 
     set_transient( 'wooms_variant_end_timestamp', date( "Y-m-d H:i:s" ), $timer );
 
+    do_action('wooms_logger',
+      'variations_walker_finish',
+      'Обработчик вариаций финишировал',
+      sprintf('Данные: %s', PHP_EOL . print_r($timer, true))
+    );
+
     return true;
   }
 
@@ -479,6 +485,7 @@ class Variations {
 
   /**
    * Add cron pramametrs
+   * XXX удалить
    */
   public static function add_schedule( $schedules ) {
 
@@ -499,7 +506,7 @@ class Variations {
     }
 
     if ( ! wp_next_scheduled( 'wooms_cron_variation_sync' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_worker_variations', 'wooms_cron_variation_sync' );
+      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variation_sync' );
     }
 
   }
@@ -708,6 +715,8 @@ class Variations {
       $state = 'Работа заблокирована до окончания обмена по основным товарам';
     }
 
+    $cron_on = get_option('woomss_walker_cron_enabled');
+
     ?>
     <div class="wrap">
       <div id="message" class="notice notice-warning">
@@ -716,6 +725,9 @@ class Variations {
           <p>Последняя успешная синхронизация (отметка времени): <?= $finish_timestamp ?></p>
         <?php endif; ?>
         <p>Количество обработанных записей: <?= $variation_count ?></p>
+        <?php if( ! $cron_on): ?>
+          <p>Обмен по расписанию отключен</p>
+        <?php endif; ?>
         <?php if( ! empty($time_stamp) ): ?>
           <p>Отметка времени о последней итерации: <?= $time_string ?></p>
           <p>Секунд прошло: <?= $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно через
