@@ -22,7 +22,7 @@ class Variations {
 
     // Cron
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
-    // add_filter( 'cron_schedules', array( __CLASS__, 'add_schedule' ) );
+
     add_action( 'wooms_cron_variation_sync', array( __CLASS__, 'walker_starter' ) );
 
     //Other
@@ -137,8 +137,8 @@ class Variations {
     }
 
     foreach ( $ms_attributes as $key => $value ) {
-      $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($value['name']);
-
+      // $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($value['name']);
+      $attribute_taxonomy_id = self::get_attribute_id_by_label($value['name']);
 
       $attribute_slug = sanitize_title( $value['name'] );
 
@@ -484,17 +484,30 @@ class Variations {
   }
 
   /**
-   * Add cron pramametrs
-   * XXX удалить
+   * Get attribute id by label
+   * or false
    */
-  public static function add_schedule( $schedules ) {
+  public static function get_attribute_id_by_label($label = ''){
+    if(empty($label)){
+      return false;
+    }
 
-    $schedules['wooms_cron_worker_variations'] = array(
-      'interval' => apply_filters('wooms_cron_interval', 60),
-      'display'  => 'WooMS Cron Load Variations 60 sec',
-    );
+    $attr_taxonomies = wc_get_attribute_taxonomies();
+    if(empty($attr_taxonomies)){
+      return false;
+    }
 
-    return $schedules;
+    if( ! is_array($attr_taxonomies) ){
+      return false;
+    }
+
+    foreach ($attr_taxonomies as $attr) {
+      if($attr->attribute_label == $label){
+        return $attr->attribute_id;
+      }
+    }
+
+    return false;
   }
 
   /**

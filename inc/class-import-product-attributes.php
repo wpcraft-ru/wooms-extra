@@ -26,6 +26,41 @@ class Attributes
 
     add_action( 'admin_init', array(__CLASS__, 'settings_init'), 150 );
 
+    add_shortcode('test', function(){
+      $r = wc_get_attribute_taxonomies();
+
+      $r = self::get_attribute_id_by_label('Бренд');
+      var_dump($r);
+      // echo 1;
+    });
+
+  }
+
+  /**
+   * Get attribute id by label
+   * or false
+   */
+  public static function get_attribute_id_by_label($label = ''){
+    if(empty($label)){
+      return false;
+    }
+
+    $attr_taxonomies = wc_get_attribute_taxonomies();
+    if(empty($attr_taxonomies)){
+      return false;
+    }
+
+    if( ! is_array($attr_taxonomies) ){
+      return false;
+    }
+
+    foreach ($attr_taxonomies as $attr) {
+      if($attr->attribute_label == $label){
+        return $attr->attribute_id;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -56,7 +91,9 @@ class Attributes
 
               $attribute_name = $attribute['name'];
 
-              $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
+              //XXX сделать так чтобы по имени атрибута лучше матчилось
+              // $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
+              $attribute_taxonomy_id = self::get_attribute_id_by_label($attribute_name);
               if($attribute_taxonomy_id){
                 $taxonomy_slug = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
               }
