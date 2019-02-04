@@ -26,14 +26,6 @@ class Attributes
 
     add_action( 'admin_init', array(__CLASS__, 'settings_init'), 150 );
 
-    add_shortcode('test', function(){
-      $r = wc_get_attribute_taxonomies();
-
-      $r = self::get_attribute_id_by_label('Бренд');
-      var_dump($r);
-      // echo 1;
-    });
-
   }
 
   /**
