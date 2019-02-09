@@ -63,7 +63,6 @@ class Stocks {
     return $type_stock;
   }
 
-
   /**
    * Update stock for variation
    */
@@ -85,36 +84,35 @@ class Stocks {
      * stock = это все остатки по организации
      */
     $stock_type = apply_filters('wooms_stock_type', 'quantity');
-    //
-    // $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
-    // if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-    //   $url = add_query_arg( array( 'store.id' => $warehouse_id ), $url );
-    // }
-    //
-    // $url = add_query_arg( 'product.id', $variant_data['id'], $url );
-    //
-    // $data = wooms_request( $url );
-    //
-    //
-    // do_action('wooms_logger',
-    //   'request_stock_for_variation',
-    //   sprintf('Остатки для вариации %s (%s) - отправлен запрос %s', $variation_id, $product_id, $url),
-    //   sprintf('Данные %s', PHP_EOL . print_r($data, true))
-    // );
 
     if ( empty( $variant_data[$stock_type] ) ) {
       $stock = 0;
     } else {
       $stock = (int) $variant_data[$stock_type];
     }
-    //
-    // if ( empty( $data['rows'][0][$stock_type] ) ) {
-    //
-    //   $stock = 0;
-    // } else {
-    //   $stock = (int) $data['rows'][0][$stock_type];
-    // }
 
+    if ( empty( $stock ) ) {
+      $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
+      if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
+        $url = add_query_arg( array( 'store.id' => $warehouse_id ), $url );
+      }
+
+      $url = add_query_arg( 'product.id', $variant_data['id'], $url );
+
+      $data = wooms_request( $url );
+
+      do_action('wooms_logger',
+        'request_stock_for_product',
+        sprintf('Запрос %s, на остатки для %s', $url, $variation_id),
+        sprintf('Данные %s', PHP_EOL . print_r($data, true))
+      );
+
+      if(empty($data['rows'][0][$stock_type])){
+        $stock = 0;
+      } else {
+        $stock = (int) $data['rows'][0][$stock_type];
+      }
+    }
 
     if ( empty( get_option( 'wooms_warehouse_count' ) ) ) {
       $variation->set_manage_stock( 'no' );
@@ -135,6 +133,12 @@ class Stocks {
       $variation->set_stock_quantity( $stock );
       $variation->set_stock_status( 'instock' );
     }
+
+    do_action('wooms_logger',
+      'request_stock_for_variation',
+      sprintf('Остатки для вариации %s (%s)', $variation_id, $product_id),
+      sprintf('Данные %s', PHP_EOL . print_r(array($variation, $variant_data), true))
+    );
 
     return $variation;
   }
@@ -160,27 +164,34 @@ class Stocks {
      */
     $stock_type = apply_filters('wooms_stock_type', 'quantity');
 
-    // $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
-    // if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-    //   $url = add_query_arg( array( 'store.id' => $warehouse_id, 'product.id' => $item['id'] ), $url );
-    // }
-    //
-    // $url = add_query_arg( 'product.id', $item['id'], $url );
-    //
-    // $data = wooms_request( $url );
-
-
-
-    // do_action('wooms_logger',
-    //   'request_stock_for_product',
-    //   sprintf('Остатки для %s - отправлен запрос %s', $product_id, $url),
-    //   sprintf('Данные %s', PHP_EOL . print_r($data, true))
-    // );
-
     if ( empty( $item[$stock_type] ) ) {
       $stock = 0;
     } else {
       $stock = (int) $item[$stock_type];
+    }
+
+    if(empty($stock)){
+      $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
+      if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
+        $url = add_query_arg( array( 'store.id' => $warehouse_id, 'product.id' => $item['id'] ), $url );
+      }
+
+      $url = add_query_arg( 'product.id', $item['id'], $url );
+
+      $data = wooms_request( $url );
+
+      do_action('wooms_logger',
+        'request_stock_for_product',
+        sprintf('Запрос %s, на остатки для %s', $url, $product_id),
+        sprintf('Данные %s', PHP_EOL . print_r($data, true))
+      );
+
+      if(empty($data['rows'][0][$stock_type])){
+        $stock = 0;
+      } else {
+        $stock = (int) $data['rows'][0][$stock_type];
+      }
+
     }
 
     if ( get_option( 'wooms_stock_empty_backorder' ) ) {
@@ -210,6 +221,12 @@ class Stocks {
       $product->set_stock_quantity( $stock );
       $product->set_stock_status( 'instock' );
     }
+
+    do_action('wooms_logger',
+      'request_stock_for_product',
+      sprintf('Остатки для %s', $product_id),
+      sprintf('Данные %s', PHP_EOL . print_r($product, true))
+    );
 
     return $product;
   }
