@@ -224,7 +224,6 @@ class Sender {
                 continue;
             }
 
-
             $data = array(
                 "state" => array(
                     'meta' => $meta_status
@@ -239,8 +238,6 @@ class Sender {
             $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
             $result = wooms_request( $url, $data, 'PUT' );
 
-
-
             if(empty($result["id"])){
                 $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад - %s', print_r($result, true)) );
             } else {
@@ -248,7 +245,6 @@ class Sender {
             }
 
             delete_post_meta($order_id, 'wooms_changed_status');
-
         }
     }
 
