@@ -17,21 +17,108 @@ class Variations {
   public static function init() {
 
     add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 20, 3 );
-    add_filter( 'wooms_save_variation', array(__CLASS__, 'set_variation_attributes'), 10, 3);
-    add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
 
     // Cron
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
-
     add_action( 'wooms_cron_variation_sync', array( __CLASS__, 'walker_starter' ) );
+
+    add_filter( 'wooms_save_variation', array(__CLASS__, 'set_variation_attributes'), 10, 3);
+    add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
+
 
     //Other
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 150 );
     add_action( 'woomss_tool_actions_btns', array( __CLASS__, 'ui_for_manual_start' ), 15 );
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_start', array( __CLASS__, 'start_manually' ) );
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_stop', array( __CLASS__, 'stop_manually' ) );
-    add_action('wooms_variants_display_state', array(__CLASS__, 'display_state'));
+    add_action( 'wooms_variants_display_state', array(__CLASS__, 'display_state'));
 
+  }
+
+  /**
+   * Set attributes for variables
+   */
+  public static function set_product_attributes_for_variation( $product_id, $data ) {
+
+    $product = wc_get_product($product_id);
+
+    $ms_attributes = [];
+    foreach ( $data['characteristics'] as $key => $characteristic ) {
+
+      $attribute_slug = sanitize_title( $characteristic["name"] );
+
+      $ms_attributes[ $attribute_slug ] = [
+        'name'   => $characteristic["name"],
+        'values' => [],
+      ];
+    }
+
+    foreach ( $data['characteristics'] as $key => $characteristic ) {
+
+      $attribute_taxonomy_id = self::get_attribute_id_by_label($characteristic['name']);
+
+      $attribute_slug = sanitize_title( $characteristic["name"] );
+      $values = $product->get_attribute($attribute_slug);
+      if($attribute_taxonomy_id){
+        $values = explode(',', $values);
+      } else {
+        $values = explode(' | ', $values);
+      }
+      $values[] = $characteristic['value'];
+
+      $ms_attributes[ $attribute_slug ]['values'] = $values;
+    }
+
+    foreach ( $ms_attributes as $key => $value ) {
+      $ms_attributes[ $key ]['values'] = array_unique( $value['values'] );
+    }
+
+    $attributes = $product->get_attributes('edit');
+
+    if(empty($attributes)){
+      $attributes = array();
+    }
+
+    foreach ( $ms_attributes as $key => $value ) {
+      $attribute_taxonomy_id = self::get_attribute_id_by_label($value['name']);
+      $attribute_slug = sanitize_title( $value['name'] );
+
+      if(empty($attribute_taxonomy_id)){
+        $attribute_object = new \WC_Product_Attribute();
+        $attribute_object->set_name( $value['name'] );
+        $attribute_object->set_options( $value['values'] );
+        $attribute_object->set_position( 0 );
+        $attribute_object->set_visible( 0 );
+        $attribute_object->set_variation( 1 );
+        $attributes[$attribute_slug] = $attribute_object;
+
+      } else {
+
+        //Очищаем индивидуальный атрибут с таким именем если есть
+        if(isset($attributes[$attribute_slug])){
+            unset($attributes[$attribute_slug]);
+        }
+        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+        $attribute_object = new \WC_Product_Attribute();
+        $attribute_object->set_id( $attribute_taxonomy_id );
+        $attribute_object->set_name( $taxonomy_name );
+        $attribute_object->set_options( $value['values'] );
+        $attribute_object->set_position( 0 );
+        $attribute_object->set_visible( 0 );
+        $attribute_object->set_variation( 1 );
+        $attributes[$taxonomy_name] = $attribute_object;
+      }
+    }
+
+    $product->set_attributes( $attributes );
+
+    $product->save();
+
+    do_action('wooms_logger',
+      'product_save_add_attributes_for_variations',
+      sprintf('Добавлены атрибуты для продукта %s', $product_id),
+      sprintf('Данные %s', PHP_EOL . print_r($attributes, true))
+    );
   }
 
   /**
@@ -72,117 +159,6 @@ class Variations {
   }
 
   /**
-   * Update product from source data
-   */
-  public static function update_product( $product, $item, $data )
-  {
-    if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
-      return $product;
-    }
-
-    if( empty( $item['modificationsCount']) ){
-      return $product;
-    }
-
-    $product_id = $product->get_id();
-
-    if ( ! $product->is_type( 'variable' )) {
-      $product = new \WC_Product_Variable($product);
-
-      do_action('wooms_logger',
-        'product_variable_set',
-        sprintf('Продукт изменен как вариативный %s', $product_id),
-        sprintf('Данные %s', PHP_EOL . print_r($product, true))
-      );
-    }
-
-    return $product;
-  }
-
-  /**
-   * Set attributes for variables
-   */
-  public static function set_product_attributes_for_variation( $product_id, $data ) {
-
-    $product = wc_get_product($product_id);
-
-    $ms_attributes = [];
-    foreach ( $data['characteristics'] as $key => $characteristic ) {
-
-      $attribute_slug = sanitize_title( $characteristic["name"] );
-
-      $ms_attributes[ $attribute_slug ] = [
-        'name'   => $characteristic["name"],
-        'values' => [],
-      ];
-    }
-
-    foreach ( $data['characteristics'] as $key => $characteristic ) {
-      $attribute_slug = sanitize_title( $characteristic["name"] );
-      $values = $product->get_attribute($attribute_slug);
-      $values = explode(' | ', $values);
-      $values[] = $characteristic['value'];
-
-      $ms_attributes[ $attribute_slug ]['values'] = $values;
-    }
-
-    foreach ( $ms_attributes as $key => $value ) {
-      $ms_attributes[ $key ]['values'] = array_unique( $value['values'] );
-    }
-
-    $attributes = $product->get_attributes('edit');
-
-    if(empty($attributes)){
-      $attributes = array();
-    }
-
-    foreach ( $ms_attributes as $key => $value ) {
-      // $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($value['name']);
-      $attribute_taxonomy_id = self::get_attribute_id_by_label($value['name']);
-
-      $attribute_slug = sanitize_title( $value['name'] );
-
-      if(empty($attribute_taxonomy_id)){
-        $attribute_object = new \WC_Product_Attribute();
-        $attribute_object->set_name( $value['name'] );
-        $attribute_object->set_options( $value['values'] );
-        $attribute_object->set_position( 0 );
-        $attribute_object->set_visible( 0 );
-        $attribute_object->set_variation( 1 );
-        $attributes[$attribute_slug] = $attribute_object;
-
-      } else {
-
-        //Очищаем индивидуальный атрибут с таким именем если есть
-        if(isset($attributes[$attribute_slug])){
-            unset($attributes[$attribute_slug]);
-        }
-        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
-
-        $attribute_object = new \WC_Product_Attribute();
-        $attribute_object->set_id( $attribute_taxonomy_id );
-        $attribute_object->set_name( $taxonomy_name );
-        $attribute_object->set_options( $value['values'] );
-        $attribute_object->set_position( 0 );
-        $attribute_object->set_visible( 0 );
-        $attribute_object->set_variation( 1 );
-        $attributes[$taxonomy_name] = $attribute_object;
-
-      }
-    }
-
-    $product->set_attributes( $attributes );
-
-    $product->save();
-
-    do_action('wooms_logger',
-      'product_save_add_attributes_for_variations',
-      sprintf('Добавлены атрибуты для продукта %s', $product_id),
-      sprintf('Данные %s', PHP_EOL . print_r($attributes, true))
-    );
-  }
-
-  /**
    * Installation of variations for variable product
    *
    * @param $value
@@ -192,6 +168,7 @@ class Variations {
   public static function load_data_variant( $variant, $key, $data ) {
 
     if ( ! empty($variant['archived']) ) {
+      //XXX переписать так чтобы архивные вариации удалялись с сайта
       return;
     }
 
@@ -208,12 +185,6 @@ class Variations {
 
       return;
     }
-    //
-    // if ( empty( get_option( 'wooms_use_uuid' ) ) ) {
-    // 	if ( empty( $response['article'] ) ) {
-    // 		return;
-    // 	}
-    // }
 
     self::update_variant_for_product( $product_id, $variant );
 
@@ -700,6 +671,40 @@ class Variations {
     }
 
     return $taxonomy;
+  }
+
+  /**
+   * Update product from source data
+   */
+  public static function update_product( $product, $item, $data )
+  {
+    if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
+      if( $product->is_type( 'variable' ) ){
+        $product = new \WC_Product($product);
+      }
+      return $product;
+    }
+
+    if( empty( $item['modificationsCount']) ){
+      if( $product->is_type( 'variable' ) ){
+        $product = new \WC_Product($product);
+      }
+      return $product;
+    }
+
+    $product_id = $product->get_id();
+
+    if ( ! $product->is_type( 'variable' )) {
+      $product = new \WC_Product_Variable($product);
+
+      do_action('wooms_logger',
+        'product_variable_set',
+        sprintf('Продукт изменен как вариативный %s', $product_id),
+        sprintf('Данные %s', PHP_EOL . print_r($product, true))
+      );
+    }
+
+    return $product;
   }
 
   /**
