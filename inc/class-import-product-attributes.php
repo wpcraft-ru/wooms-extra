@@ -83,8 +83,6 @@ class Attributes
 
               $attribute_name = $attribute['name'];
 
-              //XXX сделать так чтобы по имени атрибута лучше матчилось
-              // $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
               $attribute_taxonomy_id = self::get_attribute_id_by_label($attribute_name);
               if($attribute_taxonomy_id){
                 $taxonomy_slug = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
