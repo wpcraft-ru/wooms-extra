@@ -332,8 +332,6 @@ class Sender {
      */
     public static function walker() {
 
-
-
       $args = array(
           'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
           'post_type'    => 'shop_order',
@@ -452,7 +450,8 @@ class Sender {
       $data["description"]  = self::get_date_order_description( $order_id );
 
       if($state = self::get_date_order_new_state()){
-        $data["state"] = $state;
+        // XXX поправить, сделать выбор опции в настройках для названия новых статусов
+        // $data["state"] = $state;
       } else {
         return false;
       }
