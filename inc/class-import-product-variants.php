@@ -32,8 +32,21 @@ class Variations {
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_start', array( __CLASS__, 'start_manually' ) );
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_stop', array( __CLASS__, 'stop_manually' ) );
     add_action( 'wooms_variants_display_state', array(__CLASS__, 'display_state'));
+    add_action( 'wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
 
   }
+
+  /**
+   * reset_after_main_walker_finish
+   */
+  public static function reset_after_main_walker_finish(){
+    delete_transient( 'wooms_variant_start_timestamp' );
+    delete_transient( 'wooms_error_background' );
+    delete_transient( 'wooms_variant_offset' );
+    delete_transient( 'wooms_variant_end_timestamp' );
+    delete_transient( 'wooms_variant_walker_stop' );
+  }
+
 
   /**
    * Set attributes for variables
