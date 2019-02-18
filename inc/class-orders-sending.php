@@ -409,7 +409,7 @@ class Sender {
             $errors .= $result['errors'][0]['error'];
 
             $logger = wc_get_logger();
-            $logger->error( $errors, array( 'source' => 'wooms-order-sending' ) );
+            $logger->error( $errors, array( 'source' => 'wooms' ) );
 
             return false;
         }
@@ -425,7 +425,6 @@ class Sender {
 
         return true;
     }
-
 
     /**
      * Prepare data before send
@@ -448,13 +447,6 @@ class Sender {
       $data["agent"]        = self::get_data_agent( $order_id );
       $data["moment"]       = self::get_date_created_moment( $order_id );
       $data["description"]  = self::get_date_order_description( $order_id );
-
-      if($state = self::get_date_order_new_state()){
-        // XXX поправить, сделать выбор опции в настройках для названия новых статусов
-        // $data["state"] = $state;
-      } else {
-        return false;
-      }
 
       return $data;
     }
