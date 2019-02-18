@@ -390,10 +390,13 @@ class Sender {
         if ( empty( $data ) ) {
           $order->update_meta_data( 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 
-          do_action('wooms_logger',
-            'order_error_send',
-            sprintf('Заказ - ошибка отправки %s', $order_id),
-            sprintf('Данные %s', PHP_EOL . print_r($data, true))
+          $logger = wc_get_logger();
+          $logger->error(
+            wc_print_r(array(
+              'Ошибка подготовки данных по заказу: '. $order_id,
+              $data
+            ), true),
+            array( 'source' => 'wooms-errors-orders' )
           );
 
           return false;
@@ -409,7 +412,7 @@ class Sender {
             $errors .= $result['errors'][0]['error'];
 
             $logger = wc_get_logger();
-            $logger->error( $errors, array( 'source' => 'wooms' ) );
+            $logger->error( $errors, array( 'source' => 'wooms-errors-orders' ) );
 
             return false;
         }

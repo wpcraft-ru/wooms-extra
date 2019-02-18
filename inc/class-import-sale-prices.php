@@ -23,7 +23,6 @@ class Sale_Prices {
 
   }
 
-
   /**
    * Update product
    */
@@ -50,7 +49,7 @@ class Sale_Prices {
           do_action('wooms_logger',
             'product_save_sale_price',
             sprintf('Цена распродажи сохранена для продукта %s', $product_id),
-            sprintf('Данные %s', print_r(array($sale_price, $value, $product), true))
+            sprintf('Данные %s', $sale_price)
           );
 
         } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
@@ -76,8 +75,8 @@ class Sale_Prices {
       return $variation;
     }
 
-    if ( ! empty($value['salePrices']) ) {
-      foreach ( $value['salePrices'] as $price ) {
+    if ( ! empty($variant_data['salePrices']) ) {
+      foreach ( $variant_data['salePrices'] as $price ) {
 
         if($price['priceType'] == $price_name && floatval($price['value']) > 0){
           $sale_price = apply_filters('wooms_sale_price_variation', floatval($price['value']/100), $variation, $product_id);
@@ -86,7 +85,7 @@ class Sale_Prices {
           do_action('wooms_logger',
             'product_variation_save_sale_price',
             sprintf('Цена распродажи сохранена для вариации %s и продукта %s', $variation_id, $product_id),
-            sprintf('Данные %s', print_r(array($sale_price, $value, $variation), true))
+            sprintf('Данные %s', $sale_price)
           );
 
         } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
@@ -97,7 +96,6 @@ class Sale_Prices {
 
     return $variation;
   }
-
 
   /**
    * Get sale price
