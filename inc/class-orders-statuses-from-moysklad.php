@@ -14,9 +14,7 @@ class Statuses_From_MoySklad {
     add_action( 'rest_api_init', array( __CLASS__, 'rest_api_init_callback_endpoint' ) );
 
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 100);
-
   }
-
 
   /**
    * Setting
@@ -57,6 +55,8 @@ class Statuses_From_MoySklad {
         'Передатчик статусов из Мой Склад может работать только с 1 сайтом и только на платных тарифах сервиса Мой склад. Если вы используете платные тарифы, включите данную опцию.'
       );
 
+      self::get_status_order_webhook();
+      /*
       if ( get_option( 'wooms_enable_webhooks' ) ) {
           ?>
           <div>
@@ -70,7 +70,7 @@ class Statuses_From_MoySklad {
 
           <div><?php self::get_status_order_webhook() ?></div>
           <?php
-      }
+      }*/
   }
 
   /**
@@ -123,24 +123,26 @@ class Statuses_From_MoySklad {
   public static function check_webhooks_and_try_fix() {
       $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook';
       $data = wooms_request( $url );
-      if ( empty( $data['rows'] ) ) {
-          return false;
-      }
 
       $webhooks = array();
-      foreach ( $data['rows'] as $row ) {
-          if ( $row['entityType'] != 'customerorder' ) {
-              continue;
-          }
 
-          $webhooks[ $row['id'] ] = array(
-              'entityType' => $row['entityType'],
-              'url'        => $row['url'],
-              'method'     => $row['method'],
-              'enabled'    => $row['enabled'],
-              'action'     => $row['action'],
-          );
+      if ( ! empty( $data['rows'] ) ) {
+
+        foreach ( $data['rows'] as $row ) {
+            if ( $row['entityType'] != 'customerorder' ) {
+                continue;
+            }
+
+            $webhooks[ $row['id'] ] = array(
+                'entityType' => $row['entityType'],
+                'url'        => $row['url'],
+                'method'     => $row['method'],
+                'enabled'    => $row['enabled'],
+                'action'     => $row['action'],
+            );
+        }
       }
+
 
       //Проверка на включение опции и наличия хуков
       if ( empty( get_option( 'wooms_enable_webhooks' ) ) ) {
@@ -157,7 +159,6 @@ class Statuses_From_MoySklad {
               return false;
           }
       } else {
-
 
           //Если нужного вебхука нет - создаем новый
           if ( empty( $webhooks ) ) {
