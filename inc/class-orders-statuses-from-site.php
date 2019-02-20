@@ -20,7 +20,22 @@ class Statuses_From_Site {
     add_action( 'woocommerce_order_status_changed', array(__CLASS__, 'add_task_for_update_order_status_in_moysklad'), 10, 4);
     add_action( 'wooms_cron_status_order_sender', array( __CLASS__, 'send_status' ) );
 
+    add_action( 'woocommerce_new_order', array(__CLASS__, 'set_status_for_new_order') );
+
     add_action( 'init', array(__CLASS__, 'cron_init') );
+  }
+
+  /**
+   * set_status_for_new_order
+   */
+  public static function set_status_for_new_order($order_id){
+    $order = wc_get_order($order_id);
+
+    $status = $order->get_status();
+
+    $order->update_meta_data( $key = 'wooms_changed_status', $value = $status );
+
+    $order->save();
   }
 
   /**
