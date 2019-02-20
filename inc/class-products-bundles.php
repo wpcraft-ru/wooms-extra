@@ -144,7 +144,7 @@ class Bundle
   */
   public static function cron_init()
   {
-    if(empty('wooms_products_bundle_enable')){
+    if(empty(get_option('wooms_products_bundle_enable'))){
       return;
     }
 

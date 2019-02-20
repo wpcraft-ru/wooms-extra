@@ -15,7 +15,7 @@
  * WC tested up to: 3.5.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 4.7
+ * Version: 4.8
  */
 
 
@@ -58,6 +58,8 @@ class WooMS_XT {
       require_once 'inc/class-import-product-variants.php';
       require_once 'inc/class-products-bundles.php';
       require_once 'inc/class-orders-sending.php';
+      require_once 'inc/class-orders-statuses-from-site.php';
+      require_once 'inc/class-orders-statuses-from-moysklad.php';
       require_once 'inc/class-import-sale-prices.php';
       require_once 'inc/class-import-product-choice-categories.php';
       require_once 'inc/class-hide-old-variables.php';
