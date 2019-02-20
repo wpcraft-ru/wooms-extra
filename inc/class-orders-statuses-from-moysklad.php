@@ -111,7 +111,7 @@ class Statuses_From_MoySklad {
               echo "Хук на стороне МойСклад добавлен в соответствии с настройки";
           }
       }
-      echo '<p><small>Ссылка для получения данных от МойСклад: ' . rest_url( '/wooms/v1/order-update/' ) . '</small></p>';
+      echo '<p><small>Ссылка для приема данных из системы МойСклад: ' . rest_url( '/wooms/v1/order-update/' ) . '</small></p>';
 
   }
 

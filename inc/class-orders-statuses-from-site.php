@@ -65,7 +65,7 @@ class Statuses_From_Site {
           'meta_query' => array(
                   array(
                    'key' => 'wooms_changed_status',
-                   'compare' => 'EXISTS' // doesn't work
+                   'compare' => 'EXISTS'
                   ),
           ),
       );
@@ -148,6 +148,33 @@ class Statuses_From_Site {
 
           delete_post_meta($order_id, 'wooms_changed_status');
       }
+  }
+
+  /**
+   * Получаем мету статуса для заказов
+   * Нужна для обновления статуса Заказа из Сайта на Склад
+   */
+  public static function get_meta_status_for_orders($changed_status = ''){
+      if(empty($changed_status)){
+          return false;
+      }
+
+      $statuses = get_transient('wooms_order_statuses');
+      if(empty($statuses)){
+          $url_statuses = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/metadata';
+          $statuses = wooms_request($url_statuses);
+          $statuses = $statuses["states"];
+          set_transient('wooms_order_statuses', $statuses, 600);
+      }
+
+      foreach ($statuses as $statuse) {
+          if($statuse['name'] == $changed_status){
+              $meta_status = $statuse["meta"];
+              return $meta_status;
+          }
+      }
+
+      return false;
   }
 
   /**
