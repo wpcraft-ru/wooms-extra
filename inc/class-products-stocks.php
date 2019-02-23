@@ -101,10 +101,8 @@ class Stocks {
 
       $data = wooms_request( $url );
 
-      do_action('wooms_logger',
-        'request_stock_for_product',
-        sprintf('Запрос %s, на остатки для %s', $url, $variation_id),
-        sprintf('Данные %s', PHP_EOL . print_r($data, true))
+      do_action('wooms_logger', __CLASS__,
+        sprintf('Запрос %s, на остатки для вариации %s', $url, $variation_id)
       );
 
       if(empty($data['rows'][0][$stock_type])){
@@ -134,10 +132,9 @@ class Stocks {
       $variation->set_stock_status( 'instock' );
     }
 
-    do_action('wooms_logger',
-      'request_stock_for_variation',
-      sprintf('Остатки для вариации %s (%s)', $variation_id, $product_id),
-      sprintf('Данные %s', PHP_EOL . print_r(array($variation, $variant_data), true))
+    do_action('wooms_logger', __CLASS__,
+      sprintf('Остатки для вариации %s (продукт: %s)', $variation_id, $product_id),
+      $stock
     );
 
     return $variation;
@@ -180,10 +177,8 @@ class Stocks {
 
       $data = wooms_request( $url );
 
-      do_action('wooms_logger',
-        'request_stock_for_product',
-        sprintf('Запрос %s, на остатки для %s', $url, $product_id),
-        sprintf('Данные %s', PHP_EOL . print_r($data, true))
+      do_action('wooms_logger', __CLASS__,
+        sprintf('Запрос %s, на остатки для %s', $url, $product_id)
       );
 
       if(empty($data['rows'][0][$stock_type])){
@@ -222,10 +217,9 @@ class Stocks {
       $product->set_stock_status( 'instock' );
     }
 
-    do_action('wooms_logger',
-      'request_stock_for_product',
-      sprintf('Остатки для %s', $product_id),
-      sprintf('Данные %s', PHP_EOL . print_r($product, true))
+    do_action('wooms_logger', __CLASS__,
+      sprintf('Остатки для продукта %s', $product_id),
+      $stock
     );
 
     return $product;

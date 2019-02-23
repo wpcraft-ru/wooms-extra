@@ -203,8 +203,8 @@ class Variations {
 
     if(empty($product_id)){
 
-      do_action('wooms_logger',
-        'error-' . __CLASS__,
+      do_action('wooms_logger_error',
+        __CLASS__,
         sprintf('Ошибка получения product_id для url %s', $product_href)
       );
 
@@ -272,8 +272,8 @@ class Variations {
       $product_parent = new \WC_Product_Variable($product_parent);
       $product_parent->save();
 
-      do_action('wooms_logger',
-        'error-' . __CLASS__,
+      do_action('wooms_logger_error',
+        __CLASS__,
         sprintf('Снова сохранили продукт как вариативный %s', $product_id)
       );
     }
@@ -457,7 +457,7 @@ class Variations {
     do_action('wooms_logger',
       __CLASS__,
       'Обработчик вариаций финишировал',
-      sprintf('Данные: %s', PHP_EOL . print_r($timer, true))
+      sprintf('Поставлена пауза в секундах: %s', PHP_EOL . print_r($timer, true))
     );
 
     return true;

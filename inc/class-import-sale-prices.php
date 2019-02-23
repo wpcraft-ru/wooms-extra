@@ -46,10 +46,8 @@ class Sale_Prices {
           $sale_price = apply_filters('wooms_sale_price', floatval($price['value']/100));
           $product->set_sale_price( $sale_price );
 
-          do_action('wooms_logger',
-            'product_save_sale_price',
-            sprintf('Цена распродажи сохранена для продукта %s', $product_id),
-            sprintf('Данные %s', $sale_price)
+          do_action('wooms_logger', __CLASS__,
+            sprintf('Цена распродажи %s сохранена для продукта %s', $sale_price, $product_id)
           );
 
         } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
@@ -82,10 +80,8 @@ class Sale_Prices {
           $sale_price = apply_filters('wooms_sale_price_variation', floatval($price['value']/100), $variation, $product_id);
           $variation->set_sale_price( $sale_price );
 
-          do_action('wooms_logger',
-            'product_variation_save_sale_price',
-            sprintf('Цена распродажи сохранена для вариации %s и продукта %s', $variation_id, $product_id),
-            sprintf('Данные %s', $sale_price)
+          do_action('wooms_logger', __CLASS__,
+            sprintf('Цена распродажи %s сохранена для вариации %s и продукта %s', $sale_price, $variation_id, $product_id)
           );
 
         } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){

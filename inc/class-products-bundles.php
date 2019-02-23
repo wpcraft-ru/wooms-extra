@@ -74,10 +74,8 @@ class Bundle
 
     $product->set_children($subproducts_ids);
 
-    do_action('wooms_logger',
-      'grouped_product_set',
-      sprintf('Продукт выбран как групповой %s', $product_id),
-      sprintf('subproducts %s', PHP_EOL . print_r($data_components["rows"], true))
+    do_action('wooms_logger', __CLASS__,
+      sprintf('Продукт выбран как групповой %s', $product_id)
     );
 
     return $product;

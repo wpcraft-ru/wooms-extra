@@ -137,7 +137,10 @@ class Statuses_From_Site {
            */
           if(empty($meta_status)){
               delete_post_meta($order_id, 'wooms_changed_status');
-              $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад, не сработала мета для статуса - %s', $ms_status) );
+              $error_msg = sprintf('Ошибка обновления статуса в МойСклад, не сработала мета для статуса - %s', $ms_status);
+              $order->add_order_note( $error_msg );
+              do_action('wooms_logger_error', __CLASS__, $error_msg );
+
               continue;
           }
 
@@ -156,9 +159,13 @@ class Statuses_From_Site {
           $result = wooms_request( $url, $data, 'PUT' );
 
           if(empty($result["id"])){
-              $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад - %s', print_r($result, true)) );
+            $error_msg = sprintf('Ошибка обновления статуса в МойСклад - %s', print_r($result, true));
+            $order->add_order_note( $error_msg );
+            do_action('wooms_logger_error', __CLASS__, $error_msg );
           } else {
-              $order->add_order_note( sprintf('Обновлен статус в МойСклад - %s', $ms_status) );
+            $msg = sprintf('Обновлен статус в МойСклад - %s', $ms_status);
+            $order->add_order_note( $msg );
+            do_action('wooms_logger', __CLASS__, $msg );
           }
 
           delete_post_meta($order_id, 'wooms_changed_status');
