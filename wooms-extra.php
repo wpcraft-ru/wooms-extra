@@ -61,7 +61,6 @@ class WooMS_XT {
       require_once 'inc/class-orders-statuses-from-site.php';
       require_once 'inc/class-orders-statuses-from-moysklad.php';
       require_once 'inc/class-import-sale-prices.php';
-      require_once 'inc/class-import-product-choice-categories.php';
       require_once 'inc/class-hide-old-variables.php';
     }
   }
