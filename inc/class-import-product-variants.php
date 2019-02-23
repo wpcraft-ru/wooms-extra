@@ -22,7 +22,7 @@ class Variations {
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
     add_action( 'wooms_cron_variation_sync', array( __CLASS__, 'walker_starter' ) );
 
-    add_filter( 'wooms_save_variation', array(__CLASS__, 'set_variation_attributes'), 10, 3);
+    add_filter( 'wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
     add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
 
 
@@ -47,7 +47,6 @@ class Variations {
     delete_transient( 'wooms_variant_walker_stop' );
   }
 
-
   /**
    * Set attributes for variables
    */
@@ -58,30 +57,37 @@ class Variations {
     $ms_attributes = [];
     foreach ( $data['characteristics'] as $key => $characteristic ) {
 
-      $attribute_slug = sanitize_title( $characteristic["name"] );
+      $attribute_label = $characteristic["name"];
 
-      $ms_attributes[ $attribute_slug ] = [
+      $ms_attributes[ $attribute_label ] = [
         'name'   => $characteristic["name"],
         'values' => [],
       ];
     }
 
     foreach ( $data['characteristics'] as $key => $characteristic ) {
+      $values = array();
+      $attribute_label = $characteristic["name"];
 
-      $attribute_taxonomy_id = self::get_attribute_id_by_label($characteristic['name']);
-
-      $attribute_slug = sanitize_title( $characteristic["name"] );
-      $values = $product->get_attribute($attribute_slug);
-      if($attribute_taxonomy_id){
+      if($attribute_taxonomy_id = self::get_attribute_id_by_label($characteristic['name'])){
+        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+        $values = $product->get_attribute($taxonomy_name);
         $values = explode(',', $values);
-      } else {
-        $values = explode(' | ', $values);
-      }
-      $values[] = $characteristic['value'];
 
-      $ms_attributes[ $attribute_slug ]['values'] = $values;
+      } else {
+        $values = $product->get_attribute($characteristic['name']);
+        $values = explode(' | ', $values);
+
+      }
+
+      $values[] = $characteristic['value'];
+      $ms_attributes[ $attribute_label ]['values'] = $values;
+
     }
 
+    /**
+     * check unique for values
+     */
     foreach ( $ms_attributes as $key => $value ) {
       $ms_attributes[ $key ]['values'] = array_unique( $value['values'] );
     }
@@ -128,10 +134,11 @@ class Variations {
     $product->save();
 
     do_action('wooms_logger',
-      'product_save_add_attributes_for_variations',
-      sprintf('Добавлены атрибуты для продукта %s', $product_id),
-      sprintf('Данные %s', PHP_EOL . print_r($attributes, true))
+      __CLASS__,
+      sprintf('Сохранены атрибуты для продукта %s', $product_id),
+      wc_print_r($attributes, true)
     );
+
   }
 
   /**
@@ -140,7 +147,7 @@ class Variations {
    * @param $variation_id
    * @param $characteristics
    */
-  public static function set_variation_attributes( $variation, $variant_data, $product_id ) {
+  public static function save_attributes_for_variation( $variation, $variant_data, $product_id ) {
 
     $variation_id = $variation->get_id();
     $parent_id = $variation->get_parent_id();
@@ -150,23 +157,29 @@ class Variations {
     $attributes = array();
 
     foreach ( $characteristics as $key => $characteristic ) {
-      $attribute_name = $characteristic['name'];
-      $attribute_taxonomy_id = wc_attribute_taxonomy_id_by_name($attribute_name);
-      $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
-      $attribute_slug = sanitize_title( $attribute_name );
+      $attribute_label = $characteristic["name"];
 
-      if(empty($attribute_taxonomy_id)){
-        $attributes[$attribute_slug] = $characteristic['value'];
-      } else {
-        //Очищаем индивидуальный атрибут с таким именем если есть
+      if($attribute_taxonomy_id = self::get_attribute_id_by_label($attribute_label)){
+        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
         if(isset($attributes[$attribute_slug])){
             unset($attributes[$attribute_slug]);
         }
          $attributes[$taxonomy_name] = sanitize_title($characteristic['value']);
+
+      } else {
+        $attribute_slug = sanitize_title( $attribute_label );
+        $attributes[$attribute_slug] = $characteristic['value'];
       }
+
     }
 
     $variation->set_attributes( $attributes );
+
+    do_action('wooms_logger',
+      __CLASS__,
+      sprintf('Сохранены атрибуты для вариации %s (продукт: %s)', $variation_id, $product_id),
+      wc_print_r($attributes, true)
+    );
 
     return $variation;
   }
@@ -191,9 +204,8 @@ class Variations {
     if(empty($product_id)){
 
       do_action('wooms_logger',
-        'error_variation_get_product_id',
-        sprintf('Ошибка получения product_id для url %s', $product_href),
-        sprintf('Данные %s', PHP_EOL . print_r($variant, true))
+        'error-' . __CLASS__,
+        sprintf('Ошибка получения product_id для url %s', $product_href)
       );
 
       return;
@@ -260,11 +272,9 @@ class Variations {
       $product_parent = new \WC_Product_Variable($product_parent);
       $product_parent->save();
 
-      //@TODO это не нормальная ситуация и надо решить проблему
       do_action('wooms_logger',
-        'product_again_save_product_as_variable',
-        sprintf('Снова сохранили продукт как вариативный %s', $product_id),
-        sprintf('Для продукта %s', $product_parent)
+        'error-' . __CLASS__,
+        sprintf('Снова сохранили продукт как вариативный %s', $product_id)
       );
     }
 
@@ -277,9 +287,8 @@ class Variations {
     $variation->save();
 
     do_action('wooms_logger',
-      'product_variaton_save',
-      sprintf('Сохранена вариация %s, для продукта %s', $variation_id, $product_id),
-      sprintf('Данные %s', PHP_EOL . print_r($variation, true))
+      __CLASS__,
+      sprintf('Сохранена вариация %s, для продукта %s', $variation_id, $product_id)
     );
 
     do_action( 'wooms_variation_id', $variation_id, $variant_data );
@@ -372,9 +381,8 @@ class Variations {
       $data = wooms_request( $url_api );
 
       do_action('wooms_logger',
-        'request_variations',
-        sprintf('Отправлен запрос на вариации: %s', $url_api),
-        sprintf('Данные: %s', PHP_EOL . print_r($data, true))
+        __CLASS__,
+        sprintf('Отправлен запрос на вариации: %s', $url_api)
       );
 
       //Check for errors and send message to UI
@@ -447,7 +455,7 @@ class Variations {
     set_transient( 'wooms_variant_end_timestamp', date( "Y-m-d H:i:s" ), $timer );
 
     do_action('wooms_logger',
-      'variations_walker_finish',
+      __CLASS__,
       'Обработчик вариаций финишировал',
       sprintf('Данные: %s', PHP_EOL . print_r($timer, true))
     );
@@ -711,7 +719,7 @@ class Variations {
       $product = new \WC_Product_Variable($product);
 
       do_action('wooms_logger',
-        'product_variable_set',
+        __CLASS__,
         sprintf('Продукт изменен как вариативный %s', $product_id),
         sprintf('Данные %s', PHP_EOL . print_r($product, true))
       );
