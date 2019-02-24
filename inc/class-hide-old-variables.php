@@ -15,20 +15,41 @@ class Hide_Old_Variations {
    * The init
    */
   public static function init() {
-    add_action( 'wooms_hide_old_product', array( __CLASS__, 'set_hide_old_variable' ), 20, 2 );
+    add_action( 'wooms_cron_variations_hiding', array( __CLASS__, 'walker' ) );
+
+    add_action('wooms_wakler_variations_finish', array(__CLASS__, 'reset_after_finish_parent_walker'));
+
+    add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
+
+  }
+
+  /**
+   * add_cron_hook
+   */
+  public static function add_cron_hook() {
+    if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
+      return;
+    }
+
+    if ( ! wp_next_scheduled( 'wooms_cron_variations_hiding' ) ) {
+      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variations_hiding' );
+    }
+
+  }
+
+  /**
+   * reset_after_finish_parent_walker
+   */
+  public static function reset_after_finish_parent_walker(){
+    delete_transient('wooms_variations_hiding_pause');
   }
 
   /**
    * Adding hiding attributes to variations
    */
-  public static function set_hide_old_variable( $product_parent, $offset ) {
+  public static function walker() {
 
     if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
-      return;
-    }
-
-    //Если работает синк товаров, то блокируем работу
-    if( ! empty(get_transient('wooms_start_timestamp'))){
       return;
     }
 
@@ -37,9 +58,21 @@ class Hide_Old_Variations {
       return;
     }
 
+    //Если работает синк товаров, то блокируем работу
+    if( ! empty(get_transient('wooms_start_timestamp'))){
+      return;
+    }
+
+    //Если работает синк вариаций, то блокируем работу
+    if( ! empty(get_transient('wooms_variant_start_timestamp'))){
+      return;
+    }
+
     if ( ! $offset = get_transient( 'wooms_offset_hide_variations' ) ) {
       $offset = 0;
       set_transient( 'wooms_offset_hide_variations', $offset );
+      do_action('wooms_logger', __CLASS__, sprintf('Старт скрытия вариаций: %s', date("Y-m-d H:i:s")) );
+
     }
 
     $args = array(
@@ -51,7 +84,7 @@ class Hide_Old_Variations {
       'meta_query'  => array(
         array(
           'key'     => 'wooms_session_id',
-          'value'   => $this->get_session(),
+          'value'   => self::get_session(),
           'compare' => '!=',
         ),
         array(
@@ -79,14 +112,10 @@ class Hide_Old_Variations {
     if ( empty( $product_parent ) ) {
       delete_transient( 'wooms_offset_hide_variations' );
       set_transient('wooms_variations_hiding_pause', 1, HOUR_IN_SECONDS);
+
+      do_action('wooms_logger', __CLASS__, sprintf('Скрытие вариаций завершено: %s', date("Y-m-d H:i:s")) );
+
     }
-  }
-
-  /**
-   * Obtaining variations with specific attributes
-   */
-  public static function get_variations_old_session( $offset = 0, $product_parent = '' ) {
-
   }
 
   /**

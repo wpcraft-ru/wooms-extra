@@ -287,7 +287,13 @@ class Variations {
 
     do_action('wooms_logger',
       __CLASS__,
-      sprintf('Сохранена вариация %s, для продукта %s', $variation_id, $product_id)
+      sprintf(
+        'Сохранена вариация %s (%s), для продукта %s (%s)',
+        $variation->get_name(),
+        $variation_id,
+        $product_parent->get_name(),
+        $product_id
+      )
     );
 
     do_action( 'wooms_variation_id', $variation_id, $variant_data );
@@ -362,26 +368,30 @@ class Variations {
     if ( ! $offset = get_transient( 'wooms_variant_offset' ) ) {
       $offset = 0;
       set_transient( 'wooms_variant_offset', $offset );
-      update_option( 'wooms_variant_session_id', date( "YmdHis" ), 'no' );
       delete_transient( 'wooms_count_variant_stat' );
     }
 
     $ms_api_args = array(
       'offset' => $offset,
       'limit'  => $count,
+      'scope'  => 'variant',
     );
 
-    $url_api = add_query_arg( $ms_api_args, 'https://online.moysklad.ru/api/remap/1.1/entity/variant' );
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+
+    $url = add_query_arg( $ms_api_args, $url );
+
+    $url = apply_filters('wooms_url_get_variants', $url);
 
     try {
 
       delete_transient( 'wooms_variant_end_timestamp' );
       set_transient( 'wooms_variant_start_timestamp', time() );
-      $data = wooms_request( $url_api );
+      $data = wooms_request( $url );
 
       do_action('wooms_logger',
         __CLASS__,
-        sprintf('Отправлен запрос на вариации: %s', $url_api)
+        sprintf('Отправлен запрос на вариации: %s', $url)
       );
 
       //Check for errors and send message to UI
@@ -452,6 +462,8 @@ class Variations {
     }
 
     set_transient( 'wooms_variant_end_timestamp', date( "Y-m-d H:i:s" ), $timer );
+
+    do_action('wooms_wakler_variations_finish' );
 
     do_action('wooms_logger',
       __CLASS__,
