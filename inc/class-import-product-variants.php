@@ -194,7 +194,6 @@ class Variations {
   public static function load_data_variant( $variant, $key, $data ) {
 
     if ( ! empty($variant['archived']) ) {
-      //XXX переписать так чтобы архивные вариации удалялись с сайта
       return;
     }
 
