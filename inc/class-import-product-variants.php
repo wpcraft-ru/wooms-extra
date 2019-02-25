@@ -135,7 +135,11 @@ class Variations {
 
     do_action('wooms_logger',
       __CLASS__,
-      sprintf('Сохранены атрибуты для продукта %s', $product_id),
+      sprintf(
+        'Сохранены атрибуты для продукта: %s (%s)',
+        $product->get_name(),
+        $product_id
+      ),
       wc_print_r($attributes, true)
     );
 
@@ -288,7 +292,7 @@ class Variations {
     do_action('wooms_logger',
       __CLASS__,
       sprintf(
-        'Сохранена вариация %s (%s), для продукта %s (%s)',
+        'Сохранена вариация: %s (%s), для продукта %s (%s)',
         $variation->get_name(),
         $variation_id,
         $product_parent->get_name(),
@@ -374,10 +378,11 @@ class Variations {
     $ms_api_args = array(
       'offset' => $offset,
       'limit'  => $count,
-      'scope'  => 'variant',
+      // 'scope'  => 'variant',
     );
 
-    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant';
+    // $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
 
     $url = add_query_arg( $ms_api_args, $url );
 
