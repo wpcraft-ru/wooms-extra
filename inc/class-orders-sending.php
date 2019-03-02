@@ -122,6 +122,10 @@ class Sender {
         if ( empty( $data ) ) {
           $order->update_meta_data( 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
 
+          do_action('wooms_logger_error', __CLASS__,
+            sprintf('Ошибка подготовки данных по заказу %s', $order_id)
+          );
+
           $logger = wc_get_logger();
           $logger->error(
             wc_print_r(array(
@@ -146,17 +150,20 @@ class Sender {
             $logger = wc_get_logger();
             $logger->error( $errors, array( 'source' => 'wooms-errors-orders' ) );
 
+            do_action('wooms_logger_error', __CLASS__,
+              sprintf('Ошибка передачи заказа %s: %s', $order_id, $errors)
+            );
+
             return false;
         }
 
-        do_action('wooms_logger',
-          'order_send',
-          sprintf('Заказ %s - отправлен ', $order_id),
-          sprintf('Данные %s', PHP_EOL . print_r($data, true))
-        );
-
         $order->update_meta_data( 'wooms_id', $result['id'] );
         $order->save();
+
+        do_action('wooms_logger', __CLASS__,
+          sprintf('Заказ %s - отправлен ', $order_id),
+          wc_print_r($result, true)
+        );
 
         return true;
     }
@@ -169,12 +176,16 @@ class Sender {
      * @return array|bool
      */
     public static function get_data_order_for_moysklad( $order_id ) {
-      $data              = array(
+      $data = array(
         "name" => self::get_data_name( $order_id ),
       );
       $data['positions'] = self::get_data_positions( $order_id );
 
       if ( empty( $data['positions'] ) ) {
+        do_action('wooms_logger_error', __CLASS__,
+          sprintf('Нет позиций для заказа %s', $order_id)
+        );
+
         unset( $data['positions'] );
       }
 
@@ -184,40 +195,6 @@ class Sender {
       $data["description"]  = self::get_date_order_description( $order_id );
 
       return $data;
-    }
-
-    /**
-     * get_date_order_new_state
-     *
-     * XXX удалить?
-     */
-    public static function get_date_order_new_state($state_for_new_order = 'Новый'){
-
-      /**
-       * Хук позволяет подменить название статуса для новых Заказов
-       */
-      $state_for_new_order = apply_filters('order_new_status_name', $state_for_new_order);
-
-      $statuses = get_transient('wooms_order_statuses');
-      if(empty($statuses)){
-        $url_statuses = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/metadata';
-        $statuses = wooms_request($url_statuses);
-        $statuses = $statuses["states"];
-        set_transient('wooms_order_statuses', $statuses, 600);
-      }
-
-      $data = array();
-      foreach ($statuses as $statuse) {
-        if($statuse['name'] == $state_for_new_order){
-          $data["meta"] = $statuse["meta"];
-        }
-      }
-
-      if(empty($data)){
-        return false;
-      } else {
-        return $data;
-      }
     }
 
     /**

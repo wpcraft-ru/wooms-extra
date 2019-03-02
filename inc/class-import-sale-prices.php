@@ -40,6 +40,7 @@ class Sale_Prices {
     }
 
     if ( ! empty($value['salePrices']) ) {
+
       foreach ( $value['salePrices'] as $price ) {
 
         if($price['priceType'] == $price_name && floatval($price['value']) > 0){
@@ -47,13 +48,22 @@ class Sale_Prices {
           $product->set_sale_price( $sale_price );
 
           do_action('wooms_logger', __CLASS__,
-            sprintf('Цена распродажи %s сохранена для продукта %s', $sale_price, $product_id)
+            sprintf(
+              'Цена распродажи %s сохранена для продукта %s (%s)',
+              $sale_price,
+              $product->get_name(),
+              $product_id
+            )
           );
 
         } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
           $product->set_sale_price( '' );
         }
       }
+    } else {
+      do_action('wooms_logger_error', __CLASS__,
+        sprintf('Нет цен для продукта %s', $product_id)
+      );
     }
 
     return $product;

@@ -50,7 +50,9 @@ class Variations {
   /**
    * Set attributes for variables
    */
-  public static function set_product_attributes_for_variation( $product_id, $data ) {
+  public static function set_product_attributes_for_variation( $product_id, $data_api ) {
+
+    $data = $data_api;
 
     $product = wc_get_product($product_id);
 
@@ -81,6 +83,9 @@ class Variations {
       }
 
       $values[] = $characteristic['value'];
+
+      $values = apply_filters('wooms_product_attribute_save_values', $values, $product, $characteristic);
+
       $ms_attributes[ $attribute_label ]['values'] = $values;
 
     }
@@ -129,6 +134,7 @@ class Variations {
       }
     }
 
+    $attributes = apply_filters('wooms_product_attributes', $attributes, $data_api, $product);
     $product->set_attributes( $attributes );
 
     $product->save();
@@ -151,7 +157,9 @@ class Variations {
    * @param $variation_id
    * @param $characteristics
    */
-  public static function save_attributes_for_variation( $variation, $variant_data, $product_id ) {
+  public static function save_attributes_for_variation( $variation, $data_api, $product_id ) {
+
+    $variant_data = $data_api;
 
     $variation_id = $variation->get_id();
     $parent_id = $variation->get_parent_id();
@@ -176,6 +184,8 @@ class Variations {
       }
 
     }
+
+    $attributes = apply_filters('wooms_variation_attributes', $attributes, $data_api, $variation);
 
     $variation->set_attributes( $attributes );
 
