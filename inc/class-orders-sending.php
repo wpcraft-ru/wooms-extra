@@ -126,15 +126,6 @@ class Sender {
             sprintf('Ошибка подготовки данных по заказу %s', $order_id)
           );
 
-          $logger = wc_get_logger();
-          $logger->error(
-            wc_print_r(array(
-              'Ошибка подготовки данных по заказу: '. $order_id,
-              $data
-            ), true),
-            array( 'source' => 'wooms-errors-orders' )
-          );
-
           return false;
         }
 
@@ -147,9 +138,6 @@ class Sender {
             $errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
             $errors .= $result['errors'][0]['error'];
 
-            $logger = wc_get_logger();
-            $logger->error( $errors, array( 'source' => 'wooms-errors-orders' ) );
-
             do_action('wooms_logger_error', __CLASS__,
               sprintf('Ошибка передачи заказа %s: %s', $order_id, $errors)
             );
@@ -160,9 +148,20 @@ class Sender {
         $order->update_meta_data( 'wooms_id', $result['id'] );
         $order->save();
 
+        if(empty($result['positions'])){
+          $positions_count = 0;
+        } else {
+          $positions_count = count($result['positions']);
+        }
+
+        if($positions_count == 0){
+          do_action('wooms_logger_error', __CLASS__,
+            sprintf('В заказе %s передано 0 позиций', $order_id, $positions_count)
+          );
+        }
+
         do_action('wooms_logger', __CLASS__,
-          sprintf('Заказ %s - отправлен ', $order_id),
-          wc_print_r($result, true)
+          sprintf('Заказ %s - отправлен (позиций: %s)', $order_id, $positions_count)
         );
 
         return true;
@@ -187,9 +186,16 @@ class Sender {
         );
 
         unset( $data['positions'] );
+        return false;
+
       }
 
-      $data["organization"] = self::get_data_organization();
+      if($meta_organization = self::get_data_organization()){
+        $data["organization"] = $meta_organization;
+      } else {
+        return false;
+      }
+
       $data["agent"]        = self::get_data_agent( $order_id );
       $data["moment"]       = self::get_date_created_moment( $order_id );
       $data["description"]  = self::get_date_order_description( $order_id );
@@ -199,10 +205,6 @@ class Sender {
 
     /**
      * Get data name for send MoySklad
-     *
-     * @param $order_id
-     *
-     * @return string
      */
     public static function get_data_name( $order_id ) {
         $prefix_postfix_name  = get_option( 'wooms_orders_send_prefix_postfix' );
@@ -282,15 +284,46 @@ class Sender {
 
     /**
      * Get meta for organization
-     *
-     * @return array|bool
      */
     public static function get_data_organization() {
+
+
+            $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
+            $data = wooms_request( $url );
+
+            $org_meta = '';
+
+            if( ! empty($data['rows'])){
+
+            }
+
         $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
         $data = wooms_request( $url );
-        $meta = $data['rows'][0]['meta'];
-        if ( empty( $meta ) ) {
-            return false;
+
+        if ( empty( $data['rows'][0]['meta'] ) ) {
+          do_action('wooms_logger_error', __CLASS__,
+            'Нет юр лица в базе для отправки Заказа'
+          );
+          return false;
+        }
+
+        $meta = '';
+        if( $org_name_site = get_option('wooms_org_name') ) {
+          foreach ($data['rows'] as $row) {
+            if($org_name_site == $row['name']){
+              $meta = $row["meta"];
+            }
+          }
+
+          if(empty($meta)){
+            do_action('wooms_logger_error', __CLASS__,
+              sprintf('Для указанного наименования юр лица не найдены данные в МойСклад: %s', $org_name_site)
+            );
+          }
+        }
+
+        if( empty($meta) ){
+          $meta = $data['rows'][0]['meta'];
         }
 
         return array( 'meta' => $meta );
@@ -577,7 +610,34 @@ class Sender {
           $page = 'mss-settings',
           $section = 'wooms_section_orders'
         );
+
+
+        register_setting( 'mss-settings', 'wooms_org_name' );
+        add_settings_field(
+          $id = 'wooms_org_name',
+          $title = 'Наименование юр лица для Заказов',
+          $callback = array( __CLASS__, 'display_wooms_org_name' ),
+          $page = 'mss-settings',
+          $section = 'wooms_section_orders'
+        );
     }
+
+
+    /**
+     * display_wooms_org_name
+     */
+    public static function display_wooms_org_name(){
+      $option_key = 'wooms_org_name';
+      printf( '<input type="text" name="%s" value="%s" />', $option_key, get_option( $option_key ) );
+      printf(
+        '<p><small>%s</small></p>',
+        'Тут можно указать краткое наименование юр лица из МойСклад. Если пусто, то берется первое из списка. Иначе будет выбор указанного юр лица.'
+      );
+
+
+
+    }
+
 
     /**
      * Send statuses from MoySklad
@@ -585,7 +645,6 @@ class Sender {
     public static function display_wooms_orders_sender_enable() {
         $option = 'wooms_orders_sender_enable';
         printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
-
     }
 
     /**

@@ -256,8 +256,9 @@ class Variations {
    * @param $product_id
    * @param $value
    */
-  public static function update_variant_for_product( $product_id, $variant_data ) {
+  public static function update_variant_for_product( $product_id, $data_api ) {
 
+    $variant_data = $data_api;
     if ( empty( $variant_data ) ) {
       return;
     }
@@ -275,7 +276,11 @@ class Variations {
     $variation->set_stock_status( 'instock' );
 
     if ( ! empty( $variant_data["salePrices"][0]['value'] ) ) {
-      $price = $variant_data["salePrices"][0]['value'] / 100;
+
+
+      $price = $variant_data["salePrices"][0]['value'];
+      $price = apply_filters( 'wooms_product_price', $price, $data_api, $variation_id );
+      $price = $price / 100;
       $variation->set_price( $price );
       $variation->set_regular_price( $price );
     }
