@@ -34,61 +34,6 @@ class Variations {
     add_action( 'wooms_variants_display_state', array(__CLASS__, 'display_state'));
     add_action( 'wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
 
-    add_shortcode('test111', function(){
-      //XXX test
-      $product = wc_get_product(2399);
-      $variation = wc_get_product(2416);
-
-      $attr_size = $product->get_attribute('pa_size');
-      $attr_size = explode(',', $attr_size);
-      $attr_size = array_map('trim',$attr_size);
-
-      $attr_size[] = '44/XL';
-
-      echo "<pre>";
-      var_dump($attr_size);
-      echo "</pre>";
-
-      $attributes = $product->get_attributes('edit');
-      $attribute_taxonomy_id = self::get_attribute_id_by_label('Размер');
-      $taxonomy_slug = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
-      $attribute_object = new \WC_Product_Attribute();
-      $attribute_object->set_id( $attribute_taxonomy_id );
-      $attribute_object->set_name( $taxonomy_slug );
-      $attribute_object->set_options( $attr_size );
-      $attribute_object->set_position( 0 );
-      $attribute_object->set_visible( 0 );
-      $attribute_object->set_variation( 1 );
-      $attributes[$taxonomy_slug] = $attribute_object;
-
-      $product->set_attributes($attributes);
-      // $product->save();
-
-
-
-      $attribute_value = '44/XL';
-
-      $term = get_term_by( 'name', $attribute_value, 'pa_size' );
-
-      if ( $term && ! is_wp_error( $term ) ) {
-        $attribute_value = $term->slug;
-      } else {
-        $attribute_value = sanitize_title( $attribute_value );
-      }
-
-      $attr_new = array(
-        "pa_size" => $attribute_value
-      );
-
-      $variation->set_attributes($attr_new);
-      // $variation->save();
-
-      echo "<pre>";
-      var_dump($attr_size);
-      echo "</pre>";
-      // return 1;
-    });
-
   }
 
   /**
