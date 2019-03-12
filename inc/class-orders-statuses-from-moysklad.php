@@ -372,7 +372,11 @@ class Statuses_From_MoySklad {
       if ( $check ) {
           return true;
       } else {
-          return false;
+        do_action('wooms_logger_error', __CLASS__,
+          sprintf('Ошибка обновления статуса "%s", для заказа "%s"', $state_name, $order_id)
+        );
+
+        return false;
       }
   }
 
