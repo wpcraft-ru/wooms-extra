@@ -100,7 +100,7 @@ class Bundle
 
       $url_api = add_query_arg($args_ms_api, 'https://online.moysklad.ru/api/remap/1.1/entity/bundle');
 
-      $data = wooms_get_data_by_url( $url_api );
+      $data = wooms_request( $url_api );
 
       //Check for errors and send message to UI
       if (isset($data['errors'])) {

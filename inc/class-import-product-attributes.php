@@ -241,7 +241,7 @@ class Attributes
       $url = $value['country']["meta"]["href"];
     }
 
-    $data_api = wooms_get_data_by_url($url);
+    $data_api = wooms_request($url);
 
     if(empty($data_api["name"])){
       return $product_attributes;
