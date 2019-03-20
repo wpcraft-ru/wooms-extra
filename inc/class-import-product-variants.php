@@ -288,14 +288,16 @@ class Variations {
     $variation->set_stock_status( 'instock' );
 
     if ( ! empty( $variant_data["salePrices"][0]['value'] ) ) {
-
-
       $price = $variant_data["salePrices"][0]['value'];
-      $price = apply_filters( 'wooms_product_price', $price, $data_api, $variation_id );
-      $price = $price / 100;
-      $variation->set_price( $price );
-      $variation->set_regular_price( $price );
+    } else {
+      $price = 0;
     }
+
+    $price = apply_filters( 'wooms_product_price', $price, $data_api, $variation_id );
+
+    $price = $price / 100;
+    $variation->set_price( $price );
+    $variation->set_regular_price( $price );
 
     $product_parent = wc_get_product($product_id);
     if( ! $product_parent->is_type('variable')){
@@ -409,7 +411,6 @@ class Variations {
     );
 
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant';
-    // $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
 
     $url = add_query_arg( $ms_api_args, $url );
 
@@ -440,7 +441,7 @@ class Variations {
       if ( empty( $data['rows'] ) ) {
         self::walker_finish();
 
-        return false;
+        return true;
       }
 
       $i = 0;
