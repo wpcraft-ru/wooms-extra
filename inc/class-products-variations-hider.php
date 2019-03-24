@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Hide old variations
  */
-class Hide_Old_Variations {
+class Variations_Hider {
 
   /**
    * The init
@@ -45,7 +45,7 @@ class Hide_Old_Variations {
   }
 
   /**
-   * Adding hiding attributes to variations
+   * Add hiding attributes to variations
    */
   public static function walker() {
 
@@ -131,4 +131,4 @@ class Hide_Old_Variations {
   }
 }
 
-Hide_Old_Variations::init();
+Variations_Hider::init();

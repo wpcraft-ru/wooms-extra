@@ -20,10 +20,11 @@ class Variations {
 
     // Cron
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
-    add_action( 'wooms_cron_variation_sync', array( __CLASS__, 'walker_starter' ) );
+    add_action( 'wooms_cron_variation_walker', array( __CLASS__, 'walker_starter' ) );
 
     add_filter( 'wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
-    add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
+    add_action( 'wooms_products_variations_item', array( __CLASS__, 'load_data_variant' ), 15 );
+    // add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
 
 
     //Other
@@ -217,7 +218,7 @@ class Variations {
    * @param $key
    * @param $data
    */
-  public static function load_data_variant( $variant, $key, $data ) {
+  public static function load_data_variant( $variant ) {
 
     if ( ! empty($variant['archived']) ) {
       return;
@@ -238,7 +239,10 @@ class Variations {
 
     self::update_variant_for_product( $product_id, $variant );
 
-    do_action( 'wooms_product_variant', $product_id, $variant, $data );
+    /**
+     * deprecated
+     */
+    do_action( 'wooms_product_variant', $product_id, $variant );
   }
 
   /**
@@ -446,6 +450,11 @@ class Variations {
 
       $i = 0;
       foreach ( $data['rows'] as $key => $variant ) {
+        do_action( 'wooms_products_variations_item', $variant );
+
+        /**
+         * deprecated
+         */
         do_action( 'wooms_product_variant_import_row', $variant, $key, $data );
         $i ++;
       }
@@ -554,8 +563,8 @@ class Variations {
       return;
     }
 
-    if ( ! wp_next_scheduled( 'wooms_cron_variation_sync' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variation_sync' );
+    if ( ! wp_next_scheduled( 'wooms_cron_variation_walker' ) ) {
+      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variation_walker' );
     }
 
   }
