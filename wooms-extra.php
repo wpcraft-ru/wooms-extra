@@ -56,6 +56,7 @@ class WooMS_XT {
       require_once 'inc/class-products-variations.php';
       require_once 'inc/class-products-variations-hider.php';
       require_once 'inc/class-products-stocks.php';
+      require_once 'inc/class-products-categories.php';
       require_once 'inc/class-products-attributes.php';
       require_once 'inc/class-products-bundles.php';
       require_once 'inc/class-products-prices-sale.php';

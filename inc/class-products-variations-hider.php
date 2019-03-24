@@ -45,7 +45,7 @@ class Variations_Hider {
   }
 
   /**
-   * Add hiding attributes to variations
+   * Walker
    */
   public static function walker() {
 

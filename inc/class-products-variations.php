@@ -24,8 +24,6 @@ class Variations {
 
     add_filter( 'wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
     add_action( 'wooms_products_variations_item', array( __CLASS__, 'load_data_variant' ), 15 );
-    // add_action( 'wooms_product_variant_import_row', array( __CLASS__, 'load_data_variant' ), 15, 3 );
-
 
     //Other
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 150 );
@@ -213,10 +211,6 @@ class Variations {
 
   /**
    * Installation of variations for variable product
-   *
-   * @param $value
-   * @param $key
-   * @param $data
    */
   public static function load_data_variant( $variant ) {
 
@@ -249,8 +243,6 @@ class Variations {
    * Get product variant ID
    *
    * @param $uuid
-   *
-   * @return bool
    */
   public static function get_product_id_by_uuid( $uuid ) {
 
@@ -275,7 +267,7 @@ class Variations {
   public static function update_variant_for_product( $product_id, $data_api ) {
 
     $variant_data = $data_api;
-    if ( empty( $variant_data ) ) {
+    if ( empty( $data_api ) ) {
       return;
     }
 
@@ -411,10 +403,10 @@ class Variations {
     $ms_api_args = array(
       'offset' => $offset,
       'limit'  => $count,
-      // 'scope'  => 'variant',
+      'scope'  => 'variant',
     );
 
-    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant';
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
 
     $url = add_query_arg( $ms_api_args, $url );
 
@@ -449,14 +441,19 @@ class Variations {
       }
 
       $i = 0;
-      foreach ( $data['rows'] as $key => $variant ) {
-        do_action( 'wooms_products_variations_item', $variant );
+      foreach ( $data['rows'] as $key => $item ) {
+        $i ++;
+
+        if($item["meta"]["type"] != 'variant'){
+          continue;
+        }
+
+        do_action( 'wooms_products_variations_item', $item );
 
         /**
          * deprecated
          */
-        do_action( 'wooms_product_variant_import_row', $variant, $key, $data );
-        $i ++;
+        do_action( 'wooms_product_variant_import_row', $item, $key, $data );
       }
 
       if ( $count_saved = get_transient( 'wooms_count_variant_stat' ) ) {
