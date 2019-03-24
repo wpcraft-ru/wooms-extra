@@ -131,7 +131,9 @@ class Bundle
 
     } catch (Exception $e) {
         delete_transient('wooms_bundles_start_timestamp');
-        set_transient('wooms_error_background', $e->getMessage());
+        do_action('wooms_logger_error', __CLASS__,
+          $e->getMessage()
+        );
     }
 
   }

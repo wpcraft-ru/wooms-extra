@@ -40,7 +40,6 @@ class Variations {
    */
   public static function reset_after_main_walker_finish(){
     delete_transient( 'wooms_variant_start_timestamp' );
-    delete_transient( 'wooms_error_background' );
     delete_transient( 'wooms_variant_offset' );
     delete_transient( 'wooms_variant_end_timestamp' );
     delete_transient( 'wooms_variant_walker_stop' );
@@ -374,7 +373,6 @@ class Variations {
    */
   public static function start_manually() {
     delete_transient( 'wooms_variant_start_timestamp' );
-    delete_transient( 'wooms_error_background' );
     delete_transient( 'wooms_variant_offset' );
     delete_transient( 'wooms_variant_end_timestamp' );
     delete_transient( 'wooms_variant_walker_stop' );
@@ -467,7 +465,9 @@ class Variations {
       return;
     } catch ( Exception $e ) {
       delete_transient( 'wooms_variant_start_timestamp' );
-      set_transient( 'wooms_error_background', $e->getMessage() );
+      do_action('wooms_logger_error', __CLASS__,
+        $e->getMessage()
+      );
     }
   }
 

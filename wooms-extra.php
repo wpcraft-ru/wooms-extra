@@ -15,7 +15,7 @@
  * WC tested up to: 3.5.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 4.13
+ * Version: 5.0
  */
 
 
@@ -56,7 +56,7 @@ class WooMS_XT {
       require_once 'inc/class-products-variations.php';
       require_once 'inc/class-products-variations-hider.php';
       require_once 'inc/class-products-stocks.php';
-      require_once 'inc/class-products-categories.php';
+      require_once 'inc/class-products-categories-filter.php';
       require_once 'inc/class-products-attributes.php';
       require_once 'inc/class-products-bundles.php';
       require_once 'inc/class-products-prices-sale.php';
