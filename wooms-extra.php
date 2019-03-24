@@ -54,8 +54,8 @@ class WooMS_XT {
 
     if(self::$is_core_exist){
       require_once 'inc/class-products-stocks.php';
-      require_once 'inc/class-import-product-attributes.php';
-      require_once 'inc/class-import-product-variants.php';
+      require_once 'inc/class-products-attributes.php';
+      require_once 'inc/class-products-variations.php';
       require_once 'inc/class-products-bundles.php';
       require_once 'inc/class-orders-sending.php';
       require_once 'inc/class-orders-statuses-from-site.php';
