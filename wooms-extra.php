@@ -53,15 +53,15 @@ class WooMS_XT {
     self::$is_core_exist = apply_filters('wooms_xt_load', true);
 
     if(self::$is_core_exist){
+      require_once 'inc/class-products-variations.php';
+      require_once 'inc/class-products-variations-hider.php';
       require_once 'inc/class-products-stocks.php';
       require_once 'inc/class-products-attributes.php';
-      require_once 'inc/class-products-variations.php';
       require_once 'inc/class-products-bundles.php';
+      require_once 'inc/class-products-prices-sale.php';
       require_once 'inc/class-orders-sending.php';
       require_once 'inc/class-orders-statuses-from-site.php';
       require_once 'inc/class-orders-statuses-from-moysklad.php';
-      require_once 'inc/class-import-sale-prices.php';
-      require_once 'inc/class-hide-old-variables.php';
     }
   }
 
