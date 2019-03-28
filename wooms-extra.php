@@ -63,6 +63,8 @@ class WooMS_XT {
       require_once 'inc/class-orders-sending.php';
       require_once 'inc/class-orders-statuses-from-site.php';
       require_once 'inc/class-orders-statuses-from-moysklad.php';
+      // require_once 'inc/class-product-single.php';
+
     }
   }
 
