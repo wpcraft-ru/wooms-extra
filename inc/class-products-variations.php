@@ -770,8 +770,7 @@ class Variations {
 
       do_action('wooms_logger',
         __CLASS__,
-        sprintf('Продукт изменен как вариативный %s', $product_id),
-        sprintf('Данные %s', PHP_EOL . print_r($product, true))
+        sprintf('Продукт изменен как вариативный %s', $product_id)
       );
     }
 
