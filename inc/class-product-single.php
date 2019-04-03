@@ -26,41 +26,81 @@ class Single {
       }
     });
 
-
-    add_shortcode('test', function(){
-      self::update_variations();
-    });
-
   }
 
   /**
    * update_variations
-   *
-   * XXX получить продукт ID wooms_id и запустить синк вариации
    */
-  public static function update_variations(){
-    $args = array(
-      'post_type' => 'product',
-      'posts_per_page' => 1,
-      'meta_query' => array(
-        array(
-          'key'     => 'wooms_need_update_variation',
-          'compare' => 'EXISTS',
+  public static function update_variations()
+  {
+    $product_id = get_transient('wooms_update_single_product_id');
+    if(empty($product_id)){
+      $product_id = '';
+      $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => 1,
+        'meta_query' => array(
+          array(
+            'key'     => 'wooms_need_update_variations',
+            'compare' => 'EXISTS',
+          ),
         ),
-      ),
+      );
+
+      $posts = get_posts($args);
+
+      if(isset($posts[0]->ID)){
+        $product_id = $posts[0]->ID;
+        set_transient('wooms_update_single_product_id', $product_id);
+      }
+    }
+
+    if(empty($product_id)){
+      return false;
+    }
+
+    $product = wc_get_product($product_id);
+    $wooms_id = $product->get_meta('wooms_id', true);
+
+    $url_args = array(
+      'limit' => 10,
+      'offset' => 0,
     );
 
-    $posts = get_posts($args);
-    if(isset($posts[0]->ID)){
-      $product_id = $posts[0]->ID;
-      $product = wc_get_product($product_id);
-      $wooms_id = $product->get_meta('wooms_id', true);
-      // self::
-      echo '<pre>';
-      var_dump($wooms_id);
+    if($offset = get_transient('wooms_update_single_product_offset')){
+      $url_args['offset'] = $offset;
+    } else {
+      $offset = 0;
+    }
 
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=productid=' . $wooms_id;
+    $url = add_query_arg($url_args, $url);
+
+    $data_api = wooms_request($url);
+
+    // var_dump($data_api);
+
+    // return;
+
+    if(empty($data_api['rows'])){
+      //finish
+      delete_transient('wooms_update_single_product_id');
+      delete_transient('wooms_update_single_product_offset');
+      $product->delete_meta_data('wooms_need_update_variations');
+      $product->save();
+      return true;
+    }
+
+    $i = 0;
+    foreach ($data_api['rows'] as $item) {
+
+      $i++;
+      // code...
+      do_action( 'wooms_products_variations_item', $item );
 
     }
+
+    set_transient( 'wooms_update_single_product_offset', $offset + $i );
 
   }
 
@@ -68,33 +108,41 @@ class Single {
   /**
    * save
    */
-  public static function save(){
+  public static function save($post_id){
     if( ! empty($_REQUEST['wooms_product_sinle_sync']) ){
-      self::sync();
+      self::sync($post_id);
     }
   }
 
   /**
    * sync
    */
-  public static function sync(){
-    $post = get_post();
-    $product = wc_get_product($post->ID);
+  public static function sync($post_id = ''){
+    if(empty($post_id)){
+      return false;
+    }
+
+    $product = wc_get_product($post_id);
     $uuid = $product->get_meta('wooms_id', true);
     if(empty($uuid)){
       return false;
     }
 
+    // $uuid = 'bc583c52-4867-11e9-9ff4-34e80008cbfb';
+
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/product/' . $uuid;
 
     $data = wooms_request($url);
+
 
     do_action( 'wooms_product_data_item', $data );
 
     do_action( 'wooms_product_import_row', $data, '', '' );
 
-    $product->update_meta_data('wooms_need_update_variation', 1);
-    $product->save();
+    if( ! empty($data['modificationsCount']) ){
+      $product->update_meta_data('wooms_need_update_variations', 1);
+      $product->save();
+    }
 
   }
 
@@ -102,15 +150,23 @@ class Single {
   /**
    * display_checkbox
    */
-  public static function display_checkbox(){
+  public static function display_checkbox($product_id = ''){
+
+    $product = wc_get_product($product_id);
+    $need_update_variations = $product->get_meta('wooms_need_update_variations', true);
     echo '<hr/>';
-    printf(
-      '<input id="wooms-product-single-sync" type="checkbox" name="wooms_product_sinle_sync"> <label for="wooms-product-single-sync">%s</label>',
-      'Синхронизировать'
-    );
+    printf('<p>%s</p>', 'Функция для тестирования');
+    if(empty($need_update_variations)){
+      printf(
+        '<input id="wooms-product-single-sync" type="checkbox" name="wooms_product_sinle_sync"> <label for="wooms-product-single-sync">%s</label>',
+        'Синхронизировать отдельно'
+      );
+    } else {
+      printf('<p>%s</p>', 'Вариации ждут очереди на обновление');
+    }
+
   }
 
 }
 
 Single::init();
-// add_action('plugins_loaded', array( 'WooMS\Products\Single', 'init') );
