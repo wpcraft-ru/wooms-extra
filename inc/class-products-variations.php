@@ -391,7 +391,7 @@ class Variations {
       return false;
     }
 
-    $count = apply_filters( 'wooms_variant_iteration_size', 20 );
+    $count = apply_filters( 'wooms_variant_iteration_size', 30 );
     if ( ! $offset = get_transient( 'wooms_variant_offset' ) ) {
       $offset = 0;
       set_transient( 'wooms_variant_offset', $offset );
@@ -431,11 +431,19 @@ class Variations {
           throw new \Exception( $error_code . ': ' . $data['errors'][0]["error"] );
         }
       }
+
       //If no rows, that send 'end' and stop walker
-      if ( empty( $data['rows'] ) ) {
+      if ( isset($data['rows']) && empty( $data['rows'] ) ) {
         self::walker_finish();
 
         return true;
+      }
+
+      if( empty( $data['rows']) ){
+        do_action('wooms_logger_error', __CLASS__,
+          'Ошибка - пустой data row',
+          print_r($data, true)
+        );
       }
 
       $i = 0;
