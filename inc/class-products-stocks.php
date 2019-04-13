@@ -19,14 +19,11 @@ class Stocks {
 
     add_filter( 'wooms_save_variation', array(__CLASS__, 'update_variation'), 30, 3);
 
-
-    //Settings
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 30 );
 
-    add_filter('wooms_stock_type', array(__CLASS__, 'select_type_stock'));
+    add_filter( 'wooms_stock_type', array(__CLASS__, 'select_type_stock'));
 
     if ( ! empty( get_option( 'woomss_warehouse_id' ) ) ) {
-
       add_filter( 'wooms_url_get_products', array( __CLASS__, 'add_filter_by_warehouse_id' ), 10 );
       add_filter( 'wooms_url_get_variants', array( __CLASS__, 'add_filter_by_warehouse_id' ), 10 );
     }
@@ -194,11 +191,15 @@ class Stocks {
 
     if(empty($stock)){
       $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
-      if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-        $url = add_query_arg( array( 'store.id' => $warehouse_id, 'product.id' => $item['id'] ), $url );
-      }
 
-      $url = add_query_arg( 'product.id', $item['id'], $url );
+      $query_args = [
+        'product.id' => $item['id'],
+      ];
+
+      if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
+        $query_args['store.id'] = $warehouse_id;
+      }
+      $url = add_query_arg( $query_args, $url );
 
       $data = wooms_request( $url );
 
