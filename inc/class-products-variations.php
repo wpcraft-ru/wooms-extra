@@ -294,6 +294,11 @@ class Variations {
     $variation->set_price( $price );
     $variation->set_regular_price( $price );
 
+    do_action('wooms_logger',
+      __CLASS__,
+      sprintf('Цена %s сохранена (для вариации %s продукта %s)', $price, $variation_id, $product_id)
+    );
+
     $product_parent = wc_get_product($product_id);
     if( ! $product_parent->is_type('variable')){
       $product_parent = new \WC_Product_Variable($product_parent);
