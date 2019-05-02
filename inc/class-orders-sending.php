@@ -155,20 +155,20 @@ class Sender {
     /**
      * Main walker for send orders
      */
-    public static function walker() {
-
+    public static function walker()
+    {
       $args = array(
-          'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
-          'post_type'    => 'shop_order',
-          'post_status'  => 'any',
-          'meta_key'     => 'wooms_order_sync',
-          'meta_compare' => 'EXISTS',
+        'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
+        'post_type'    => 'shop_order',
+        'post_status'  => 'any',
+        'meta_key'     => 'wooms_order_sync',
+        'meta_compare' => 'EXISTS',
       );
 
       $orders = get_posts( $args );
 
       if ( empty( $orders ) ) {
-        false;
+        return false;
       }
 
       do_action('wooms_logger', __CLASS__,
@@ -176,19 +176,17 @@ class Sender {
       );
 
       $result_list = [];
-      foreach ( $orders as $key => $order ) {
-
+      foreach ( $orders as $order ) {
         $check = self::update_order( $order->ID );
         // $check = self::send_order( $order->ID );
         if ( false != $check ) {
           update_post_meta( $order->ID, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
           $result_list[] = $order->ID;
         }
-
       }
 
       if ( empty( $result_list ) ) {
-        false;
+        return false;
       }
 
       return $result_list;
@@ -317,105 +315,95 @@ class Sender {
      * @return array|bool
      */
     public static function get_data_positions( $order_id ) {
-        $order = wc_get_order( $order_id );
-        $items = $order->get_items();
-        if ( empty( $items ) ) {
-            return false;
+      $order = wc_get_order( $order_id );
+      $items = $order->get_items();
+      if ( empty( $items ) ) {
+          return false;
+      }
+      $data = array();
+      foreach ( $items as $key => $item ) {
+        if ( $item['variation_id'] != 0 ) {
+            $product_id   = $item['variation_id'];
+            $product_type = 'variant';
+        } else {
+            $product_id   = $item["product_id"];
+            $product_type = 'product';
         }
-        $data = array();
-        foreach ( $items as $key => $item ) {
-            if ( $item['variation_id'] != 0 ) {
-                $product_id   = $item['variation_id'];
-                $product_type = 'variant';
-            } else {
-                $product_id   = $item["product_id"];
-                $product_type = 'product';
-            }
 
-            $uuid = get_post_meta( $product_id, 'wooms_id', true );
-            // echo '<pre>';
-            // var_dump($item); exit;
+        $uuid = get_post_meta( $product_id, 'wooms_id', true );
+        // echo '<pre>';
+        // var_dump($item); exit;
 
-            if ( empty( $uuid ) ) {
-                continue;
-            }
+        if ( empty( $uuid ) ) {
+            continue;
+        }
 
-            if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
-                continue;
-            }
+        if ( apply_filters( 'wooms_order_item_skip', false, $product_id, $item ) ) {
+            continue;
+        }
 
-            $price = $item->get_total();
-            $quantity = $item->get_quantity();
-            if ( empty( get_option( 'wooms_orders_send_reserved' ) ) ) {
-                $reserve_qty = $quantity;
-            } else {
-                $reserve_qty = 0;
-            }
+        $price = $item->get_total();
+        $quantity = $item->get_quantity();
+        if ( empty( get_option( 'wooms_orders_send_reserved' ) ) ) {
+            $reserve_qty = $quantity;
+        } else {
+            $reserve_qty = 0;
+        }
 
-            $data[] = array(
-                'quantity'   => $quantity,
-                'price'      => ( $price / $quantity ) * 100,
-                'discount'   => 0,
-                'vat'        => 0,
-                'assortment' => array(
-                    'meta' => array(
-                        "href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
-                        "type"      => "{$product_type}",
-                        "mediaType" => "application/json",
-                    ),
+        $data[] = array(
+            'quantity'   => $quantity,
+            'price'      => ( $price / $quantity ) * 100,
+            'discount'   => 0,
+            'vat'        => 0,
+            'assortment' => array(
+                'meta' => array(
+                    "href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+                    "type"      => "{$product_type}",
+                    "mediaType" => "application/json",
                 ),
-                'reserve'    => $reserve_qty,
-            );
-        }
+            ),
+            'reserve'    => $reserve_qty,
+        );
+      }
 
-        return $data;
+      return $data;
     }
 
     /**
      * Get meta for organization
      */
-    public static function get_data_organization() {
+    public static function get_data_organization()
+    {
+      $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
+      $data = wooms_request( $url );
 
+      if ( empty( $data['rows'][0]['meta'] ) ) {
+        do_action('wooms_logger_error', __CLASS__,
+          'Нет юр лица в базе для отправки Заказа'
+        );
+        return false;
+      }
 
-            $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-            $data = wooms_request( $url );
+      $meta = '';
+      if( $org_name_site = get_option('wooms_org_name') ) {
+        foreach ($data['rows'] as $row) {
+          if($org_name_site == $row['name']){
+            $meta = $row["meta"];
+          }
+        }
 
-            $org_meta = '';
-
-            if( ! empty($data['rows'])){
-
-            }
-
-        $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
-        $data = wooms_request( $url );
-
-        if ( empty( $data['rows'][0]['meta'] ) ) {
+        if(empty($meta)){
           do_action('wooms_logger_error', __CLASS__,
-            'Нет юр лица в базе для отправки Заказа'
+            sprintf('Для указанного наименования юр лица не найдены данные в МойСклад: %s', $org_name_site)
           );
-          return false;
         }
+      }
 
-        $meta = '';
-        if( $org_name_site = get_option('wooms_org_name') ) {
-          foreach ($data['rows'] as $row) {
-            if($org_name_site == $row['name']){
-              $meta = $row["meta"];
-            }
-          }
+      if( empty($meta) ){
+        $meta = $data['rows'][0]['meta'];
+      }
 
-          if(empty($meta)){
-            do_action('wooms_logger_error', __CLASS__,
-              sprintf('Для указанного наименования юр лица не найдены данные в МойСклад: %s', $org_name_site)
-            );
-          }
-        }
-
-        if( empty($meta) ){
-          $meta = $data['rows'][0]['meta'];
-        }
-
-        return array( 'meta' => $meta );
+      return array( 'meta' => $meta );
     }
 
     /**
@@ -587,7 +575,6 @@ class Sender {
         return $data_agents['rows'][0]['id'];
     }
 
-
     /**
      * Get data customerorder date created for send MoySklad
      *
@@ -672,7 +659,6 @@ class Sender {
           $section = 'wooms_section_orders'
         );
 
-
         register_setting( 'mss-settings', 'wooms_org_name' );
         add_settings_field(
           $id = 'wooms_org_name',
@@ -682,7 +668,6 @@ class Sender {
           $section = 'wooms_section_orders'
         );
     }
-
 
     /**
      * display_wooms_org_name
@@ -694,11 +679,7 @@ class Sender {
         '<p><small>%s</small></p>',
         'Тут можно указать краткое наименование юр лица из МойСклад. Если пусто, то берется первое из списка. Иначе будет выбор указанного юр лица.'
       );
-
-
-
     }
-
 
     /**
      * Send statuses from MoySklad
