@@ -43,8 +43,8 @@ class WooMS_XT {
   /**
    * load files
    */
-  public static function load(){
-
+  public static function load()
+  {
     if( ! class_exists('WooMS_Core')){
       self::$is_core_exist = false;
       return;
@@ -64,7 +64,7 @@ class WooMS_XT {
       require_once 'inc/class-orders-statuses-from-site.php';
       require_once 'inc/class-orders-statuses-from-moysklad.php';
       require_once 'inc/class-product-single.php';
-
+      require_once 'inc/class-orders-warehouse.php';
     }
   }
 

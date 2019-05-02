@@ -17,9 +17,9 @@ class Sender {
 
     //Cron
     add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
-    add_action('init', array(__CLASS__, 'add_cron_hook'));
+    add_action( 'init', array(__CLASS__, 'add_cron_hook'));
 
-    add_action('save_post', array(__CLASS__, 'save_data_form'));
+    add_action( 'save_post', array(__CLASS__, 'save_data_form'));
     add_action( 'add_meta_boxes', function(){
       add_meta_box( 'metabox_order', 'МойСклад', array( __CLASS__, 'display_metabox' ), 'shop_order', 'side', 'low' );
     });
@@ -102,6 +102,9 @@ class Sender {
         sprintf('При передаче Заказа %s - нет позиций', $order_id)
       );
     }
+
+    $data = apply_filters('wooms_order_data', $data, $order_id);
+    $data = apply_filters('wooms_order_update_data', $data, $order_id);
 
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
     $result = wooms_request( $url, $data, 'PUT' );
@@ -210,6 +213,9 @@ class Sender {
 
           return false;
         }
+
+        $data = apply_filters('wooms_order_data', $data, $order_id);
+        $data = apply_filters('wooms_order_send_data', $data, $order_id);
 
         $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
         $result = wooms_request( $url, $data );
