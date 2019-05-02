@@ -12,10 +12,7 @@ class Sender {
    */
   public static function init()
   {
-    add_action( 'woomss_tool_actions_btns', array( __CLASS__, 'ui_for_manual_start' ), 15 );
-    add_action( 'woomss_tool_actions_wooms_orders_send', array( __CLASS__, 'ui_action' ) );
     add_action( 'wooms_cron_order_sender', array( __CLASS__, 'cron_starter_walker' ) );
-    add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_date_picker' ) );
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 40);
 
     //Cron
@@ -167,18 +164,6 @@ class Sender {
           'meta_key'     => 'wooms_order_sync',
           'meta_compare' => 'EXISTS',
       );
-
-      /**
-       * XXX remove wooms_orders_send_from from plugin
-       */
-      // if ( empty( get_option( 'wooms_orders_send_from' ) ) ) {
-      //   $date_from = '2 day ago';
-      // } else {
-      //   $date_from = get_option( 'wooms_orders_send_from' );
-      // }
-      // $args['date_query'] = array(
-      //   'after' => $date_from,
-      // );
 
       $orders = get_posts( $args );
 
@@ -644,25 +629,6 @@ class Sender {
         return $customer_note;
     }
 
-
-    /**
-     * Start manual send orders to MoySklad
-     */
-    public static function ui_for_manual_start() {
-
-        if ( empty( get_option( 'wooms_orders_sender_enable' ) ) ) {
-            return;
-        }
-
-        ?>
-        <h2>Заказы</h2>
-        <p>Для отправки ордеров в МойСклад - нажмите на кнопку</p>
-        <p><strong>Внимание!</strong> Отправка новых заказов происходит автоматически раз в минуту.</p>
-        <a href="<?php echo add_query_arg( 'a', 'wooms_orders_send', admin_url( 'admin.php?page=moysklad' ) ) ?>" class="button button-primary">Выполнить</a>
-        <?php
-
-    }
-
     /**
      * Setting
      */
@@ -675,15 +641,6 @@ class Sender {
           $id = 'wooms_orders_sender_enable',
           $title = 'Включить автоматическую синхронизацию заказов в МойСклад',
           $callback = array( __CLASS__, 'display_wooms_orders_sender_enable' ),
-          $page = 'mss-settings',
-          $section = 'wooms_section_orders'
-        );
-
-        register_setting( 'mss-settings', 'wooms_orders_send_from' );
-        add_settings_field(
-          $id = 'wooms_orders_send_from',
-          $title = 'Дата, с которой берутся Заказы для отправки',
-          $callback = array( __CLASS__, 'display_wooms_orders_send_from' ),
           $page = 'mss-settings',
           $section = 'wooms_section_orders'
         );
@@ -752,23 +709,7 @@ class Sender {
     }
 
     /**
-     *
-     */
-    public static function display_wooms_orders_send_from() {
-        $option_key = 'wooms_orders_send_from';
-        printf( '<input type="text" name="%s" value="%s" />', $option_key, get_option( $option_key ) );
-        echo '<p><small>Если дата не выбрана, то берутся заказы сегодняшнего и вчерашнего дня. Иначе берутся все новые заказы с указанной даты.</small></p>';
-        ?>
-        <script type="text/javascript">
-            jQuery(document).ready(function () {
-                jQuery('input[name=wooms_orders_send_from]').datepicker();
-            });
-        </script>
-        <?php
-    }
-
-    /**
-     *
+     * display_wooms_orders_send_prefix_postfix
      */
     public static function display_wooms_orders_send_prefix_postfix() {
         $option_key = 'wooms_orders_send_prefix_postfix';
@@ -777,7 +718,7 @@ class Sender {
     }
 
     /**
-     *
+     * display_wooms_orders_send_check_prefix_postfix
      */
     public static function display_wooms_orders_send_check_prefix_postfix() {
         $selected_prefix_postfix = get_option( 'wooms_orders_send_check_prefix_postfix' );
@@ -793,28 +734,12 @@ class Sender {
     }
 
     /**
-     *
+     * display_wooms_orders_send_reserved
      */
     public static function display_wooms_orders_send_reserved() {
         $option = 'wooms_orders_send_reserved';
         $desc   = '<small>При включении данной настройки, резеревирование товаров на складе будет отключено</small>';
         printf( '<input type="checkbox" name="%s" value="1" %s /> %s', $option, checked( 1, get_option( $option ), false ), $desc );
-
-    }
-
-    /**
-     * UI for manual start send data of order
-     */
-    public static function ui_action() {
-        $result_list = self::walker();
-        echo '<br/><hr>';
-        if ( empty( $result_list ) ) {
-            printf( '<p>Все <strong>новые</strong> заказы уже переданы в МойСклад. Если их там нет, то сообщите в <a href="%s" target="_blank">тех поддержку</a>.</p>', '//wpcraft.ru/contacts/' );
-        } else {
-            foreach ( $result_list as $key => $value ) {
-                printf( '<p>Передан заказ <a href="%s">№%s</a></p>', get_edit_post_link( $value ), $value );
-            }
-        }
     }
 
     /**
@@ -829,13 +754,11 @@ class Sender {
             $meta_data .= sprintf( '<p><a href="https://online.moysklad.ru/app/#customerorder/edit?id=%s" target="_blank">Посмотреть заказ в МойСклад</a></p>', $data_id );
         } else {
             $meta_data = 'Заказ не передан в МойСклад';
-            $meta_data .= sprintf( '<p><a href="%s">Отправить в МойСклад</a></p>', admin_url( 'admin.php?page=moysklad' ) );
         }
         echo $meta_data;
 
         $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
         echo '<hr/>';
-        printf('<p>%s</p>', 'Функция для тестирования');
         printf(
           '<input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
           <label for="wooms-order-sync">%s</label>',
@@ -843,20 +766,6 @@ class Sender {
           'Синхронизировать'
         );
 
-    }
-
-    /**
-     * Add jQuery date picker for select start-date sending orders to MoySklad
-     */
-    public static function enqueue_date_picker() {
-        $screen = get_current_screen();
-        if ( empty( $screen->id ) or 'settings_page_mss-settings' != $screen->id ) {
-            return;
-        }
-        wp_enqueue_script( 'jquery-ui-datepicker' );
-        $wp_scripts = wp_scripts();
-        wp_enqueue_style( 'jquery-ui', '//ajax.googleapis.com/ajax/libs/jqueryui/' . $wp_scripts->registered['jquery-ui-core']->ver .
-                                       '/themes/flick/jquery-ui.css', false, $wp_scripts->registered['jquery-ui-core']->ver, false );
     }
 
 }
