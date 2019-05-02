@@ -80,7 +80,7 @@ class Sender {
     if(empty($wooms_id)){
       $check = self::send_order($order_id);
       if($check){
-        // delete_post_meta($order_id, 'wooms_order_sync');
+        delete_post_meta($order_id, 'wooms_order_sync');
         $order->delete_meta_data('wooms_order_sync');
         $order->save();
         return true;
