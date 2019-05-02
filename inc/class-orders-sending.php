@@ -7,23 +7,119 @@ namespace WooMS\Orders;
  */
 class Sender {
 
-    /**
-     * WooMS_Orders_Sender constructor.
-     */
-    public static function init() {
+  /**
+   * The init
+   */
+  public static function init()
+  {
+    add_action( 'woomss_tool_actions_btns', array( __CLASS__, 'ui_for_manual_start' ), 15 );
+    add_action( 'woomss_tool_actions_wooms_orders_send', array( __CLASS__, 'ui_action' ) );
+    add_action( 'wooms_cron_order_sender', array( __CLASS__, 'cron_starter_walker' ) );
+    add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_date_picker' ) );
+    add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 40);
 
-      add_action( 'woomss_tool_actions_btns', array( __CLASS__, 'ui_for_manual_start' ), 15 );
-      add_action( 'woomss_tool_actions_wooms_orders_send', array( __CLASS__, 'ui_action' ) );
-      add_action( 'wooms_cron_order_sender', array( __CLASS__, 'cron_starter_walker' ) );
-      add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_date_picker' ) );
-      add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 40);
-      add_action( 'add_meta_boxes', array( __CLASS__, 'add_meta_boxes_order' ) );
+    //Cron
+    add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
+    add_action('init', array(__CLASS__, 'add_cron_hook'));
 
-      //Cron
-      add_filter( 'cron_schedules', array(__CLASS__, 'add_schedule') );
-      add_action('init', [__CLASS__, 'add_cron_hook']);
+    add_action('save_post', array(__CLASS__, 'save_data_form'));
+    add_action( 'add_meta_boxes', function(){
+      add_meta_box( 'metabox_order', 'МойСклад', array( __CLASS__, 'display_metabox' ), 'shop_order', 'side', 'low' );
+    });
 
+    add_action( 'woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20 );
+
+  }
+
+  /**
+   * Auto add meta for send order by cron
+   */
+  public static function auto_add_order_for_send( $order_id )
+  {
+  	if(get_option('wooms_orders_sender_enable')){
+      $order = wc_get_order($order_id);
+      $order->add_meta_data('wooms_order_sync', 1);
+      $order->save();
     }
+  }
+
+  /**
+   * Description
+   */
+  public static function save_data_form($post_id)
+  {
+    if ( "shop_order" != get_post_type($post_id) ) {
+      return;
+    }
+
+    if ( wp_is_post_revision( $post_id ) ){
+      return;
+    }
+
+    if( ! isset($_POST['wooms_order_sync'])){
+      return;
+    }
+
+    $order_id = $post_id;
+    if(empty($_POST['wooms_order_sync'])){
+      delete_post_meta($order_id, 'wooms_order_sync');
+    } else {
+      update_post_meta($order_id, 'wooms_order_sync', 1);
+      self::update_order($order_id);
+    }
+  }
+
+  /**
+   * update_order
+   */
+  public static function update_order($order_id)
+  {
+    $order = wc_get_order($order_id);
+    $wooms_id = $order->get_meta('wooms_id', true);
+
+    /**
+     * Send order if no wooms_id
+     */
+    if(empty($wooms_id)){
+      $check = self::send_order($order_id);
+      if($check){
+        // delete_post_meta($order_id, 'wooms_order_sync');
+        $order->delete_meta_data('wooms_order_sync');
+        $order->save();
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    /**
+     * Preparation the data for update an existing order
+     */
+    $data = array(
+      "name" => self::get_data_name( $order_id ),
+    );
+    $data['positions'] = self::get_data_positions( $order_id );
+
+    if(empty($data['positions'])){
+      do_action('wooms_logger_error', __CLASS__,
+        sprintf('При передаче Заказа %s - нет позиций', $order_id)
+      );
+    }
+
+    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
+    $result = wooms_request( $url, $data, 'PUT' );
+
+    if(empty($result["id"])){
+      do_action('wooms_logger_error', __CLASS__,
+        sprintf('При передаче Заказа %s - данные не переданы', $order_id)
+      );
+    } else {
+      $order->delete_meta_data('wooms_order_sync');
+      $order->save();
+      return true;
+    }
+
+  }
 
  /**
   * Регистрируем интервал для wp_cron в секундах
@@ -68,19 +164,21 @@ class Sender {
           'numberposts'  => apply_filters( 'wooms_orders_number', 5 ),
           'post_type'    => 'shop_order',
           'post_status'  => 'any',
-          'meta_key'     => 'wooms_send_timestamp',
-          'meta_compare' => 'NOT EXISTS',
+          'meta_key'     => 'wooms_order_sync',
+          'meta_compare' => 'EXISTS',
       );
 
-      if ( empty( get_option( 'wooms_orders_send_from' ) ) ) {
-        $date_from = '2 day ago';
-      } else {
-        $date_from = get_option( 'wooms_orders_send_from' );
-      }
-
-      $args['date_query'] = array(
-        'after' => $date_from,
-      );
+      /**
+       * XXX remove wooms_orders_send_from from plugin
+       */
+      // if ( empty( get_option( 'wooms_orders_send_from' ) ) ) {
+      //   $date_from = '2 day ago';
+      // } else {
+      //   $date_from = get_option( 'wooms_orders_send_from' );
+      // }
+      // $args['date_query'] = array(
+      //   'after' => $date_from,
+      // );
 
       $orders = get_posts( $args );
 
@@ -88,10 +186,15 @@ class Sender {
         false;
       }
 
+      do_action('wooms_logger', __CLASS__,
+        sprintf('Старт очереди отправки заказов - %s', date( "Y-m-d H:i:s" ))
+      );
+
       $result_list = [];
       foreach ( $orders as $key => $order ) {
 
-        $check = self::send_order( $order->ID );
+        $check = self::update_order( $order->ID );
+        // $check = self::send_order( $order->ID );
         if ( false != $check ) {
           update_post_meta( $order->ID, 'wooms_send_timestamp', date( "Y-m-d H:i:s" ) );
           $result_list[] = $order->ID;
@@ -108,10 +211,6 @@ class Sender {
 
     /**
      * Send order to moysklad.ru and mark the order as sended
-     *
-     * @param $order_id
-     *
-     * @return bool
      */
     public static function send_order( $order_id ) {
 
@@ -146,6 +245,8 @@ class Sender {
         }
 
         $order->update_meta_data( 'wooms_id', $result['id'] );
+        $order->delete_meta_data('wooms_order_sync');
+
         $order->save();
 
         if(empty($result['positions'])){
@@ -174,7 +275,8 @@ class Sender {
      *
      * @return array|bool
      */
-    public static function get_data_order_for_moysklad( $order_id ) {
+    public static function get_data_order_for_moysklad( $order_id )
+    {
       $data = array(
         "name" => self::get_data_name( $order_id ),
       );
@@ -187,7 +289,6 @@ class Sender {
 
         unset( $data['positions'] );
         return false;
-
       }
 
       if($meta_organization = self::get_data_organization()){
@@ -206,20 +307,21 @@ class Sender {
     /**
      * Get data name for send MoySklad
      */
-    public static function get_data_name( $order_id ) {
-        $prefix_postfix_name  = get_option( 'wooms_orders_send_prefix_postfix' );
-        $prefix_postfix_check = get_option( 'wooms_orders_send_check_prefix_postfix' );
-        if ( $prefix_postfix_name ) {
-            if ( 'prefix' == $prefix_postfix_check ) {
-                $name_order = $prefix_postfix_name . '-' . $order_id;
-            } elseif ( 'postfix' == $prefix_postfix_check ) {
-                $name_order = $order_id . '-' . $prefix_postfix_name;
-            }
-        } else {
-            $name_order = $order_id;
-        }
+    public static function get_data_name( $order_id )
+    {
+      $prefix_postfix_name  = get_option( 'wooms_orders_send_prefix_postfix' );
+      $prefix_postfix_check = get_option( 'wooms_orders_send_check_prefix_postfix' );
+      if ( $prefix_postfix_name ) {
+          if ( 'prefix' == $prefix_postfix_check ) {
+              $name_order = $prefix_postfix_name . '-' . $order_id;
+          } elseif ( 'postfix' == $prefix_postfix_check ) {
+              $name_order = $order_id . '-' . $prefix_postfix_name;
+          }
+      } else {
+          $name_order = $order_id;
+      }
 
-        return apply_filters( 'wooms_order_name', (string) $name_order );
+      return apply_filters( 'wooms_order_name', (string) $name_order );
     }
 
     /**
@@ -246,6 +348,8 @@ class Sender {
             }
 
             $uuid = get_post_meta( $product_id, 'wooms_id', true );
+            // echo '<pre>';
+            // var_dump($item); exit;
 
             if ( empty( $uuid ) ) {
                 continue;
@@ -569,7 +673,7 @@ class Sender {
         register_setting( 'mss-settings', 'wooms_orders_sender_enable' );
         add_settings_field(
           $id = 'wooms_orders_sender_enable',
-          $title = 'Включить синхронизацию заказов в МойСклад',
+          $title = 'Включить автоматическую синхронизацию заказов в МойСклад',
           $callback = array( __CLASS__, 'display_wooms_orders_sender_enable' ),
           $page = 'mss-settings',
           $section = 'wooms_section_orders'
@@ -714,16 +818,10 @@ class Sender {
     }
 
     /**
-     * Add metaboxes
-     */
-    public static function add_meta_boxes_order() {
-        add_meta_box( 'metabox_order', 'МойСклад', array( __CLASS__, 'add_meta_box_data_order' ), 'shop_order', 'side', 'low' );
-    }
-
-    /**
      * Meta box in order
      */
-    public static function add_meta_box_data_order() {
+    public static function display_metabox()
+    {
         $post    = get_post();
         $data_id = get_post_meta( $post->ID, 'wooms_id', true );
         if ( $data_id ) {
@@ -734,6 +832,16 @@ class Sender {
             $meta_data .= sprintf( '<p><a href="%s">Отправить в МойСклад</a></p>', admin_url( 'admin.php?page=moysklad' ) );
         }
         echo $meta_data;
+
+        $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
+        echo '<hr/>';
+        printf('<p>%s</p>', 'Функция для тестирования');
+        printf(
+          '<input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
+          <label for="wooms-order-sync">%s</label>',
+          checked($need_update, 1, false),
+          'Синхронизировать'
+        );
 
     }
 
