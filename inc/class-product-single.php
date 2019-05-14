@@ -26,61 +26,6 @@ class Single {
       }
     });
 
-    add_shortcode('test1', function(){
-
-      $ms_api_args = array(
-        'offset' => 0,
-        'limit'  => 100,
-        'scope'  => 'variant',
-      );
-
-      // delete_transient('test_offset');
-
-      if($offset = get_transient('test_offset')){
-        $ms_api_args['offset'] = 5555;
-      }
-
-      $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment?filter=productFolder=https://online.moysklad.ru/api/remap/1.1/entity/productfolder/6b0dc1f1-461b-11e9-9109-f8fc0016bd2e';
-
-      $url = add_query_arg($ms_api_args, $url);
-
-      $data = wooms_request($url);
-
-      if(empty($data["rows"])){
-        echo 'stop';
-        echo '<pre>';
-        var_dump($data);
-
-        return;
-      }
-
-      var_dump($url);
-
-      $i = 0;
-      foreach ($data["rows"] as $item) {
-        $i++;
-        if('product' == $item["meta"]["type"]){
-          continue;
-        }
-
-        $parent_uuid = $item["product"]['meta']['href'];
-        if($parent_uuid != 'https://online.moysklad.ru/api/remap/1.1/entity/product/bc583c52-4867-11e9-9ff4-34e80008cbfb'){
-          continue;
-        }
-
-        echo '<pre>';
-        var_dump($item);
-        echo '</pre>';
-
-        // code...
-      }
-
-      $ms_api_args['offset'] = $ms_api_args['offset'] + $i;
-      set_transient('test_offset', $ms_api_args['offset'], HOUR_IN_SECONDS);
-
-
-    });
-
   }
 
   /**

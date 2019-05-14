@@ -32,7 +32,6 @@ class Variations {
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_stop', array( __CLASS__, 'stop_manually' ) );
     add_action( 'wooms_variants_display_state', array(__CLASS__, 'display_state'));
     add_action( 'wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
-
   }
 
   /**
@@ -50,12 +49,10 @@ class Variations {
    */
   public static function set_product_attributes_for_variation( $product_id, $data_api ) {
 
-    $data = $data_api;
-
     $product = wc_get_product($product_id);
 
     $ms_attributes = [];
-    foreach ( $data['characteristics'] as $key => $characteristic ) {
+    foreach ( $data_api['characteristics'] as $key => $characteristic ) {
 
       $attribute_label = $characteristic["name"];
 
@@ -65,28 +62,33 @@ class Variations {
       ];
     }
 
-    foreach ( $data['characteristics'] as $key => $characteristic ) {
-      $values = array();
+    $values = array();
+    foreach ( $data_api['characteristics'] as $key => $characteristic ) {
       $attribute_label = $characteristic["name"];
 
       if($attribute_taxonomy_id = self::get_attribute_id_by_label($characteristic['name'])){
-        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
-        $values = $product->get_attribute($taxonomy_name);
-        $values = explode(',', $values);
-        $values = array_map('trim',$values);
+        $taxonomy_name = wc_attribute_taxonomy_name_by_id((int)$attribute_taxonomy_id);
+        $current_values = $product->get_attribute($taxonomy_name);
+
+        if($current_values){
+          $current_values = explode(',', $current_values);
+          $current_values = array_map('trim',$current_values);
+        }
 
       } else {
-        $values = $product->get_attribute($characteristic['name']);
-        $values = explode(' | ', $values);
-
+        $current_values = $product->get_attribute($characteristic['name']);
+        $current_values = explode(' | ', $current_values);
       }
 
-      $values[] = $characteristic['value'];
+      if(empty($current_values)){
+        $values[] = $characteristic['value'];
+      } else{
+        $values = $current_values;
+        $values[] = $characteristic['value'];
+      }
 
       $values = apply_filters('wooms_product_attribute_save_values', $values, $product, $characteristic);
-
       $ms_attributes[ $attribute_label ]['values'] = $values;
-
     }
 
     /**
@@ -121,7 +123,7 @@ class Variations {
         if(isset($attributes[$attribute_slug])){
             unset($attributes[$attribute_slug]);
         }
-        $taxonomy_name = wc_attribute_taxonomy_name_by_id($attribute_taxonomy_id);
+        $taxonomy_name = wc_attribute_taxonomy_name_by_id((int)$attribute_taxonomy_id);
         $attribute_object = new \WC_Product_Attribute();
         $attribute_object->set_id( $attribute_taxonomy_id );
         $attribute_object->set_name( $taxonomy_name );
@@ -134,6 +136,7 @@ class Variations {
     }
 
     $attributes = apply_filters('wooms_product_attributes', $attributes, $data_api, $product);
+
     $product->set_attributes( $attributes );
 
     $product->save();
@@ -558,7 +561,7 @@ class Variations {
 
     foreach ($attr_taxonomies as $attr) {
       if($attr->attribute_label == $label){
-        return $attr->attribute_id;
+        return (int)$attr->attribute_id;
       }
     }
 
