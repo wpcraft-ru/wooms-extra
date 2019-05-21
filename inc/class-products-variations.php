@@ -6,10 +6,17 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
 }
 
+
+
 /**
  * Import variants from MoySklad
  */
 class Variations {
+
+  /**
+   * tag for cron detected
+   */
+  public static $is_cron = false;
 
   /**
    * The init
@@ -20,7 +27,7 @@ class Variations {
 
     // Cron
     add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
-    add_action( 'wooms_cron_variation_walker', array( __CLASS__, 'walker_starter' ) );
+    add_action( 'wooms_cron_variation_walker', array( __CLASS__, 'walker_starter_by_cron' ) );
 
     add_filter( 'wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
     add_action( 'wooms_products_variations_item', array( __CLASS__, 'load_data_variant' ), 15 );
@@ -32,6 +39,15 @@ class Variations {
     add_action( 'woomss_tool_actions_wooms_import_variations_manual_stop', array( __CLASS__, 'stop_manually' ) );
     add_action( 'wooms_variants_display_state', array(__CLASS__, 'display_state'));
     add_action( 'wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
+    add_action( 'wooms_products_sync_manual_start', [__CLASS__, 'set_tag_for_manual_start']);
+
+  }
+
+  /**
+   * Set tag for start sync after manual start the main walker
+   */
+  public static function set_tag_for_manual_start(){
+    set_transient('wooms_variations_sync_for_manual_start', 1);
   }
 
   /**
@@ -384,6 +400,7 @@ class Variations {
     delete_transient( 'wooms_variant_offset' );
     delete_transient( 'wooms_variant_end_timestamp' );
     delete_transient( 'wooms_variant_walker_stop' );
+    delete_transient( 'wooms_variations_sync_for_manual_start' );
     set_transient( 'wooms_variant_manual_sync', 1 );
     self::walker();
     wp_redirect( admin_url( 'admin.php?page=moysklad' ) );
@@ -509,6 +526,8 @@ class Variations {
     delete_transient( 'wooms_variant_start_timestamp' );
     delete_transient( 'wooms_variant_offset' );
     delete_transient( 'wooms_variant_manual_sync' );
+    delete_transient( 'wooms_variations_sync_for_manual_start' );
+
     //Отключаем обработчик или ставим на паузу
     if ( empty( get_option( 'woomss_walker_cron_enabled' ) ) ) {
       $timer = 0;
@@ -585,7 +604,9 @@ class Variations {
   /**
    * Starting walker from cron
    */
-  public static function walker_starter() {
+  public static function walker_starter_by_cron() {
+
+    self::$is_cron = true;
 
     if ( self::can_cron_start() ) {
       self::walker();
@@ -598,7 +619,18 @@ class Variations {
    * @return bool
    */
   public static function can_cron_start() {
+
+    /**
+     * if manual start - we can start
+     */
     if ( ! empty( get_transient( 'wooms_variant_manual_sync' ) ) ) {
+      return true;
+    }
+
+    /**
+     * If general walker finished and set the tag for manual start - we can started
+     */
+    if(get_transient('wooms_variations_sync_for_manual_start') && get_transient('wooms_end_timestamp')){
       return true;
     }
 
@@ -803,7 +835,7 @@ class Variations {
 
     $variation_count = get_transient( 'wooms_count_variant_stat' );
     if(empty($variation_count)){
-      $variation_count = 'пока выполняется';
+      $variation_count = 'в процессе';
     }
 
     $state = '<strong>Выполняется</strong>';
