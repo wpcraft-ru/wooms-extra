@@ -256,13 +256,8 @@ class Categories_Filter {
     }
   }
 
-
   /**
    * Requests category to settings
-   *
-   * @since 1.8.6
-   *
-   * @return bool
    */
   public static function setting_request_category() {
 
@@ -298,7 +293,6 @@ class Categories_Filter {
     return $data['rows'];
   }
 
-
   /**
    * Settings UI
    */
@@ -328,11 +322,10 @@ class Categories_Filter {
   /**
    * display_woomss_include_categories_sync
    */
-  public static function display_woomss_include_categories_sync() {
-
+  public static function display_woomss_include_categories_sync()
+  {
     $checked_choice   = get_option( 'woomss_include_categories_sync' );
     $request_category = self::setting_request_category();
-
 
     if ( is_wp_error($request_category) ) {
 
@@ -366,7 +359,8 @@ class Categories_Filter {
 
     ?>
     <p>
-      <small>После включения опции, старые товары будут помечаться как скрытые из каталога. Чтобы они пропали с сайта нужно убедиться, что в виджете категорий стоит опция скрывать пустые категории</small>
+      <small>После включения опции, старые товары будут помечаться как скрытые из каталога.
+          Чтобы они пропали с сайта нужно убедиться, что в виджете категорий стоит опция скрывать пустые категории</small>
     </p>
     <?php
 
