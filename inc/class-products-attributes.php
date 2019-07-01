@@ -48,7 +48,7 @@ class Attributes
 
     foreach ($attr_taxonomies as $attr) {
       if($attr->attribute_label == $label){
-        return $attr->attribute_id;
+        return (int)$attr->attribute_id;
       }
     }
 
