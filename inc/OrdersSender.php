@@ -293,7 +293,6 @@ class OrdersSender
             return false;
         }
 
-        //XXX agent get syncid
         $data["agent"]       = self::get_data_agent($order_id);
         $data["moment"]      = self::get_date_created_moment($order_id);
         $data["description"] = self::get_date_order_description($order_id);
@@ -431,7 +430,6 @@ class OrdersSender
      */
     public static function get_data_agent($order_id)
     {
-
         $order = wc_get_order($order_id);
         $user  = $order->get_user();
         $email = '';
@@ -441,12 +439,6 @@ class OrdersSender
             }
         } else {
             $email = $user->user_email;
-        }
-
-        $sync_id = 'order_' . $order_id;
-
-        if (isset($user->ID)) {
-            $sync_id = 'user_' . $user->ID;
         }
 
         $name = self::get_data_order_name($order_id);
@@ -461,13 +453,13 @@ class OrdersSender
             "legalAddress"  => self::get_data_order_address($order_id),
             "actualAddress" => self::get_data_order_address($order_id),
             "phone"         => self::get_data_order_phone($order_id),
-            "email"         => $email,
         );
 
         if (empty($email)) {
             $agent_uuid = '';
         } else {
             $agent_uuid = self::get_agent_meta_by_email($email);
+            $data["email"] = $email;
         }
 
         if (empty($agent_uuid)) {
@@ -826,11 +818,10 @@ class OrdersSender
 
         $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
         echo '<hr/>';
-        printf(
-            '<input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
-          <label for="wooms-order-sync">%s</label>',
-            checked($need_update, 1, false),
-            'Синхронизировать'
+        printf( '
+            <input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
+            <label for="wooms-order-sync">%s</label>
+            ', checked($need_update, 1, false), 'Синхронизировать'
         );
 
     }
