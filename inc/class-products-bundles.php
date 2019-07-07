@@ -6,20 +6,17 @@ namespace WooMS\Products;
  */
 class Bundle
 {
-
   /**
    * The init
    */
   public static function init()
   {
-
     add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 20, 3 );
 
     add_action('admin_init', array(__CLASS__, 'settings_ui'), 150);
 
     add_action('woomss_tool_actions_btns', array(__CLASS__, 'ui_for_manual_start'), 15);
     add_action('woomss_tool_actions_wooms_import_product_bundles', array(__CLASS__, 'ui_action'));
-
 
     add_action('init', array(__CLASS__,'cron_init'));
 
@@ -63,7 +60,7 @@ class Bundle
     $subproducts_ids = array();
     foreach ($data_components["rows"] as $row_component) {
       $product_uuid = str_replace('https://online.moysklad.ru/api/remap/1.1/entity/product/', '', $row_component["assortment"]["meta"]["href"]);
-      $subproduct_id = wooms_get_product_id_by_uuid($product_uuid);
+      $subproduct_id = self::get_product_id_by_uuid($product_uuid);
 
       if(empty($subproduct_id)){
         continue;
@@ -80,6 +77,24 @@ class Bundle
 
     return $product;
   }
+
+
+    /**
+     * get_product_id_by_uuid
+     */
+    public static function get_product_id_by_uuid($uuid = '')
+    {
+        if (empty($uuid)) {
+            return false;
+        }
+
+        $posts = get_posts('post_type=product&meta_key=wooms_id&meta_value=' . $uuid);
+        if (empty($posts[0]->ID)) {
+            return false;
+        } else {
+            return $posts[0]->ID;
+        }
+    }
 
   /**
    * walker
