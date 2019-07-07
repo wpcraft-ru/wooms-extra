@@ -1,11 +1,11 @@
 <?php
 
-namespace WooMS\Orders;
+namespace WooMS;
 
 /**
  * Send orders to MoySklad
  */
-class Sender
+class OrdersSender
 {
     /**
      * The init
@@ -837,4 +837,4 @@ class Sender
 
 }
 
-Sender::init();
+OrdersSender::init();
