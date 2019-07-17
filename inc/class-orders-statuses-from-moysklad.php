@@ -113,6 +113,11 @@ class Statuses_From_MoySklad {
       }
       echo '<p><small>Ссылка для приема данных из системы МойСклад: ' . rest_url( '/wooms/v1/order-update/' ) . '</small></p>';
 
+      if(!empty($data["errors"][0]["error"])){
+          $msg = $data["errors"][0]["error"];
+          printf('<p><strong>%s</strong></p>', $msg);
+      }
+
   }
 
   /**
