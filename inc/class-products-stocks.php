@@ -98,10 +98,10 @@ class Stocks {
     if ( empty( $stock ) ) {
       $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
       if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-        $url = add_query_arg( array( 'store.id' => $warehouse_id ), $url );
+        $url = add_query_arg( array( 'storeid' => $warehouse_id ), $url );
       }
 
-      $url = add_query_arg( 'product.id', $variant_data['id'], $url );
+      $url = add_query_arg( 'productid', $variant_data['id'], $url );
 
       $data = wooms_request( $url );
 
@@ -193,11 +193,11 @@ class Stocks {
       $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
 
       $query_args = [
-        'product.id' => $item['id'],
+        'productid' => $item['id'],
       ];
 
       if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-        $query_args['store.id'] = $warehouse_id;
+        $query_args['storeid'] = $warehouse_id;
       }
       $url = add_query_arg( $query_args, $url );
 
