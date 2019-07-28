@@ -13,18 +13,21 @@ class OrdersSender
     public static function init()
     {
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
-        add_action('admin_init', array(__CLASS__, 'settings_init'), 40);
 
         //Cron
         add_filter('cron_schedules', array(__CLASS__, 'add_schedule'));
         add_action('init', array(__CLASS__, 'add_cron_hook'));
 
         add_action('save_post', array(__CLASS__, 'save_data_form'));
+
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
         });
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20);
+
+        add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
+
     }
 
     /**
@@ -218,8 +221,12 @@ class OrdersSender
             return false;
         }
 
-        $data = apply_filters('wooms_order_data', $data, $order_id);
         $data = apply_filters('wooms_order_send_data', $data, $order_id);
+
+        /**
+         * deprecated
+         */
+        $data = apply_filters('wooms_order_data', $data, $order_id);
 
         $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 
@@ -687,18 +694,28 @@ class OrdersSender
     /**
      * Setting
      */
-    public static function settings_init()
+    public static function add_settings()
     {
 
         add_settings_section('wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings');
 
-        register_setting('mss-settings', 'wooms_orders_sender_enable');
+        $orders_sender_enable_key = 'wooms_orders_sender_enable';
+        register_setting('mss-settings', $orders_sender_enable_key);
         add_settings_field(
-            $id = 'wooms_orders_sender_enable',
+            $id = $orders_sender_enable_key,
             $title = 'Включить автоматическую синхронизацию заказов в МойСклад',
-            $callback = array(__CLASS__, 'display_wooms_orders_sender_enable'),
+            $callback = function($args){
+                printf(
+                    '<input type="checkbox" name="%s" value="1" %s />',
+                    $args['key'], checked(1, get_option($args['value']), $echo = false)
+                );
+            },
             $page = 'mss-settings',
-            $section = 'wooms_section_orders'
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $orders_sender_enable_key,
+                'value' => get_option($orders_sender_enable_key),
+            ]
         );
 
         register_setting('mss-settings', 'wooms_orders_send_prefix_postfix');
@@ -749,15 +766,6 @@ class OrdersSender
             '<p><small>%s</small></p>',
             'Тут можно указать краткое наименование юр лица из МойСклад. Если пусто, то берется первое из списка. Иначе будет выбор указанного юр лица.'
         );
-    }
-
-    /**
-     * Send statuses from MoySklad
-     */
-    public static function display_wooms_orders_sender_enable()
-    {
-        $option = 'wooms_orders_sender_enable';
-        printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked(1, get_option($option), false));
     }
 
     /**
