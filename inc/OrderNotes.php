@@ -27,6 +27,7 @@ class OrderNotes
         }
 
         if($formatted_shipping_address = $order->get_formatted_shipping_address()){
+            $formatted_shipping_address = str_replace('<br/>', ', ', $formatted_shipping_address);
             $notes['formatted_shipping_address'] = sprintf("Указаны дополнительные данные для доставки: %s%s", PHP_EOL, $formatted_shipping_address);
         }
 
