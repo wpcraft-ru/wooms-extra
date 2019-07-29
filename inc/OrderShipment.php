@@ -1,14 +1,15 @@
 <?php
 namespace WooMS;
 
-
+/**
+ * Adds an option to select an item in the order
+ * as a shipment on the MoySklad side
+ */
 class OrderShipment
 {
-
     public static function init(){
         add_action( 'admin_init', array( __CLASS__, 'add_settings' ), 50 );
         add_filter( 'wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
-
     }
 
     /**

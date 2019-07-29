@@ -362,8 +362,6 @@ class OrderSender
             }
 
             $uuid = get_post_meta($product_id, 'wooms_id', true);
-            // echo '<pre>';
-            // var_dump($item); exit;
 
             if (empty($uuid)) {
                 continue;
@@ -691,28 +689,9 @@ class OrderSender
         }
 
         $customer_notes = apply_filters('wooms_order_sender_notes', $customer_notes, $order_id);
-        $customer_notes = implode(PHP_EOL . '--' . PHP_EOL, $customer_notes);
+        $customer_notes = implode(PHP_EOL . '---' . PHP_EOL, $customer_notes);
 
-        var_dump($customer_notes); exit;
         return $customer_notes;
-
-        $customer_note = '';
-        if ($order->get_customer_note()) {
-            $customer_note .= "Комментарий к заказу:\n" . $order->get_customer_note() . "\n\r";
-        }
-        if ($order->get_shipping_method()) {
-            $customer_note .= "Метод доставки: " . $order->get_shipping_method() . "\n\r";
-        }
-        if ($order->get_payment_method_title()) {
-            $customer_note .= "Метод оплаты: " . $order->get_payment_method_title() . "\n";
-            if ($order->get_transaction_id()) {
-                $customer_note .= "Транзакция №" . $order->get_transaction_id() . "\n";
-            }
-        }
-
-//        $customer_note .= "\n\r" . 'Посмотреть заказ на сайте ' . admin_url('post.php?post=' . absint($order->get_order_number()) . '&action=edit');
-
-        return $customer_note;
     }
 
     /**
