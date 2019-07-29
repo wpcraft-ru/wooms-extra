@@ -710,7 +710,7 @@ class OrderSender
             $callback = function($args){
                 printf(
                     '<input type="checkbox" name="%s" value="1" %s />',
-                    $args['key'], checked(1, get_option($args['value']), $echo = false)
+                    $args['key'], checked(1, $args['value'], $echo = false)
                 );
             },
             $page = 'mss-settings',
