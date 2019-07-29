@@ -49,7 +49,10 @@ class WooMS_XT
         self::$is_core_exist = apply_filters('wooms_xt_load', true);
 
         if (self::$is_core_exist) {
-            require_once 'inc/OrdersSender.php';
+            require_once __DIR__ . '/inc/OrderSender.php';
+            require_once __DIR__ . '/inc/OrderShipment.php';
+            require_once __DIR__ . '/inc/OrderNotes.php';
+
             require_once 'inc/class-products-variations.php';
             require_once 'inc/class-products-variations-hider.php';
             require_once 'inc/class-products-stocks.php';
@@ -61,7 +64,6 @@ class WooMS_XT
             require_once 'inc/class-orders-statuses-from-moysklad.php';
             require_once 'inc/class-product-single.php';
             require_once 'inc/class-orders-warehouse.php';
-            require_once __DIR__ . '/inc/class-orders-shipment.php';
 
         }
     }

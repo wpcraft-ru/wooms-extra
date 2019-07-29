@@ -1,17 +1,27 @@
 <?php
-
 namespace WooMS;
+
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Send orders to MoySklad
  */
-class OrdersSender
+class OrderSender
 {
     /**
      * The init
      */
     public static function init()
     {
+        add_action('init', function (){
+            if(!isset($_GET['tt'])) return;
+            echo '<pre>';
+
+            self::send_order($order_id = 24691);
+
+
+            exit;
+        });
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
 
         //Cron
@@ -302,7 +312,7 @@ class OrdersSender
 
         $data["agent"]       = self::get_data_agent($order_id);
         $data["moment"]      = self::get_date_created_moment($order_id);
-        $data["description"] = self::get_date_order_description($order_id);
+        $data["description"] = self::get_order_note($order_id);
 
         return $data;
     }
@@ -669,9 +679,23 @@ class OrdersSender
      *
      * @return string
      */
-    public static function get_date_order_description($order_id)
+    public static function get_order_note($order_id)
     {
         $order         = wc_get_order($order_id);
+
+        $customer_notes = [];
+        $customer_notes['order_url'] = sprintf('Посмотреть заказ на сайте: %s', $order->get_edit_order_url());
+
+        if ($order_comment = $order->get_customer_note()) {
+            $customer_notes['comment'] = 'Примечание Клиента к Заказу:' . PHP_EOL . $order_comment;
+        }
+
+        $customer_notes = apply_filters('wooms_order_sender_notes', $customer_notes, $order_id);
+        $customer_notes = implode(PHP_EOL . '--' . PHP_EOL, $customer_notes);
+
+        var_dump($customer_notes); exit;
+        return $customer_notes;
+
         $customer_note = '';
         if ($order->get_customer_note()) {
             $customer_note .= "Комментарий к заказу:\n" . $order->get_customer_note() . "\n\r";
@@ -686,7 +710,7 @@ class OrdersSender
             }
         }
 
-        $customer_note .= "\n\r" . 'Посмотреть заказ на сайте ' . admin_url('post.php?post=' . absint($order->get_order_number()) . '&action=edit');
+//        $customer_note .= "\n\r" . 'Посмотреть заказ на сайте ' . admin_url('post.php?post=' . absint($order->get_order_number()) . '&action=edit');
 
         return $customer_note;
     }
@@ -836,4 +860,4 @@ class OrdersSender
 
 }
 
-OrdersSender::init();
+OrderSender::init();

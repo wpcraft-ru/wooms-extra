@@ -6,7 +6,7 @@ class OrderShipment
 {
 
     public static function init(){
-        add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 50 );
+        add_action( 'admin_init', array( __CLASS__, 'add_settings' ), 50 );
         add_filter( 'wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
 
     }
@@ -59,7 +59,7 @@ class OrderShipment
     /**
      * Settings UI
      */
-    public static function settings_init() {
+    public static function add_settings() {
 
         $order_shipment_item_key = 'wooms_order_shipment_item_code';
         register_setting( 'mss-settings', $order_shipment_item_key );
