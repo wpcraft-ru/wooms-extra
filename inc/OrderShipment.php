@@ -1,6 +1,8 @@
 <?php
 namespace WooMS;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Adds an option to select an item in the order
  * as a shipment on the MoySklad side
