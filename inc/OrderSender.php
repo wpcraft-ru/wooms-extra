@@ -14,14 +14,13 @@ class OrderSender
     public static function init()
     {
         add_action('init', function (){
-            if(!isset($_GET['tt'])) return;
-            echo '<pre>';
-
-            self::send_order($order_id = 24691);
-
-
-            exit;
+//            if(!isset($_GET['tt'])) return;
+//            echo '<pre>';
+//            self::send_order($order_id = 24691);
+//            exit;
         });
+
+
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
 
         //Cron
