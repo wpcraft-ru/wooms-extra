@@ -11,22 +11,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Single {
 
-  /**
-   * The Init
-   */
-  public static function init()
-  {
-    add_action('wooms_display_product_metabox', array(__CLASS__, 'display_checkbox') );
-    add_action('save_post', array(__CLASS__, 'save') );
+    /**
+     * The Init
+     */
+    public static function init()
+    {
+        add_action('wooms_display_product_metabox', array(__CLASS__, 'display_checkbox'));
+        add_action('save_post', array(__CLASS__, 'save'));
 
-    add_action('wooms_product_single_update', array(__CLASS__, 'update_variations'));
-    add_action( 'init', function(){
-      if ( ! wp_next_scheduled( 'wooms_product_single_update' ) ) {
-        wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_product_single_update' );
-      }
-    });
+        add_action('wooms_product_single_update', array(__CLASS__, 'update_variations'));
+        add_action('init', function () {
+            if ( ! wp_next_scheduled('wooms_product_single_update')) {
+                wp_schedule_event(time(), 'wooms_cron_walker_shedule', 'wooms_product_single_update');
+            }
+        });
 
-  }
+    }
 
     /**
      * update_variations
@@ -73,7 +73,7 @@ class Single {
             $offset = 0;
         }
 
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=productid=' . $wooms_id;
+        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=product.id=' . $wooms_id;
         $url = add_query_arg($url_args, $url);
 
         do_action('wooms_logger',
