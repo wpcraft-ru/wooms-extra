@@ -156,108 +156,109 @@ class Stocks {
       return $variation;
   }
 
-  /**
-   * Update product
-   */
-  public static function update_product( $product, $data_api, $data )
-  {
-
-    $item = $data_api;
-
-    if ( empty( get_option( 'woomss_stock_sync_enabled' ) ) ) {
-      $product->set_manage_stock( 'no' );
-      $product->set_stock_status( 'instock' );
-
-      return $product;
-    }
-
-    $product_id = $product->get_id();
-
     /**
-     * Поле по которому берем остаток?
-     * quantity = это доступные остатки за вычетом резервов
-     * stock = это все остатки без уета резерва
+     * Update product
      */
-    $stock_type = apply_filters('wooms_stock_type', 'quantity');
+    public static function update_product($product, $data_api, $data)
+    {
+        $item = $data_api;
 
-    if ( empty( $data_api[$stock_type] ) ) {
-      $stock = 0;
-    } else {
-      $stock = (int) $data_api[$stock_type];
-      $stock_log = array(
-        'quantity' => $data_api['quantity'],
-        'stock' => $data_api['stock'],
-      );
-    }
+        if (empty(get_option('woomss_stock_sync_enabled'))) {
+            $product->set_manage_stock('no');
+            $product->set_stock_status('instock');
 
-    if(empty($stock)){
-      $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
+            return $product;
+        }
 
-      $query_args = [
-        'product.id' => $item['id'],
-      ];
+        $product_id = $product->get_id();
 
-      if ( get_option( 'woomss_warehouses_sync_enabled' ) && $warehouse_id = get_option( 'woomss_warehouse_id' ) ) {
-        $query_args['store.id'] = $warehouse_id;
-      }
-      $url = add_query_arg( $query_args, $url );
+        /**
+         * Поле по которому берем остаток?
+         * quantity = это доступные остатки за вычетом резервов
+         * stock = это все остатки без уета резерва
+         */
+        $stock_type = apply_filters('wooms_stock_type', 'quantity');
 
-      $data = wooms_request( $url );
-
-      do_action('wooms_logger', __CLASS__,
-        sprintf('Запрос %s, на остатки для %s', $url, $product_id)
-      );
-
-      if(empty($data['rows'][0][$stock_type])){
         $stock = 0;
-      } else {
-        $stock = (int) $data['rows'][0][$stock_type];
-      }
+
+        if (empty($data_api[$stock_type])) {
+            $stock = 0;
+        } else {
+            $stock     = (int)$data_api[$stock_type];
+            $stock_log = array(
+                'quantity' => $data_api['quantity'],
+                'stock'    => $data_api['stock'],
+            );
+        }
+
+        if (empty($stock)) {
+            $url = "https://online.moysklad.ru/api/remap/1.1/report/stock/all";
+
+            $query_args = [
+                'product.id' => $item['id'],
+            ];
+
+            if (get_option('woomss_warehouses_sync_enabled') && $warehouse_id = get_option('woomss_warehouse_id')) {
+                $query_args['store.id'] = $warehouse_id;
+            }
+            $url = add_query_arg($query_args, $url);
+
+            $data = wooms_request($url);
+
+            do_action('wooms_stock_by_product', $data, $product_id);
+
+            do_action('wooms_logger', __CLASS__,
+                sprintf('Запрос %s, на остатки для %s', $url, $product_id)
+            );
+
+            if (empty($data['rows'][0][$stock_type])) {
+                $stock = 0;
+            } else {
+                $stock = (int)$data['rows'][0][$stock_type];
+            }
 
 
-      $stock_log = array(
-        'quantity' => $data['rows'][0]['quantity'],
-        'stock' => $data['rows'][0]['stock'],
-      );
+            $stock_log = array(
+                'quantity' => $data['rows'][0]['quantity'],
+                'stock'    => $data['rows'][0]['stock'],
+            );
+        }
 
+        if (get_option('wooms_stock_empty_backorder')) {
+            $product->set_backorders('notify');
+        } else {
+            $product->set_backorders('no');
+        }
 
+        if (empty(get_option('wooms_warehouse_count'))) {
+            $product->set_manage_stock('no');
+        } else {
+            if ($product->is_type('variable')) {
+
+                //для вариативных товаров доступность определяется наличием вариаций
+                $product->set_manage_stock('no');
+            } else {
+                $product->set_manage_stock('yes');
+            }
+        }
+
+        if ($stock <= 0) {
+            if ( ! $product->is_type('variable')) {
+                $product->set_stock_quantity(0);
+                $product->set_stock_status('outofstock');
+            }
+        } else {
+            $product->set_stock_quantity($stock);
+            $product->set_stock_status('instock');
+        }
+
+        do_action('wooms_logger', __CLASS__,
+            sprintf('Остатки для продукта ИД %s = %s', $product_id, $stock),
+            sprintf('stock %s, quantity %s', $stock_log['stock'], $stock_log['quantity'])
+        );
+
+        return $product;
     }
-
-    if ( get_option( 'wooms_stock_empty_backorder' ) ) {
-      $product->set_backorders( 'notify' );
-    } else {
-      $product->set_backorders( 'no' );
-    }
-
-    if ( empty( get_option( 'wooms_warehouse_count' ) ) ) {
-      $product->set_manage_stock( 'no' );
-    } else {
-      if($product->is_type('variable')){
-
-        //для вариативных товаров доступность определяется наличием вариаций
-        $product->set_manage_stock( 'no' );
-      } else {
-        $product->set_manage_stock( 'yes' );
-      }
-    }
-
-    if ( $stock <= 0 ) {
-      if( ! $product->is_type('variable') ){
-        $product->set_stock_quantity( 0 );
-        $product->set_stock_status( 'outofstock' );
-      }
-    } else {
-      $product->set_stock_quantity( $stock );
-      $product->set_stock_status( 'instock' );
-    }
-
-    do_action('wooms_logger', __CLASS__,
-      sprintf('Остатки для продукта ИД %s = %s', $product_id, $stock),
-      sprintf('stock %s, quantity %s', $stock_log['stock'], $stock_log['quantity'])
-    );
-
-    return $product;
-  }
 
   /**
    * Settings UI

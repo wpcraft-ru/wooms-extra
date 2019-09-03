@@ -330,7 +330,13 @@ class Variations
             );
         }
 
+
+        /**
+         * deprecated
+         */
         $variation = apply_filters('wooms_save_variation', $variation, $variant_data, $product_id);
+
+        $variation = apply_filters('wooms_variation_save', $variation, $variant_data, $product_id);
 
         if ($session_id = get_option('wooms_session_id')) {
             $variation->update_meta_data('wooms_session_id', $session_id);
