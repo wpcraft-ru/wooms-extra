@@ -73,7 +73,7 @@ class Single {
             $offset = 0;
         }
 
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=product.id=' . $wooms_id;
+        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=productid=' . $wooms_id;
         $url = add_query_arg($url_args, $url);
 
         do_action('wooms_logger',
