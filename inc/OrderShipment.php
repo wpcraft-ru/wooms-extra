@@ -12,6 +12,11 @@ class OrderShipment
     public static function init(){
         add_action( 'admin_init', array( __CLASS__, 'add_settings' ), 50 );
         add_filter( 'wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
+
+        /**
+         * fix https://github.com/wpcraft-ru/wooms/issues/186
+         */
+        add_filter( 'wooms_order_update_data', array(__CLASS__, 'chg_order_data'), 10, 2);
     }
 
     /**
