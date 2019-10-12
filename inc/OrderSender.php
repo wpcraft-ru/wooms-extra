@@ -13,14 +13,6 @@ class OrderSender
      */
     public static function init()
     {
-        add_action('init', function (){
-            if(!isset($_GET['dd'])) return;
-            echo '<pre>';
-            self::send_order($order_id = 26172);
-            exit;
-        });
-
-
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
 
         //Cron
@@ -38,7 +30,6 @@ class OrderSender
         add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
 
         add_filter('wooms_order_send_data', [__CLASS__, 'add_currency'], 11, 2);
-
     }
 
     /**
