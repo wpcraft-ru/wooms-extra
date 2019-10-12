@@ -77,7 +77,7 @@ class Variations_Hider {
 
     $args = array(
       'post_type'   => 'product_variation',
-      'post_parent' => $product_parent,
+//      'post_parent' => $product_parent,
       'numberposts' => 20,
       'fields'      => 'ids',
       'offset'      => $offset,
