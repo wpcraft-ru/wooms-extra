@@ -217,10 +217,9 @@ class Stocks {
                 $stock = (int)$data['rows'][0][$stock_type];
             }
 
-
             $stock_log = array(
-                'quantity' => $data['rows'][0]['quantity'],
-                'stock'    => $data['rows'][0]['stock'],
+                'quantity' => empty($data['rows'][0]['quantity']) ? 0 : $data['rows'][0]['quantity'],
+                'stock'    => empty($data['rows'][0]['stock']) ? 0 : $data['rows'][0]['stock'],
             );
         }
 
