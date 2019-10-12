@@ -52,18 +52,18 @@ class WooMS_XT
             require_once __DIR__ . '/inc/OrderSender.php';
             require_once __DIR__ . '/inc/OrderShipment.php';
             require_once __DIR__ . '/inc/OrderNotes.php';
+            require_once __DIR__ . '/inc/ProductAttributes.php';
 
-            require_once 'inc/class-products-variations.php';
-            require_once 'inc/class-products-variations-hider.php';
-            require_once 'inc/class-products-stocks.php';
-            require_once 'inc/class-products-categories-filter.php';
-            require_once 'inc/class-products-attributes.php';
-            require_once 'inc/class-products-bundles.php';
-            require_once 'inc/class-products-prices-sale.php';
-            require_once 'inc/class-orders-statuses-from-site.php';
-            require_once 'inc/class-orders-statuses-from-moysklad.php';
-            require_once 'inc/class-product-single.php';
-            require_once 'inc/class-orders-warehouse.php';
+            require_once __DIR__ . '/inc/class-products-variations.php';
+            require_once __DIR__ . '/inc/class-products-variations-hider.php';
+            require_once __DIR__ . '/inc/class-products-stocks.php';
+            require_once __DIR__ . '/inc/class-products-categories-filter.php';
+            require_once __DIR__ . '/inc/class-products-bundles.php';
+            require_once __DIR__ . '/inc/class-products-prices-sale.php';
+            require_once __DIR__ . '/inc/class-orders-statuses-from-site.php';
+            require_once __DIR__ . '/inc/class-orders-statuses-from-moysklad.php';
+            require_once __DIR__ . '/inc/class-product-single.php';
+            require_once __DIR__ . '/inc/class-orders-warehouse.php';
 
         }
     }

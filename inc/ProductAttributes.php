@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Update attributes for products from custom fields MoySklad
  */
-class Attributes
+class ProductAttributes
 {
   /**
    * The Init
@@ -291,4 +291,4 @@ class Attributes
   }
 }
 
-Attributes::init();
+ProductAttributes::init();
