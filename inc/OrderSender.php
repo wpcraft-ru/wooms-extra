@@ -823,12 +823,18 @@ class OrderSender
 
     /**
      * display_wooms_orders_send_prefix_postfix
+     *
+     * XXX придумать лучше способ авто простановки префикса https://github.com/wpcraft-ru/wooms/issues/166
      */
     public static function display_wooms_orders_send_prefix_postfix()
     {
+
         $option_key = 'wooms_orders_send_prefix_postfix';
-        printf('<input type="text" name="%s" value="%s" />', $option_key, get_option($option_key));
-        echo '<p><small>Укажите тут уникальную приставку к номеру заказа. Например - IMP</small></p>';
+        $value = get_option($option_key);
+
+        printf('<input type="text" name="%s" value="%s" />', $option_key, $value);
+        echo '<p><strong>Рекомендуем использовать эту опцию, чтобы исключить ошибки в передаче Заказов</strong></p>';
+        echo '<p><small>Укажите тут уникальную приставку к номеру заказа. Например - S</small></p>';
     }
 
     /**
