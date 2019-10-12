@@ -38,6 +38,7 @@ class Single {
             $product_id = '';
             $args       = array(
                 'post_type'      => 'product',
+                'post_status'      => 'any',
                 'posts_per_page' => 1,
                 'meta_query'     => array(
                     array(
@@ -126,8 +127,6 @@ class Single {
     if(empty($uuid)){
       return false;
     }
-
-    // $uuid = 'bc583c52-4867-11e9-9ff4-34e80008cbfb';
 
     $url = 'https://online.moysklad.ru/api/remap/1.1/entity/product/' . $uuid;
 
