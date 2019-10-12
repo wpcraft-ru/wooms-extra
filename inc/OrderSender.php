@@ -14,10 +14,10 @@ class OrderSender
     public static function init()
     {
         add_action('init', function (){
-//            if(!isset($_GET['tt'])) return;
-//            echo '<pre>';
-//            self::send_order($order_id = 24691);
-//            exit;
+            if(!isset($_GET['dd'])) return;
+            echo '<pre>';
+            self::send_order($order_id = 26172);
+            exit;
         });
 
 
@@ -37,6 +37,52 @@ class OrderSender
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
 
+        add_filter('wooms_order_send_data', [__CLASS__, 'add_currency'], 11, 2);
+
+    }
+
+    /**
+     * add_currency
+     *
+     * @issue https://github.com/wpcraft-ru/wooms/issues/189
+     */
+    public static function add_currency($data_order, $order_id)
+    {
+        $order = wc_get_order($order_id);
+        $currency_code = $order->get_currency();
+        if('RUB' == $currency_code){
+            return $data_order;
+        }
+
+        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/currency/';
+        if(!$data = get_transient('wooms_currency_api')){
+            $data = wooms_request($url);
+            set_transient('wooms_currency_api', $data, DAY_IN_SECONDS);
+        }
+
+        if(empty($data['rows'])){
+            return $data_order;
+        }
+
+        $meta = '';
+        foreach ($data['rows'] as $key => $row){
+            if($currency_code == $row['isoCode']){
+                $meta = $row['meta'];
+            }
+        }
+
+        if(empty($meta)){
+            return $data_order;
+        }
+
+        $data_order['rate'] = [
+            'currency' => [
+                'meta' => $meta,
+            ],
+//            "value": 214
+        ];
+
+        return $data_order;
     }
 
     /**
@@ -115,8 +161,13 @@ class OrderSender
             );
         }
 
-        $data = apply_filters('wooms_order_data', $data, $order_id);
         $data = apply_filters('wooms_order_update_data', $data, $order_id);
+
+        /**
+         * deprecated
+         */
+        $data = apply_filters('wooms_order_data', $data, $order_id);
+
 
         $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
         $result = wooms_request($url, $data, 'PUT');
@@ -218,7 +269,7 @@ class OrderSender
 
         $order = wc_get_order($order_id);
 
-        $data = self::get_data_order_for_moysklad($order_id);
+        $data = self::prepare_data_order($order_id);
 
         if (empty($data)) {
             $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
@@ -285,7 +336,7 @@ class OrderSender
      *
      * @return array|bool
      */
-    public static function get_data_order_for_moysklad($order_id)
+    public static function prepare_data_order($order_id)
     {
 
         $data              = array(
