@@ -14,19 +14,15 @@ class Attributes
   /**
    * The Init
    */
-  public static function init()
-  {
-    /**
-     * update product
-     */
-     add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 10, 3 );
+    public static function init()
+    {
+        add_action('wooms_product_save', array(__CLASS__, 'update_product'), 10, 3);
 
-    add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
-    add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
+        add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
+        add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
 
-    add_action( 'admin_init', array(__CLASS__, 'settings_init'), 150 );
-
-  }
+        add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
+    }
 
   /**
    * Get attribute id by label
@@ -71,7 +67,15 @@ class Attributes
               }
 
               //Если это не число и не строка - пропуск, тк другие типы надо обрабатывать иначе
-              if( ! in_array($attribute['type'], array('string', 'number', 'customentity')) ){
+              $allow_data_type_for_attribures = array('string', 'number', 'customentity');
+
+              /**
+               * add new type for attributes
+               *
+               * @issue https://github.com/wpcraft-ru/wooms/issues/184
+               */
+              $allow_data_type_for_attribures = apply_filters('wooms_allow_data_types_for_attributes', $allow_data_type_for_attribures);
+              if( ! in_array($attribute['type'], $allow_data_type_for_attribures) ){
                   continue;
               }
 
