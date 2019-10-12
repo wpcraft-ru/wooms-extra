@@ -53,6 +53,7 @@ class WooMS_XT
             require_once __DIR__ . '/inc/OrderShipment.php';
             require_once __DIR__ . '/inc/OrderNotes.php';
             require_once __DIR__ . '/inc/ProductAttributes.php';
+            require_once __DIR__ . '/inc/ProductSingleSync.php';
 
             require_once __DIR__ . '/inc/class-products-variations.php';
             require_once __DIR__ . '/inc/class-products-variations-hider.php';
@@ -62,7 +63,6 @@ class WooMS_XT
             require_once __DIR__ . '/inc/class-products-prices-sale.php';
             require_once __DIR__ . '/inc/class-orders-statuses-from-site.php';
             require_once __DIR__ . '/inc/class-orders-statuses-from-moysklad.php';
-            require_once __DIR__ . '/inc/class-product-single.php';
             require_once __DIR__ . '/inc/class-orders-warehouse.php';
 
         }

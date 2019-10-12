@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Single Product Import
  */
-class Single {
+class ProductSingleSync {
 
     /**
      * The Init
@@ -20,6 +20,7 @@ class Single {
         add_action('save_post', array(__CLASS__, 'save'));
 
         add_action('wooms_product_single_update', array(__CLASS__, 'update_variations'));
+
         add_action('init', function () {
             if ( ! wp_next_scheduled('wooms_product_single_update')) {
                 wp_schedule_event(time(), 'wooms_cron_walker_shedule', 'wooms_product_single_update');
@@ -167,4 +168,4 @@ class Single {
 
 }
 
-Single::init();
+ProductSingleSync::init();
