@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Synchronization the stock of goods from MoySklad
  */
-class Stocks {
+class ProductStocks {
 
   /**
    * The init
@@ -422,4 +422,4 @@ class Stocks {
   }
 }
 
-Stocks::init();
+ProductStocks::init();
