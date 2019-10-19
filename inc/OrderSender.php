@@ -12,6 +12,7 @@ class OrderSender
      */
     public static function init()
     {
+
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
 
         //Cron
@@ -24,7 +25,8 @@ class OrderSender
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
 
-        add_filter('wooms_order_send_data', [__CLASS__, 'add_currency'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
 
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
@@ -140,24 +142,25 @@ class OrderSender
         /**
          * Preparation the data for update an existing order
          */
-        $data              = array(
+        $data = array(
             "name" => self::get_data_name($order_id),
         );
-        $data['positions'] = self::get_data_positions($order_id);
+
+        /**
+         * only for update exist order
+         */
+        $data = apply_filters('wooms_order_update_data', $data, $order_id);
+
+        /**
+         * for send and update
+         */
+        $data = apply_filters('wooms_order_data', $data, $order_id);
 
         if (empty($data['positions'])) {
             do_action('wooms_logger_error', __CLASS__,
                 sprintf('При передаче Заказа %s - нет позиций', $order_id)
             );
         }
-
-        $data = apply_filters('wooms_order_update_data', $data, $order_id);
-
-        /**
-         * deprecated
-         */
-        $data = apply_filters('wooms_order_data', $data, $order_id);
-
 
         $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
         $result = wooms_request($url, $data, 'PUT');
@@ -271,10 +274,13 @@ class OrderSender
             return false;
         }
 
+        /**
+         * only for send order first time
+         */
         $data = apply_filters('wooms_order_send_data', $data, $order_id);
 
         /**
-         * deprecated
+         * for send and update
          */
         $data = apply_filters('wooms_order_data', $data, $order_id);
 
@@ -375,6 +381,67 @@ class OrderSender
         }
 
         return apply_filters('wooms_order_name', (string)$name_order);
+    }
+
+    /**
+     * add positions to order
+     */
+    public static function add_positions($data_order, $order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $items = $order->get_items();
+        if (empty($items)) {
+            return $data_order;
+        }
+
+        $data = array();
+        foreach ($items as $key => $item) {
+            if ($item['variation_id'] != 0) {
+                $product_id   = $item['variation_id'];
+                $product_type = 'variant';
+            } else {
+                $product_id   = $item["product_id"];
+                $product_type = 'product';
+            }
+
+            $uuid = get_post_meta($product_id, 'wooms_id', true);
+
+            if (empty($uuid)) {
+                continue;
+            }
+
+            $price    = $item->get_total();
+            $quantity = $item->get_quantity();
+            if (empty(get_option('wooms_orders_send_reserved'))) {
+                $reserve_qty = $quantity;
+            } else {
+                $reserve_qty = 0;
+            }
+
+            $data[] = array(
+                'quantity'   => $quantity,
+                'price'      => ($price / $quantity) * 100,
+                'discount'   => 0,
+                'vat'        => 0,
+                'assortment' => array(
+                    'meta' => array(
+                        "href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+                        "type"      => "{$product_type}",
+                        "mediaType" => "application/json",
+                    ),
+                ),
+                'reserve'    => $reserve_qty,
+            );
+        }
+
+        if(empty($data)){
+            return $data_order;
+        }
+
+        $data_order['positions'] = $data;
+
+        return $data_order;
     }
 
     /**
