@@ -7,10 +7,13 @@ namespace WooMS\Orders;
  */
 class Statuses_From_Site {
 
+    public static $statuses_match;
+
   /**
    * The init
    */
   public static function init(){
+
     add_action( 'admin_init', array( __CLASS__, 'settings_init' ), 100);
 
     /**
@@ -18,7 +21,7 @@ class Statuses_From_Site {
      * Далее передаем данные в МойСклад
      */
     add_action( 'woocommerce_order_status_changed', array(__CLASS__, 'add_task_for_update_order_status_in_moysklad'), 10, 4);
-    add_action( 'wooms_cron_status_order_sender', array( __CLASS__, 'send_status' ) );
+    add_action( 'wooms_cron_status_order_sender', array( __CLASS__, 'walker' ) );
 
     add_action( 'woocommerce_new_order', array(__CLASS__, 'set_status_for_new_order') );
 
@@ -29,6 +32,10 @@ class Statuses_From_Site {
    * set_status_for_new_order
    */
   public static function set_status_for_new_order($order_id){
+    if(empty(get_option('wooms_enable_orders_statuses_updater'))){
+        return;
+    }
+
     $order = wc_get_order($order_id);
 
     $status = $order->get_status();
@@ -67,7 +74,7 @@ class Statuses_From_Site {
   /**
    * Sending order statuses in MoySklad, 5 pieces at a time
    */
-  public static function send_status(){
+  public static function walker(){
 
       if(empty(get_option('wooms_enable_orders_statuses_updater'))){
           return;
@@ -91,85 +98,99 @@ class Statuses_From_Site {
           return;
       }
 
-      $statuses_match_default = array(
-          'wc-pending' => 'Новый',
-          'wc-processing' => 'Подтвержден',
-          'wc-on-hold' => 'Новый',
-          'wc-completed' => 'Отгружен',
-          'wc-cancelled' => 'Отменен',
-          'wc-refunded' => 'Возврат',
-          'wc-failed' => 'Не удался',
-      );
-
-      $statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
-
       foreach ($orders as $order) {
           $order_id = $order->ID;
-          $order = wc_get_order($order_id);
-          $changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
+          self::order_send_status($order_id);
+      }
+  }
 
-          if(empty($statuses_match['wc-' . $changed_status])){
-              $ms_status = '';
-          } else {
-              $ms_status = $statuses_match['wc-' . $changed_status];
-          }
+  /**
+   * order_send_statud
+   */
+  public static function order_send_status($order_id = ''){
+      if(empty($order_id)){
+          return false;
+      }
 
-          /**
-           * Возможность поменять связку статуса на Сайте и Складе
-           */
-          $ms_status = apply_filters('wooms_order_ms_status', $ms_status, $changed_status);
+      $statuses_match_default = array(
+        'wc-pending' => 'Новый',
+        'wc-processing' => 'Подтвержден',
+        'wc-on-hold' => 'Новый',
+        'wc-completed' => 'Отгружен',
+        'wc-cancelled' => 'Отменен',
+        'wc-refunded' => 'Возврат',
+        'wc-failed' => 'Не удался',
+    );
 
-          if($ms_status){
-              $meta_status = self::get_meta_status_for_orders($ms_status);
-          } else {
-              $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад, не удалось получить название статуса в МойСклад для "%s"', $ms_status) );
-              delete_post_meta($order_id, 'wooms_changed_status');
-              continue;
-          }
+    self::$statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
 
-          /**
-           * Возможность перехватить метастатус для сторонних плагинов
-           */
-          $meta_status = apply_filters('wooms_order_meta_status', $meta_status, $order_id, $changed_status);
+      $order = wc_get_order($order_id);
+        $changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
+        $changed_status = 'processing';
 
-          /**
-           * Если с таким статусом ничего не вышло, то удаляем мету
-           */
-          if(empty($meta_status)){
-              delete_post_meta($order_id, 'wooms_changed_status');
-              $error_msg = sprintf('Ошибка обновления статуса в МойСклад, не сработала мета для статуса - %s', $ms_status);
-              $order->add_order_note( $error_msg );
-              do_action('wooms_logger_error', __CLASS__, $error_msg );
+        if(empty(self::$statuses_match['wc-' . $changed_status])){
+            $ms_status = '';
+        } else {
+            $ms_status = self::$statuses_match['wc-' . $changed_status];
+        }
 
-              continue;
-          }
+        /**
+         * Возможность поменять связку статуса на Сайте и Складе
+         */
+        $ms_status = apply_filters('wooms_order_ms_status', $ms_status, $changed_status);
 
-          $data = array(
-              "state" => array(
-                  'meta' => $meta_status
-              ),
-          );
 
-          $uuid = get_post_meta($order_id, 'wooms_id', true);
-          if(empty($uuid)){
-              continue;
-          }
+        if($ms_status){
+            $meta_status = self::get_meta_status_for_orders($ms_status);
+        } else {
+            $order->add_order_note( sprintf('Ошибка обновления статуса в МойСклад, не удалось получить название статуса в МойСклад для "%s"', $ms_status) );
+            delete_post_meta($order_id, 'wooms_changed_status');
+            return false;
+        }
 
-          $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
-          $result = wooms_request( $url, $data, 'PUT' );
+        /**
+         * Возможность перехватить метастатус для сторонних плагинов
+         */
+        $meta_status = apply_filters('wooms_order_meta_status', $meta_status, $order_id, $changed_status);
 
-          if(empty($result["id"])){
+        /**
+         * Если с таким статусом ничего не вышло, то удаляем мету
+         */
+        if(empty($meta_status)){
+            delete_post_meta($order_id, 'wooms_changed_status');
+            $error_msg = sprintf('Ошибка обновления статуса в МойСклад, не сработала мета для статуса - %s', $ms_status);
+            $order->add_order_note( $error_msg );
+            do_action('wooms_logger_error', __CLASS__, $error_msg );
+            return false;
+        }
+
+        $data = array(
+            "state" => array(
+                'meta' => $meta_status
+            ),
+        );
+
+        $uuid = get_post_meta($order_id, 'wooms_id', true);
+        if(empty($uuid)){
+            return false;
+        }
+
+        $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
+        $result = wooms_request( $url, $data, 'PUT' );
+
+        if(empty($result["id"])){
             $error_msg = sprintf('Ошибка обновления статуса в МойСклад - %s', print_r($result, true));
             $order->add_order_note( $error_msg );
             do_action('wooms_logger_error', __CLASS__, $error_msg );
-          } else {
+        } else {
             $msg = sprintf('Обновлен статус в МойСклад - %s', $ms_status);
             $order->add_order_note( $msg );
             do_action('wooms_logger', __CLASS__, $msg );
-          }
+        }
 
-          delete_post_meta($order_id, 'wooms_changed_status');
-      }
+        delete_post_meta($order_id, 'wooms_changed_status');
+
+        return true;
   }
 
   /**
