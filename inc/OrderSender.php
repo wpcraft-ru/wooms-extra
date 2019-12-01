@@ -515,7 +515,7 @@ class OrderSender
 
         if (empty($data['rows'][0]['meta'])) {
             do_action('wooms_logger_error', __CLASS__,
-                'Нет юр лица в базе для отправки Заказа'
+                'Нет юр лица в базе для отправки Заказа. Добавьте юр лицо в МойСклад.'
             );
 
             return false;
