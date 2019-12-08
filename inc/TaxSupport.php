@@ -12,20 +12,20 @@ final class TaxSupport
         } 
         
         add_action('init', function(){
-            if(!isset($_GET['dd'])){
-                return;
-            }
+            // if(!isset($_GET['dd'])){
+            //     return;
+            // }
 
-            echo '<pre>';
+            // echo '<pre>';
 
-            $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/1080a7da-edfb-11e9-0a80-03c4001121bb';
-            $d = wooms_request($url);
-            var_dump($d['positions']);
+            // // $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/1080a7da-edfb-11e9-0a80-03c4001121bb';
+            // // $d = wooms_request($url);
+            // // var_dump($d['positions']);
 
-            exit;
-            OrderSender::update_order(26175);
+            // // exit;
+            // OrderSender::update_order(23);
 
-            var_dump('end'); exit;
+            // var_dump('end'); exit;
         });
 
         add_filter('wooms_order_data', [__CLASS__, 'add_tax'], 11, 2);
@@ -40,8 +40,8 @@ final class TaxSupport
             return $data_order;
         }
 
-        var_dump($data_order);
-        exit;
+        // var_dump($data_order);
+        // exit;
         return $data_order;
     }
 
