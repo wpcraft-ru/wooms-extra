@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WooMS XT (Extra)
  * Description: Расширение для синхронизации данных между приложениями МойСклад и WooCommerce - расширенная версия
- * Plugin URI: https://wpcraft.ru/product/wooms-extra/
+ * Plugin URI: https://wpcraft.ru/product/wooms-extra/?utm_source=admin-plugin-url-wooms-xt
  * Author: WPCraft
  * Author URI: https://wpcraft.ru/
  * Developer: WPCraft
