@@ -2,6 +2,8 @@
 
 namespace WooMS\Orders;
 
+use Exception;
+
 /**
  * Send statuses from moysklad.ru to WooCommerce
  */
