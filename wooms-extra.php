@@ -12,10 +12,10 @@
  * Text Domain: wooms-xt
  * Domain Path: /languages
  * WC requires at least: 3.0
- * WC tested up to: 3.5.0
+ * WC tested up to: 3.6.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 5.8
+ * Version: 6.0
  */
 
 defined( 'ABSPATH' ) || exit;
