@@ -399,7 +399,7 @@ class ProductStocks {
   public static function woomss_warehouse_id_display() {
     $option = 'woomss_warehouse_id';
     if ( empty( get_option( 'woomss_warehouses_sync_enabled' ) ) ) {
-      echo '<p>Для выбора включите синхронизацию по складу</p>';
+      echo '<p>Включите опцию "Учитывать остатки по складу" чтобы выбрать склад для синхронизации</p>';
 
       return;
     }
