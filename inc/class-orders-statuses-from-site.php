@@ -44,23 +44,9 @@ class Statuses_From_Site {
 
     $order->save();
   }
-
-  /**
-  * Cron task restart
-  */
-  public static function cron_init()
-  {
-    if(empty(get_option('wooms_enable_orders_statuses_updater'))){
-      return;
-    }
-
-    if ( ! wp_next_scheduled( 'wooms_cron_status_order_sender' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_status_order_sender' );
-    }
-  }
   
   /**
-   * Cron task restart
+   * Add schedule hook
    */
   public static function add_schedule_hook()
   {

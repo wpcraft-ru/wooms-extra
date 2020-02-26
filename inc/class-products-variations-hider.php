@@ -24,21 +24,7 @@ class Variations_Hider {
   }
 
   /**
-   * add_cron_hook
-   */
-  public static function add_cron_hook() {
-    if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
-      return;
-    }
-
-    if ( ! wp_next_scheduled( 'wooms_cron_variations_hiding' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variations_hiding' );
-    }
-
-  }
-
-  /**
-   * Cron task restart
+   * Add schedule hook
    */
   public static function add_schedule_hook()
   {
