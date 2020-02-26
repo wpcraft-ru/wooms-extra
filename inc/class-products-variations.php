@@ -24,7 +24,7 @@ class Variations
         add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
         // Cron
-        add_action('init', array(__CLASS__, 'add_cron_hook'));
+        add_action('init', array(__CLASS__, 'add_schedule_hook'));
         add_action('wooms_cron_variation_walker', array(__CLASS__, 'walker_starter_by_cron'));
 
         add_filter('wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
@@ -604,19 +604,39 @@ class Variations
     }
 
     /**
-     * add_cron_hook
-     */
-    public static function add_cron_hook()
-    {
-        if (empty(get_option('woomss_variations_sync_enabled'))) {
-            return;
-        }
-
-        if ( ! wp_next_scheduled('wooms_cron_variation_walker')) {
-            wp_schedule_event(time(), 'wooms_cron_walker_shedule', 'wooms_cron_variation_walker');
-        }
-
+   * Add schedule hook
+   */
+  public static function add_schedule_hook()
+  {
+    if (empty(get_option('woomss_variations_sync_enabled'))) {
+        return;
     }
+
+    // Checking if there is any of this type pending schedules
+    $future_schedules = as_get_scheduled_actions(
+      [
+        'hook' => 'wooms_cron_variation_walker',
+        'status' => \ActionScheduler_Store::STATUS_PENDING,
+        'group' => 'ProductWalker'
+      ]
+    );
+
+    if (!empty($future_schedules)) {
+      return false;
+    }
+
+    if (!as_next_scheduled_action('wooms_cron_variation_walker', [], 'ProductWalker')) {
+      // Adding schedule hook
+      as_schedule_recurring_action(
+        time(),
+        60,
+        'wooms_cron_variation_walker',
+        [],
+        'ProductWalker'
+      );
+    }
+    
+  }
 
     /**
      * Starting walker from cron

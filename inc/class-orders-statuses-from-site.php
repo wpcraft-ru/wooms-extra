@@ -25,7 +25,7 @@ class Statuses_From_Site {
 
     add_action( 'woocommerce_new_order', array(__CLASS__, 'set_status_for_new_order') );
 
-    add_action( 'init', array(__CLASS__, 'cron_init') );
+    add_action( 'init', array(__CLASS__, 'add_schedule_hook') );
   }
 
   /**
@@ -44,20 +44,42 @@ class Statuses_From_Site {
 
     $order->save();
   }
-
+  
   /**
-  * Cron task restart
-  */
-  public static function cron_init()
+   * Add schedule hook
+   */
+  public static function add_schedule_hook()
   {
     if(empty(get_option('wooms_enable_orders_statuses_updater'))){
-      return;
+        return;
+      }
+
+    // Checking if there is any of this type pending schedules
+    $future_schedules = as_get_scheduled_actions(
+      [
+        'hook' => 'wooms_cron_status_order_sender',
+        'status' => \ActionScheduler_Store::STATUS_PENDING,
+        'group' => 'ProductWalker'
+      ]
+    );
+
+    if (!empty($future_schedules)) {
+      return false;
     }
 
-    if ( ! wp_next_scheduled( 'wooms_cron_status_order_sender' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_status_order_sender' );
+    if (!as_next_scheduled_action('wooms_cron_status_order_sender', [], 'ProductWalker')) {
+      // Adding schedule hook
+      as_schedule_recurring_action(
+        time(),
+        60,
+        'wooms_cron_status_order_sender',
+        [],
+        'ProductWalker'
+      );
     }
+    
   }
+
 
   /**
    * Add tast for update status order in MoySklad

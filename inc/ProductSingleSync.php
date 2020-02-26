@@ -21,13 +21,41 @@ class ProductSingleSync {
 
         add_action('wooms_product_single_update', array(__CLASS__, 'update_variations'));
 
-        add_action('init', function () {
-            if ( ! wp_next_scheduled('wooms_product_single_update')) {
-                wp_schedule_event(time(), 'wooms_cron_walker_shedule', 'wooms_product_single_update');
-            }
-        });
+        add_action('init', [__CLASS__,'add_schedule_hook']);
 
     }
+
+  /**
+   * Cron task restart
+   */
+  public static function add_schedule_hook()
+  {
+
+    // Checking if there is any of this type pending schedules
+    $future_schedules = as_get_scheduled_actions(
+      [
+        'hook' => 'wooms_product_single_update',
+        'status' => \ActionScheduler_Store::STATUS_PENDING,
+        'group' => 'ProductWalker'
+      ]
+    );
+
+    if (!empty($future_schedules)) {
+      return false;
+    }
+
+    if (!as_next_scheduled_action('wooms_product_single_update', [], 'ProductWalker')) {
+      // Adding schedule hook
+      as_schedule_recurring_action(
+        time(),
+        60,
+        'wooms_product_single_update',
+        [],
+        'ProductWalker'
+      );
+    }
+    
+  }
 
     /**
      * update_variations

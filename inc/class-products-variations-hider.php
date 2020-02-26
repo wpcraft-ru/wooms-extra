@@ -19,22 +19,43 @@ class Variations_Hider {
 
     add_action('wooms_wakler_variations_finish', array(__CLASS__, 'reset_after_finish_parent_walker'));
 
-    add_action( 'init', array( __CLASS__, 'add_cron_hook' ) );
+    add_action( 'init', array( __CLASS__, 'add_schedule_hook' ) );
 
   }
 
   /**
-   * add_cron_hook
+   * Add schedule hook
    */
-  public static function add_cron_hook() {
+  public static function add_schedule_hook()
+  {
     if ( empty( get_option( 'woomss_variations_sync_enabled' ) ) ) {
       return;
     }
 
-    if ( ! wp_next_scheduled( 'wooms_cron_variations_hiding' ) ) {
-      wp_schedule_event( time(), 'wooms_cron_walker_shedule', 'wooms_cron_variations_hiding' );
+    // Checking if there is any of this type pending schedules
+    $future_schedules = as_get_scheduled_actions(
+      [
+        'hook' => 'wooms_cron_variations_hiding',
+        'status' => \ActionScheduler_Store::STATUS_PENDING,
+        'group' => 'ProductWalker'
+      ]
+    );
+
+    if (!empty($future_schedules)) {
+      return false;
     }
 
+    if (!as_next_scheduled_action('wooms_cron_variations_hiding', [], 'ProductWalker')) {
+      // Adding schedule hook
+      as_schedule_recurring_action(
+        time(),
+        60,
+        'wooms_cron_variations_hiding',
+        [],
+        'ProductWalker'
+      );
+    }
+    
   }
 
   /**
