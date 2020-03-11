@@ -1,6 +1,8 @@
 <?php
+
 namespace WooMS;
-defined( 'ABSPATH' ) || exit;
+
+defined('ABSPATH') || exit;
 
 /**
  * Send orders to MoySklad
@@ -42,28 +44,28 @@ class OrderSender
     {
         $order = wc_get_order($order_id);
         $currency_code = $order->get_currency();
-        if('RUB' == $currency_code){
+        if ('RUB' == $currency_code) {
             return $data_order;
         }
 
         $url = 'https://online.moysklad.ru/api/remap/1.1/entity/currency/';
-        if(!$data = get_transient('wooms_currency_api')){
+        if (!$data = get_transient('wooms_currency_api')) {
             $data = wooms_request($url);
             set_transient('wooms_currency_api', $data, DAY_IN_SECONDS);
         }
 
-        if(empty($data['rows'])){
+        if (empty($data['rows'])) {
             return $data_order;
         }
 
         $meta = '';
-        foreach ($data['rows'] as $key => $row){
-            if($currency_code == $row['isoCode']){
+        foreach ($data['rows'] as $key => $row) {
+            if ($currency_code == $row['isoCode']) {
                 $meta = $row['meta'];
             }
         }
 
-        if(empty($meta)){
+        if (empty($meta)) {
             return $data_order;
         }
 
@@ -71,7 +73,7 @@ class OrderSender
             'currency' => [
                 'meta' => $meta,
             ],
-//            "value": 214
+            //            "value": 214
         ];
 
         return $data_order;
@@ -102,7 +104,7 @@ class OrderSender
             return;
         }
 
-        if ( ! isset($_POST['wooms_order_sync'])) {
+        if (!isset($_POST['wooms_order_sync'])) {
             return;
         }
 
@@ -147,26 +149,34 @@ class OrderSender
         );
 
         /**
-         * only for update exist order
-         */
-        $data = apply_filters('wooms_order_update_data', $data, $order_id);
-
-        /**
          * for send and update
          */
         $data = apply_filters('wooms_order_data', $data, $order_id);
 
+        /**
+         * only for update exist order
+         */
+        $data = apply_filters('wooms_order_update_data', $data, $order_id);
+
         if (empty($data['positions'])) {
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('При передаче Заказа %s - нет позиций', $order_id)
             );
         }
 
         $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
+        // echo '<pre>';
+        // print_r($data);
+        // echo '</pre>';
+        // exit;
         $result = wooms_request($url, $data, 'PUT');
 
         if (empty($result["id"])) {
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('При передаче Заказа %s - данные не переданы', $order_id)
             );
         } else {
@@ -175,7 +185,6 @@ class OrderSender
 
             return true;
         }
-
     }
 
     /**
@@ -198,7 +207,7 @@ class OrderSender
     public static function add_cron_hook()
     {
 
-        if ( ! wp_next_scheduled('wooms_cron_order_sender')) {
+        if (!wp_next_scheduled('wooms_cron_order_sender')) {
             wp_schedule_event(time(), 'wooms_cron_order_interval', 'wooms_cron_order_sender');
         }
     }
@@ -234,7 +243,9 @@ class OrderSender
             return false;
         }
 
-        do_action('wooms_logger', __CLASS__,
+        do_action(
+            'wooms_logger',
+            __CLASS__,
             sprintf('Старт очереди отправки заказов - %s', date("Y-m-d H:i:s"))
         );
 
@@ -267,7 +278,9 @@ class OrderSender
         if (empty($data)) {
             $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
 
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('Ошибка подготовки данных по заказу %s', $order_id)
             );
 
@@ -288,13 +301,15 @@ class OrderSender
 
         $result = wooms_request($url, $data, 'POST');
 
-        if (empty($result['id']) || ! isset($result['id']) || isset($result['errors'])) {
+        if (empty($result['id']) || !isset($result['id']) || isset($result['errors'])) {
             update_post_meta($order_id, 'wooms_send_timestamp', date("Y-m-d H:i:s"));
             $errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
             $errors .= 'Параметр:' . $result['errors'][0]['parameter'] . "\n\r";
             $errors .= $result['errors'][0]['error'];
 
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('Ошибка передачи заказа %s: %s', $order_id, $errors)
             );
 
@@ -313,12 +328,16 @@ class OrderSender
         }
 
         if ($positions_count == 0) {
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('В заказе %s передано 0 позиций', $order_id)
             );
         }
 
-        do_action('wooms_logger', __CLASS__,
+        do_action(
+            'wooms_logger',
+            __CLASS__,
             sprintf('Заказ %s - отправлен (позиций: %s)', $order_id, $positions_count)
         );
 
@@ -341,7 +360,9 @@ class OrderSender
         $data['positions'] = self::get_data_positions($order_id);
 
         if (empty($data['positions'])) {
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 sprintf('Нет позиций для заказа %s', $order_id)
             );
 
@@ -380,7 +401,7 @@ class OrderSender
             $name_order = $order_id;
         }
 
-        return apply_filters('wooms_order_name', (string)$name_order);
+        return apply_filters('wooms_order_name', (string) $name_order);
     }
 
     /**
@@ -435,7 +456,7 @@ class OrderSender
             );
         }
 
-        if(empty($data)){
+        if (empty($data)) {
             return $data_order;
         }
 
@@ -514,7 +535,9 @@ class OrderSender
         $data = wooms_request($url);
 
         if (empty($data['rows'][0]['meta'])) {
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 'Нет юр лица в базе для отправки Заказа. Добавьте юр лицо в МойСклад.'
             );
 
@@ -530,7 +553,9 @@ class OrderSender
             }
 
             if (empty($meta)) {
-                do_action('wooms_logger_error', __CLASS__,
+                do_action(
+                    'wooms_logger_error',
+                    __CLASS__,
                     sprintf('Для указанного наименования юр лица не найдены данные в МойСклад: %s', $org_name_site)
                 );
             }
@@ -556,7 +581,7 @@ class OrderSender
         $user  = $order->get_user();
         $email = '';
         if (empty($user)) {
-            if ( ! empty($order->get_billing_email())) {
+            if (!empty($order->get_billing_email())) {
                 $email = $order->get_billing_email();
             }
         } else {
@@ -665,7 +690,7 @@ class OrderSender
 
         if (empty($name)) {
             $name = $order->get_billing_last_name();
-            if ( ! empty($order->get_billing_first_name())) {
+            if (!empty($order->get_billing_first_name())) {
                 $name .= ' ' . $order->get_billing_first_name();
             }
         }
@@ -683,7 +708,7 @@ class OrderSender
     public static function get_data_order_company_type($order_id)
     {
         $order = wc_get_order($order_id);
-        if ( ! empty($order->get_billing_company())) {
+        if (!empty($order->get_billing_company())) {
             $company_type = "legal";
         } else {
             $company_type = "individual";
@@ -718,7 +743,7 @@ class OrderSender
 
         if ($order->get_billing_address_1() || $order->get_billing_address_2()) {
             $address .= ', ' . $order->get_billing_address_1();
-            if ( ! empty($order->get_billing_address_2())) {
+            if (!empty($order->get_billing_address_2())) {
                 $address .= ', ' . $order->get_billing_address_2();
             }
         }
@@ -814,10 +839,11 @@ class OrderSender
         add_settings_field(
             $id = $orders_sender_enable_key,
             $title = 'Включить автоматическую синхронизацию заказов в МойСклад',
-            $callback = function($args){
+            $callback = function ($args) {
                 printf(
                     '<input type="checkbox" name="%s" value="1" %s />',
-                    $args['key'], checked(1, $args['value'], $echo = false)
+                    $args['key'],
+                    checked(1, $args['value'], $echo = false)
                 );
             },
             $page = 'mss-settings',
@@ -900,16 +926,24 @@ class OrderSender
     public static function display_wooms_orders_send_check_prefix_postfix()
     {
         $selected_prefix_postfix = get_option('wooms_orders_send_check_prefix_postfix');
-        ?>
+?>
         <select class="check_prefix_postfix" name="wooms_orders_send_check_prefix_postfix">
             <?php
-            printf('<option value="%s" %s>%s</option>', 'prefix', selected('prefix', $selected_prefix_postfix, false),
-                'перед номером заказа');
-            printf('<option value="%s" %s>%s</option>', 'postfix', selected('postfix', $selected_prefix_postfix, false),
-                'после номера заказа');
+            printf(
+                '<option value="%s" %s>%s</option>',
+                'prefix',
+                selected('prefix', $selected_prefix_postfix, false),
+                'перед номером заказа'
+            );
+            printf(
+                '<option value="%s" %s>%s</option>',
+                'postfix',
+                selected('postfix', $selected_prefix_postfix, false),
+                'после номера заказа'
+            );
             ?>
         </select>
-        <?php
+<?php
         echo '<p><small>Выберите как выводить уникальную приставку: перед номером заказа (префикс) или после номера заказа (постфикс)</small></p>';
     }
 
@@ -920,8 +954,12 @@ class OrderSender
     {
         $option = 'wooms_orders_send_reserved';
         $desc   = '<small>При включении данной настройки, резеревирование товаров на складе будет отключено</small>';
-        printf('<input type="checkbox" name="%s" value="1" %s /> %s', $option, checked(1, get_option($option), false),
-            $desc);
+        printf(
+            '<input type="checkbox" name="%s" value="1" %s /> %s',
+            $option,
+            checked(1, get_option($option), false),
+            $desc
+        );
     }
 
     /**
@@ -933,8 +971,10 @@ class OrderSender
         $data_id = get_post_meta($post->ID, 'wooms_id', true);
         if ($data_id) {
             $meta_data = sprintf('<div>ID заказа в МойСклад: <div><strong>%s</strong></div></div>', $data_id);
-            $meta_data .= sprintf('<p><a href="https://online.moysklad.ru/app/#customerorder/edit?id=%s" target="_blank">Посмотреть заказ в МойСклад</a></p>',
-                $data_id);
+            $meta_data .= sprintf(
+                '<p><a href="https://online.moysklad.ru/app/#customerorder/edit?id=%s" target="_blank">Посмотреть заказ в МойСклад</a></p>',
+                $data_id
+            );
         } else {
             $meta_data = 'Заказ не передан в МойСклад';
         }
@@ -942,14 +982,15 @@ class OrderSender
 
         $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
         echo '<hr/>';
-        printf( '
+        printf(
+            '
             <input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
             <label for="wooms-order-sync">%s</label>
-            ', checked($need_update, 1, false), 'Синхронизировать'
+            ',
+            checked($need_update, 1, false),
+            'Синхронизировать'
         );
-
     }
-
 }
 
 OrderSender::init();
