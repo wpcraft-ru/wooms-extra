@@ -11,11 +11,11 @@
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: wooms-xt
  * Domain Path: /languages
- * WC requires at least: 3.0
- * WC tested up to: 3.6.0
+ * WC requires at least: 3.6
+ * WC tested up to: 4.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 6.1
+ * Version: 6.2
  */
 
 defined( 'ABSPATH' ) || exit;
