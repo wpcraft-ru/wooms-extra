@@ -18,7 +18,6 @@ class OrderSender
         add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
 
         //Cron
-        add_filter('cron_schedules', array(__CLASS__, 'add_schedule'));
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
         add_action('save_post', array(__CLASS__, 'save_data_form'));
