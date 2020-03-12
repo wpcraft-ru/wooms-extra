@@ -19,7 +19,7 @@ class OrderSender
 
         //Cron
         add_filter('cron_schedules', array(__CLASS__, 'add_schedule'));
-        add_action('init', array(__CLASS__, 'add_cron_hook'));
+        add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
         add_action('save_post', array(__CLASS__, 'save_data_form'));
 
@@ -167,10 +167,7 @@ class OrderSender
         }
 
         $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
-        // echo '<pre>';
-        // print_r($data);
-        // echo '</pre>';
-        // exit;
+
         $result = wooms_request($url, $data, 'PUT');
 
         if (empty($result["id"])) {
@@ -187,30 +184,6 @@ class OrderSender
         }
     }
 
-    /**
-     * Регистрируем интервал для wp_cron в секундах
-     */
-    public static function add_schedule($schedules)
-    {
-
-        $schedules['wooms_cron_order_interval'] = array(
-            'interval' => apply_filters('wooms_cron_order_interval_chg', 60),
-            'display'  => 'WooMS Cron Order Interval'
-        );
-
-        return $schedules;
-    }
-
-    /**
-     * add_cron_hook
-     */
-    public static function add_cron_hook()
-    {
-
-        if (!wp_next_scheduled('wooms_cron_order_sender')) {
-            wp_schedule_event(time(), 'wooms_cron_order_interval', 'wooms_cron_order_sender');
-        }
-    }
 
     /**
      * Start by cron
@@ -222,6 +195,31 @@ class OrderSender
         }
 
         self::walker();
+    }
+
+    /**
+     * Setup schedule
+     *
+     * @return mixed
+     */
+    public static function add_schedule_hook()
+    {
+
+        if (empty(get_option('wooms_orders_sender_enable'))) {
+            return;
+        }
+
+        // If next schedule is not this one and the sync is active and the all gallery images is downloaded
+        if (!as_next_scheduled_action('wooms_cron_order_sender', [], 'ProductOrders')) {
+            // Adding schedule hook
+            as_schedule_recurring_action(
+                time(),
+                60,
+                'wooms_cron_order_sender',
+                [],
+                'ProductOrders'
+            );
+        }
     }
 
     /**
@@ -288,14 +286,15 @@ class OrderSender
         }
 
         /**
+         * for send and update
+         */
+        $data = apply_filters('wooms_order_data', $data, $order_id);
+
+        /**
          * only for send order first time
          */
         $data = apply_filters('wooms_order_send_data', $data, $order_id);
 
-        /**
-         * for send and update
-         */
-        $data = apply_filters('wooms_order_data', $data, $order_id);
 
         $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
 
