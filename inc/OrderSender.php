@@ -15,9 +15,9 @@ class OrderSender
     public static function init()
     {
 
-        add_action('wooms_cron_order_sender', array(__CLASS__, 'cron_starter_walker'));
+        add_action('wooms_schedule_order_sender', array(__CLASS__, 'schedule_starter_walker'));
 
-        //Cron
+        //schedule
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
         add_action('save_post', array(__CLASS__, 'save_data_form'));
@@ -79,7 +79,7 @@ class OrderSender
     }
 
     /**
-     * Auto add meta for send order by cron
+     * Auto add meta for send order by schedule
      */
     public static function auto_add_order_for_send($order_id)
     {
@@ -185,9 +185,9 @@ class OrderSender
 
 
     /**
-     * Start by cron
+     * Start by schedule
      */
-    public static function cron_starter_walker()
+    public static function schedule_starter_walker()
     {
         if (empty(get_option('wooms_orders_sender_enable'))) {
             return;
@@ -209,12 +209,12 @@ class OrderSender
         }
 
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-        if (!as_next_scheduled_action('wooms_cron_order_sender', [], 'ProductOrders')) {
+        if (!as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
             // Adding schedule hook
             as_schedule_recurring_action(
                 time(),
                 60,
-                'wooms_cron_order_sender',
+                'wooms_schedule_order_sender',
                 [],
                 'ProductOrders'
             );
