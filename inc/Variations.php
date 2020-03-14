@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -508,7 +508,7 @@ class Variations
             set_transient('wooms_variant_offset', $offset + $i);
 
             return;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             delete_transient('wooms_variant_start_timestamp');
             do_action('wooms_logger_error', __CLASS__,
                 $e->getMessage()

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Send waerhouse in order if set in options
  */
-final class Send_Warehouse {
+final class SendWarehouse {
 
   /**
    * The init
@@ -69,4 +69,4 @@ final class Send_Warehouse {
   }
 }
 
-Send_Warehouse::init();
+SendWarehouse::init();
