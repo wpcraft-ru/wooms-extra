@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Import Product Categories from MoySklad
  */
-class Categories_Filter {
+class CategoriesFilter {
 
   /**
    * WooMS_Import_Product_Categories constructor.
@@ -384,4 +384,4 @@ class Categories_Filter {
 
 }
 
-Categories_Filter::init();
+CategoriesFilter::init();
