@@ -1,13 +1,13 @@
 <?php
 
-namespace WooMS\Orders;
+namespace WooMS;
 
 use Exception;
 
 /**
  * Send statuses from moysklad.ru to WooCommerce
  */
-class Statuses_From_MoySklad {
+class StatusesFromMoySklad{
 
   /**
    * The init
@@ -389,4 +389,4 @@ class Statuses_From_MoySklad {
 
 }
 
-Statuses_From_MoySklad::init();
+StatusesFromMoySklad::init();

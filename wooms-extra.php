@@ -57,14 +57,14 @@ class WooMS_XT
             require_once __DIR__ . '/inc/ProductStocks.php';
             require_once __DIR__ . '/inc/TaxSupport.php';
 
-            require_once __DIR__ . '/inc/class-products-variations.php';
-            require_once __DIR__ . '/inc/class-products-variations-hider.php';
-            require_once __DIR__ . '/inc/class-products-categories-filter.php';
-            require_once __DIR__ . '/inc/class-products-bundles.php';
-            require_once __DIR__ . '/inc/class-products-prices-sale.php';
-            require_once __DIR__ . '/inc/class-orders-statuses-from-site.php';
-            require_once __DIR__ . '/inc/class-orders-statuses-from-moysklad.php';
-            require_once __DIR__ . '/inc/class-orders-warehouse.php';
+            require_once __DIR__ . '/inc/Variations.php';
+            require_once __DIR__ . '/inc/VariationsHider.php';
+            require_once __DIR__ . '/inc/CategoriesFilter.php';
+            require_once __DIR__ . '/inc/Bundle.php';
+            require_once __DIR__ . '/inc/SalePrices.php';
+            require_once __DIR__ . '/inc/StatusesFromSite.php';
+            require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
+            require_once __DIR__ . '/inc/SendWarehouse.php';
 
         }
     }

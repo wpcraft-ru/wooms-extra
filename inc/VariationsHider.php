@@ -1,6 +1,6 @@
 <?php
 
-namespace WooMS\Products;
+namespace WooMS;
 
 if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Hide old variations
  */
-class Variations_Hider {
+class VariationsHider {
 
   /**
    * The init
@@ -152,4 +152,4 @@ class Variations_Hider {
   }
 }
 
-Variations_Hider::init();
+VariationsHider::init();

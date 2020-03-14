@@ -1,5 +1,5 @@
 <?php
-namespace WooMS\Products;
+namespace WooMS;
 
 /**
  * Products Bundle Managment
@@ -123,9 +123,9 @@ class Bundle
 
           if ($error_code == 1056) {
               $msg = sprintf('Ошибка проверки имени и пароля. Код %s, исправьте в <a href="%s">настройках</a>', $error_code, admin_url('options-general.php?page=mss-settings'));
-              throw new Exception($msg);
+              throw new \Exception($msg);
           } else {
-              throw new Exception($error_code . ': '. $data['errors'][0]["error"]);
+              throw new \Exception($error_code . ': '. $data['errors'][0]["error"]);
           }
       }
 
@@ -144,7 +144,7 @@ class Bundle
       return $i;
 
 
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         delete_transient('wooms_bundles_start_timestamp');
         do_action('wooms_logger_error', __CLASS__,
           $e->getMessage()
