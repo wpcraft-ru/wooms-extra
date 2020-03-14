@@ -81,7 +81,7 @@ class Statuses_From_MoySklad {
   public static function get_status_order_webhook() {
 
       $check    = self::check_webhooks_and_try_fix();
-      $url      = 'https://online.moysklad.ru/api/remap/1.1/entity/webhook?limit=50';
+      $url      = 'https://online.moysklad.ru/api/remap/1.2/entity/webhook?limit=50';
       $data     = wooms_request( $url );
 
       $webhooks = array();
