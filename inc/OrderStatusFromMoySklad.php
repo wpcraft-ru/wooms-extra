@@ -7,7 +7,7 @@ use Exception;
 /**
  * Send statuses from moysklad.ru to WooCommerce
  */
-class StatusesFromMoySklad{
+class OrderStatusFromMoySklad{
 
   /**
    * The init
@@ -389,4 +389,4 @@ class StatusesFromMoySklad{
 
 }
 
-StatusesFromMoySklad::init();
+OrderStatusFromMoySklad::init();

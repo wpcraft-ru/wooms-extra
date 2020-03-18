@@ -62,8 +62,8 @@ class WooMS_XT
             require_once __DIR__ . '/inc/CategoriesFilter.php';
             require_once __DIR__ . '/inc/Bundle.php';
             require_once __DIR__ . '/inc/SalePrices.php';
-            require_once __DIR__ . '/inc/StatusesFromSite.php';
-            require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
+            require_once __DIR__ . '/inc/OrderStatusFromSite.php';
+            require_once __DIR__ . '/inc/OrderStatusFromMoySklad.php';
             require_once __DIR__ . '/inc/SendWarehouse.php';
 
         }
