@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: WooMS XT (Extra)
  * Description: Расширение для синхронизации данных между приложениями МойСклад и WooCommerce - расширенная версия
@@ -18,88 +19,35 @@
  * Version: 6.3
  */
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
-class WooMS_XT
-{
-    /**
-     * activate wooms
-     */
-    public static $is_core_exist = false;
-
-    /**
-     * The init
-     */
-    public static function init()
-    {
-        add_action('admin_notices', array(__CLASS__, 'check_base_plugin'));
-        add_action('plugins_loaded', array(__CLASS__, 'load'));
+/**
+ * load files
+ */
+add_action('plugins_loaded', function () {
+    if (!class_exists('WooMS_Core')) {
+        $is_core_exist = false;
+        return;
     }
 
-    /**
-     * load files
-     */
-    public static function load()
-    {
-        if ( ! class_exists('WooMS_Core')) {
-            self::$is_core_exist = false;
-            return;
-        }
+    $is_core_exist = apply_filters('wooms_xt_load', true);
 
-        self::$is_core_exist = apply_filters('wooms_xt_load', true);
+    if ($is_core_exist) {
+        require_once __DIR__ . '/inc/OrderSender.php';
+        require_once __DIR__ . '/inc/OrderShipment.php';
+        require_once __DIR__ . '/inc/OrderNotes.php';
+        require_once __DIR__ . '/inc/ProductAttributes.php';
+        require_once __DIR__ . '/inc/ProductSingleSync.php';
+        require_once __DIR__ . '/inc/ProductStocks.php';
+        require_once __DIR__ . '/inc/TaxSupport.php';
 
-        if (self::$is_core_exist) {
-            require_once __DIR__ . '/inc/OrderSender.php';
-            require_once __DIR__ . '/inc/OrderShipment.php';
-            require_once __DIR__ . '/inc/OrderNotes.php';
-            require_once __DIR__ . '/inc/ProductAttributes.php';
-            require_once __DIR__ . '/inc/ProductSingleSync.php';
-            require_once __DIR__ . '/inc/ProductStocks.php';
-            require_once __DIR__ . '/inc/TaxSupport.php';
-
-            require_once __DIR__ . '/inc/Variations.php';
-            require_once __DIR__ . '/inc/VariationsHider.php';
-            require_once __DIR__ . '/inc/CategoriesFilter.php';
-            require_once __DIR__ . '/inc/Bundle.php';
-            require_once __DIR__ . '/inc/SalePrices.php';
-            require_once __DIR__ . '/inc/StatusesFromSite.php';
-            require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
-            require_once __DIR__ . '/inc/SendWarehouse.php';
-
-        }
+        require_once __DIR__ . '/inc/Variations.php';
+        require_once __DIR__ . '/inc/VariationsHider.php';
+        require_once __DIR__ . '/inc/CategoriesFilter.php';
+        require_once __DIR__ . '/inc/Bundle.php';
+        require_once __DIR__ . '/inc/SalePrices.php';
+        require_once __DIR__ . '/inc/StatusesFromSite.php';
+        require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
+        require_once __DIR__ . '/inc/SendWarehouse.php';
     }
-
-    /**
-     * check_base_plugin
-     */
-    public static function check_base_plugin()
-    {
-        if ( ! function_exists('get_plugin_data') ) {
-            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
-        }
-
-        $wooms_version = get_file_data(__FILE__, array('wooms_ver' => 'WooMS requires at least'));
-
-        $error_text = '';
-
-        if ( ! is_plugin_active('wooms/wooms.php')) {
-            $error_text = 'Для работы плагина WooMS XT требуется основной плагин <strong><a href="//wordpress.org/plugins/wooms/" target="_blank">WooMS</a></strong>';
-        }
-
-        /**
-         * hook for change error message
-         */
-        $error_text = apply_filters('wooms_xt_error_msg', $error_text);
-
-        if ( ! empty($error_text)) {
-            printf('
-        <div class="notice notice-error">
-            <p><strong>Внимание!</strong> %s</p>
-        </div>
-        ', $error_text);
-        }
-    }
-
-}
-
-WooMS_XT::init();
+});
