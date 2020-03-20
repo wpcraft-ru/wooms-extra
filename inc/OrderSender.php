@@ -215,6 +215,10 @@ class OrderSender
                 'ProductOrders'
             );
         }
+        // If next schedule is not this one and the sync is active
+        if (!$check_schedule_needed && as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
+            as_unschedule_all_actions('wooms_schedule_order_sender', [], 'ProductOrders');
+        }
     }
 
     /**
@@ -244,10 +248,6 @@ class OrderSender
         $orders = get_posts($args);
 
         if (empty($orders)) {
-            // If next schedule is not this one and the sync is active
-            if (as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
-                as_unschedule_all_actions('wooms_schedule_order_sender', [], 'ProductOrders');
-            }
             return false;
         }
 
