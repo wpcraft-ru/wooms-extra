@@ -46,8 +46,9 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/CategoriesFilter.php';
         require_once __DIR__ . '/inc/Bundle.php';
         require_once __DIR__ . '/inc/SalePrices.php';
-        require_once __DIR__ . '/inc/StatusesFromSite.php';
-        require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
+        require_once __DIR__ . '/inc/OrderStatusesFromSite.php';
+        require_once __DIR__ . '/inc/OrderStatusesFromMoySklad.php';
         require_once __DIR__ . '/inc/SendWarehouse.php';
+        require_once __DIR__ . '/inc/SiteHealthXT.php';
     }
 });

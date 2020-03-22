@@ -5,7 +5,7 @@ namespace WooMS;
 /**
  * Send statuses from WooCommerce to moysklad.ru
  */
-class StatusesFromSite {
+class OrderStatusesFromSite {
 
     public static $statuses_match;
 
@@ -359,4 +359,4 @@ class StatusesFromSite {
   }
 }
 
-StatusesFromSite::init();
+OrderStatusesFromSite::init();
