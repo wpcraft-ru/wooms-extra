@@ -59,7 +59,7 @@ class GroupedProducts
 
     $subproducts_ids = array();
     foreach ($data_components["rows"] as $row_component) {
-      $product_uuid = str_replace('https://online.moysklad.ru/api/remap/1.1/entity/product/', '', $row_component["assortment"]["meta"]["href"]);
+      $product_uuid = str_replace('https://online.moysklad.ru/api/remap/1.2/entity/product/', '', $row_component["assortment"]["meta"]["href"]);
       $subproduct_id = self::get_product_id_by_uuid($product_uuid);
 
       if(empty($subproduct_id)){
@@ -113,7 +113,9 @@ class GroupedProducts
         'limit' => 10
       ];
 
-      $url_api = add_query_arg($args_ms_api, 'https://online.moysklad.ru/api/remap/1.1/entity/bundle');
+      $url_api = add_query_arg($args_ms_api, 'https://online.moysklad.ru/api/remap/1.2/entity/bundle');
+
+      $url_api = apply_filters('wooms_product_bundle_url', $url_api);
 
       $data = wooms_request( $url_api );
 
@@ -178,7 +180,7 @@ class GroupedProducts
     }
 
     ?>
-    <h2>Комплекты</h2>
+    <h2>Сгруппированные продукты (Комплекты)</h2>
     <p>Ручной запуск импорта комплектов из МойСклад в групповые продукты WooCommerce</p>
     <a href="<?php echo add_query_arg('a', 'wooms_import_product_bundles', admin_url('admin.php?page=moysklad')) ?>" class="button button-primary">Выполнить</a>
     <?php
