@@ -18,6 +18,8 @@ class SiteHealthXT
         add_filter('site_status_tests', [__CLASS__, 'new_health_tests']);
 
         add_filter('debug_information', [__CLASS__, 'add_info_to_debug']);
+
+        add_filter('add_wooms_plugin_debug', [__CLASS__, 'wooms_check_moy_sklad_user_tarrif']);
     
     }
 
@@ -97,6 +99,27 @@ class SiteHealthXT
         ];
 
         $debug_info = apply_filters('add_wooms_plugin_debug', $debug_info);
+
+        return $debug_info;
+    }
+
+    /**
+     * check user tariff
+     *
+     * @param [type] $debug_info
+     * @return void
+     */
+    public static function wooms_check_moy_sklad_user_tarrif($debug_info){
+
+        if (!get_transient('wooms_check_moysklad_tariff')) {
+            return $debug_info;
+        }
+
+        $debug_info['wooms-plugin-debug']['fields']['wooms-tariff-for-orders'] = [
+            'label'    => 'Тариф МойСклад',
+            'value'   => sprintf('Для корректной работы плагина нужно сменить тариф %s', '❌'),
+        ];
+        
 
         return $debug_info;
     }
