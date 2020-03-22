@@ -44,7 +44,7 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/Variations.php';
         require_once __DIR__ . '/inc/VariationsHider.php';
         require_once __DIR__ . '/inc/CategoriesFilter.php';
-        require_once __DIR__ . '/inc/Bundle.php';
+        require_once __DIR__ . '/inc/GroupedProducts.php';
         require_once __DIR__ . '/inc/SalePrices.php';
         require_once __DIR__ . '/inc/StatusesFromSite.php';
         require_once __DIR__ . '/inc/StatusesFromMoySklad.php';
