@@ -182,8 +182,6 @@ class OrderStatusesFromMoySklad
                 $result = wooms_request($url, $data);
 
                 if (empty($result)) {
-                    // Добовляем значение для вывода ошибки в здаровье сайта
-                    set_transient('wooms_check_moysklad_tariff', true, 60 * 60);
                     return false;
                 } else {
                     return true;
