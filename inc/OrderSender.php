@@ -196,29 +196,84 @@ class OrderSender
         self::walker();
     }
 
-    /**
+    // /**
+    //  * Setup schedule
+    //  *
+    //  * @return mixed
+    //  */
+    // public static function add_schedule_hook()
+    // {
+
+    //     if (empty(get_option('wooms_orders_sender_enable'))) {
+    //         return;
+    //     }
+
+    //     // If next schedule is not this one and the sync is active and the all gallery images is downloaded
+    //     if (!as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
+    //         // Adding schedule hook
+    //         as_schedule_recurring_action(
+    //             time(),
+    //             60,
+    //             'wooms_schedule_order_sender',
+    //             [],
+    //             'ProductOrders'
+    //         );
+    //     }
+    // }
+
+     /**
      * Setup schedule
      *
      * @return mixed
      */
     public static function add_schedule_hook()
     {
-
-        if (empty(get_option('wooms_orders_sender_enable'))) {
-            return;
-        }
-
+        
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-        if (!as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
+        if (self::check_schedule_needed()) {
             // Adding schedule hook
-            as_schedule_recurring_action(
-                time(),
-                60,
+            as_schedule_single_action(
+                time() + 60,
                 'wooms_schedule_order_sender',
                 [],
                 'ProductOrders'
             );
         }
+
+    }
+
+    /**
+     * Checking if schedule can be created or not
+     *
+     * @return void
+     */
+    public static function check_schedule_needed()
+    {
+
+        if (empty(get_option('wooms_orders_sender_enable'))) {
+            return false;
+        }
+
+        $args = array(
+            'numberposts'  => 1,
+            'post_type'    => 'shop_order',
+            'post_status'  => 'any',
+            'meta_key'     => 'wooms_order_sync',
+            'meta_compare' => 'EXISTS',
+        );
+
+        $orders = get_posts($args);
+
+        if (empty($orders)) {
+            return false;
+        }
+
+        // If next schedule is not this one and the sync is active
+        if (as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
