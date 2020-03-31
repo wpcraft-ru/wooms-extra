@@ -25,7 +25,7 @@ class Variations
 
         // Cron
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
-        add_action('wooms_cron_variation_walker', array(__CLASS__, 'walker_starter_by_cron'));
+        add_action('wooms_schedule_variation_walker', array(__CLASS__, 'walker_starter_by_cron'));
 
         add_filter('wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
         add_action('wooms_products_variations_item', array(__CLASS__, 'load_data_variant'), 15);
@@ -612,25 +612,11 @@ class Variations
         return;
     }
 
-    // Checking if there is any of this type pending schedules
-    $future_schedules = as_get_scheduled_actions(
-      [
-        'hook' => 'wooms_cron_variation_walker',
-        'status' => \ActionScheduler_Store::STATUS_PENDING,
-        'group' => 'ProductWalker'
-      ]
-    );
-
-    if (!empty($future_schedules)) {
-      return false;
-    }
-
-    if (!as_next_scheduled_action('wooms_cron_variation_walker', [], 'ProductWalker')) {
+    if (!as_next_scheduled_action('wooms_schedule_variation_walker', [], 'ProductWalker')) {
       // Adding schedule hook
-      as_schedule_recurring_action(
-        time(),
-        60,
-        'wooms_cron_variation_walker',
+      as_schedule_single_action(
+        time() + 60,
+        'wooms_schedule_variation_walker',
         [],
         'ProductWalker'
       );

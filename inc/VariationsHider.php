@@ -32,24 +32,25 @@ class VariationsHider {
       return;
     }
 
-    // Checking if there is any of this type pending schedules
-    $future_schedules = as_get_scheduled_actions(
-      [
-        'hook' => 'wooms_cron_variations_hiding',
-        'status' => \ActionScheduler_Store::STATUS_PENDING,
-        'group' => 'ProductWalker'
-      ]
-    );
+    //Если стоит пауза, то ничего не делаем
+    if( ! empty(get_transient('wooms_variations_hiding_pause'))){
+      return;
+    }
 
-    if (!empty($future_schedules)) {
-      return false;
+    //Если работает синк товаров, то блокируем работу
+    if( ! empty(get_transient('wooms_start_timestamp'))){
+      return;
+    }
+
+    //Если работает синк вариаций, то блокируем работу
+    if( ! empty(get_transient('wooms_variant_start_timestamp'))){
+      return;
     }
 
     if (!as_next_scheduled_action('wooms_cron_variations_hiding', [], 'ProductWalker')) {
       // Adding schedule hook
-      as_schedule_recurring_action(
-        time(),
-        60,
+      as_schedule_single_action(
+        time() + 60,
         'wooms_cron_variations_hiding',
         [],
         'ProductWalker'
