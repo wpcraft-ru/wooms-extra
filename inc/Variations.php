@@ -612,6 +612,10 @@ class Variations
         return;
     }
 
+    if (!self::can_schedule_start()) {
+        return;
+    }
+
     if (!as_next_scheduled_action('wooms_schedule_variation_walker', [], 'ProductWalker')) {
       // Adding schedule hook
       as_schedule_single_action(
@@ -632,7 +636,7 @@ class Variations
 
         self::$is_cron = true;
 
-        if (self::can_cron_start()) {
+        if (self::can_schedule_start()) {
             self::walker();
         }
     }
@@ -642,7 +646,7 @@ class Variations
      *
      * @return bool
      */
-    public static function can_cron_start()
+    public static function can_schedule_start()
     {
 
         /**

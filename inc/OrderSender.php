@@ -196,31 +196,6 @@ class OrderSender
         self::walker();
     }
 
-    // /**
-    //  * Setup schedule
-    //  *
-    //  * @return mixed
-    //  */
-    // public static function add_schedule_hook()
-    // {
-
-    //     if (empty(get_option('wooms_orders_sender_enable'))) {
-    //         return;
-    //     }
-
-    //     // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-    //     if (!as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
-    //         // Adding schedule hook
-    //         as_schedule_recurring_action(
-    //             time(),
-    //             60,
-    //             'wooms_schedule_order_sender',
-    //             [],
-    //             'ProductOrders'
-    //         );
-    //     }
-    // }
-
      /**
      * Setup schedule
      *
