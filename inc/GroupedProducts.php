@@ -119,18 +119,6 @@ class GroupedProducts
 
       $data = wooms_request( $url_api );
 
-      //Check for errors and send message to UI
-      if (isset($data['errors'])) {
-          $error_code = $data['errors'][0]["code"];
-
-          if ($error_code == 1056) {
-              $msg = sprintf('Ошибка проверки имени и пароля. Код %s, исправьте в <a href="%s">настройках</a>', $error_code, admin_url('options-general.php?page=mss-settings'));
-              throw new \Exception($msg);
-          } else {
-              throw new \Exception($error_code . ': '. $data['errors'][0]["error"]);
-          }
-      }
-
       if (empty($data['rows'])) {
         delete_transient('wooms_bundles_start_timestamp');
       }
