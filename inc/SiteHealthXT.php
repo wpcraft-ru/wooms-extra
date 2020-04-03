@@ -8,7 +8,9 @@ if (!defined('ABSPATH')) {
 
 
 /**
- * Import Product Images
+ * SiteHealthXT
+ * 
+ * @issue https://github.com/wpcraft-ru/wooms/issues/216
  */
 class SiteHealthXT
 {
