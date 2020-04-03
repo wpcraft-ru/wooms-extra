@@ -27,7 +27,7 @@ class CategoriesFilter {
 
       add_action( 'wooms_update_category', array( __CLASS__, 'update_meta_session_term' ) );
 
-      add_action('wooms_recount_terms', array( __CLASS__, 'recount_terms' ));
+      add_action('wooms_main_walker_finish', array( __CLASS__, 'recount_terms' ));
 
     }
 
