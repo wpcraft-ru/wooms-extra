@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: WooMS XT (Extra)
  * Description: Расширение для синхронизации данных между приложениями МойСклад и WooCommerce - расширенная версия
@@ -33,22 +32,23 @@ add_action('plugins_loaded', function () {
     $is_core_exist = apply_filters('wooms_xt_load', true);
 
     if ($is_core_exist) {
-        require_once __DIR__ . '/inc/OrderSender.php';
-        require_once __DIR__ . '/inc/OrderShipment.php';
-        require_once __DIR__ . '/inc/OrderNotes.php';
         require_once __DIR__ . '/inc/ProductAttributes.php';
         require_once __DIR__ . '/inc/ProductSingleSync.php';
         require_once __DIR__ . '/inc/ProductStocks.php';
-        require_once __DIR__ . '/inc/GroupedProduct.php';
+        require_once __DIR__ . '/inc/ProductGrouped.php';
 
-        require_once __DIR__ . '/inc/TaxSupport.php';
-
-        require_once __DIR__ . '/inc/Variations.php';
+        require_once __DIR__ . '/inc/ProductVariable.php';
         require_once __DIR__ . '/inc/VariationsHider.php';
-        require_once __DIR__ . '/inc/CategoriesFilter.php';
-        require_once __DIR__ . '/inc/SalePrices.php';
+
+        require_once __DIR__ . '/inc/OrderSender.php';
+        require_once __DIR__ . '/inc/OrderShipment.php';
+        require_once __DIR__ . '/inc/OrderNotes.php';
         require_once __DIR__ . '/inc/OrderStatusesFromSite.php';
         require_once __DIR__ . '/inc/OrderStatusesFromMoySklad.php';
+
+        require_once __DIR__ . '/inc/TaxSupport.php';
+        require_once __DIR__ . '/inc/CategoriesFilter.php';
+        require_once __DIR__ . '/inc/SalePrices.php';
         require_once __DIR__ . '/inc/SendWarehouse.php';
         require_once __DIR__ . '/inc/SiteHealthXT.php';
     }

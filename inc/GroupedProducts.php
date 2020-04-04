@@ -4,7 +4,7 @@ namespace WooMS;
 /**
  * Products Bundle Managment
  */
-class GroupedProduct
+class ProductGrouped
 {
   /**
    * The init
@@ -123,4 +123,4 @@ class GroupedProduct
 
 }
 
-GroupedProduct::init();
+ProductGrouped::init();

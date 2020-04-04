@@ -8,7 +8,7 @@ defined('ABSPATH') || exit;
 /**
  * Import variants from MoySklad
  */
-class Variations
+class ProductVariable
 {
 
     /**
@@ -916,4 +916,4 @@ class Variations
     }
 }
 
-Variations::init();
+ProductVariable::init();
