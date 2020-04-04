@@ -39,12 +39,13 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/ProductAttributes.php';
         require_once __DIR__ . '/inc/ProductSingleSync.php';
         require_once __DIR__ . '/inc/ProductStocks.php';
+        require_once __DIR__ . '/inc/GroupedProduct.php';
+
         require_once __DIR__ . '/inc/TaxSupport.php';
 
         require_once __DIR__ . '/inc/Variations.php';
         require_once __DIR__ . '/inc/VariationsHider.php';
         require_once __DIR__ . '/inc/CategoriesFilter.php';
-        require_once __DIR__ . '/inc/GroupedProducts.php';
         require_once __DIR__ . '/inc/SalePrices.php';
         require_once __DIR__ . '/inc/OrderStatusesFromSite.php';
         require_once __DIR__ . '/inc/OrderStatusesFromMoySklad.php';
