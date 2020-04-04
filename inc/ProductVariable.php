@@ -11,6 +11,12 @@ defined('ABSPATH') || exit;
 class ProductVariable
 {
 
+
+    public static $state_transient_key = 'wooms_variables_walker_state';
+    public static $walker_hook_name = 'wooms_variables_walker_batch';
+
+    
+
     /**
      * tag for cron detected
      */
@@ -21,11 +27,19 @@ class ProductVariable
      */
     public static function init()
     {
+
+
+        add_action('init', function(){
+            if(isset($_GET['dd'])){
+
+                self::add_schedule_hook();
+
+                var_dump(0); exit;
+            }
+
+        });
         add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
-        // Cron
-        add_action('init', array(__CLASS__, 'add_schedule_hook'));
-        add_action('wooms_schedule_variation_walker', array(__CLASS__, 'walker_starter_by_cron'));
 
         add_filter('wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
         add_action('wooms_products_variations_item', array(__CLASS__, 'load_data_variant'), 15);
@@ -35,29 +49,125 @@ class ProductVariable
         add_action('woomss_tool_actions_btns', array(__CLASS__, 'ui_for_manual_start'), 15);
         add_action('woomss_tool_actions_wooms_import_variations_manual_start', array(__CLASS__, 'start_manually'));
         add_action('woomss_tool_actions_wooms_import_variations_manual_stop', array(__CLASS__, 'stop_manually'));
-        add_action('wooms_variants_display_state', array(__CLASS__, 'display_state'));
         add_action('wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
-        add_action('wooms_products_sync_manual_start', [__CLASS__, 'set_tag_for_manual_start']);
 
+        add_action('init', array(__CLASS__, 'add_schedule_hook'));
+        add_action('wooms_variables_walker_batch', array(__CLASS__, 'walker'));
     }
+
 
     /**
-     * Set tag for start sync after manual start the main walker
+     * Walker for data variant product from MoySklad
      */
-    public static function set_tag_for_manual_start()
+    public static function walker($args = [])
     {
-        set_transient('wooms_variations_sync_for_manual_start', 1);
+       
+        $state = self::get_state();
+
+        if( ! empty($state['lock'])){
+            return; // блокировка состояни гонки
+        }
+        self::set_state('lock', 1);
+
+
+        //reset state if new session
+        if(empty($state['timestamp'])){
+
+            self::set_state('timestamp', date("YmdHis"));
+            self::set_state('end_timestamp', 0);
+            self::set_state('count', 0);
+
+            $query_arg_default = [
+                'offset' => 0,
+                'limit'  => apply_filters('wooms_variant_iteration_size', 30),
+                'scope'  => 'variant',
+            ];
+
+            self::set_state('query_arg', $query_arg_default);
+        }
+
+        $query_arg = self::get_state('query_arg');
+ 
+        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+
+        $url = add_query_arg($query_arg, $url);
+
+        $url = apply_filters('wooms_url_get_variants', $url);
+
+        try {
+
+            do_action('wooms_logger',
+                __CLASS__,
+                sprintf('Вариации. Отправлен запрос: %s', $url),
+                $state 
+            );
+
+            // delete_transient('wooms_variant_end_timestamp');
+            // set_transient('wooms_variant_start_timestamp', time());
+            $data = wooms_request($url);
+
+
+            //Check for errors and send message to UI
+            if (isset($data['errors'][0]["error"])) {
+                throw new \Exception($data['errors'][0]["error"]);
+            }
+
+            //If no rows, that send 'end' and stop walker
+            if (isset($data['rows']) && empty($data['rows'])) {
+
+                self::set_state('lock', 0);
+                self::walker_finish();
+                return true;
+            }
+
+            $i = 0;
+            foreach ($data['rows'] as $key => $item) {
+                $i++;
+
+                if ($item["meta"]["type"] != 'variant') {
+                    continue;
+                }
+
+                do_action('wooms_products_variations_item', $item);
+
+                /**
+                 * deprecated
+                 */
+                do_action('wooms_product_variant_import_row', $item, $key, $data);
+            }
+
+            //update count
+            self::set_state( 'count', self::get_state('count') + count($data['rows']) );
+
+            //update offset 
+            $query_arg['offset'] = $query_arg['offset'] + count($data['rows']);
+
+            self::set_state('query_arg', $query_arg);
+
+            self::set_state('lock', 0);
+
+            self::add_schedule_hook(true);
+
+            return true;
+        } catch (\Exception $e) {
+            self::set_state('lock', 0);
+            do_action('wooms_logger_error', __CLASS__,
+                $e->getMessage()
+            );
+            return false;
+        }
     }
+
+
 
     /**
      * reset_after_main_walker_finish
      */
     public static function reset_after_main_walker_finish()
     {
-        delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_offset');
-        delete_transient('wooms_variant_end_timestamp');
-        delete_transient('wooms_variant_walker_stop');
+        self::set_state('timestamp', 0);
+        self::set_state('end_timestamp', 0);
+        self::add_schedule_hook();
     }
 
     /**
@@ -406,115 +516,21 @@ class ProductVariable
      */
     public static function start_manually()
     {
-        delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_offset');
-        delete_transient('wooms_variant_end_timestamp');
-        delete_transient('wooms_variant_walker_stop');
-        delete_transient('wooms_variations_sync_for_manual_start');
-        set_transient('wooms_variant_manual_sync', 1);
-        self::walker();
+
+        delete_transient(self::$state_transient_key);
+        // self::set_state('timestamp', 0);
+        // self::set_state('end_timestamp', 0);
+
+        // delete_transient('wooms_variant_start_timestamp');
+        // delete_transient('wooms_variant_end_timestamp');
+        // delete_transient('wooms_variant_walker_stop');
+        // delete_transient('wooms_variations_sync_for_manual_start');
+        // set_transient('wooms_variant_manual_sync', 1);
+        // self::walker();
+        self::add_schedule_hook();
         wp_redirect(admin_url('admin.php?page=moysklad'));
     }
 
-    /**
-     * Walker for data variant product from MoySklad
-     */
-    public static function walker()
-    {
-
-        //Check stop tag and break the walker
-        if (self::check_stop_manual()) {
-            return false;
-        }
-
-        $count = apply_filters('wooms_variant_iteration_size', 30);
-        if ( ! $offset = get_transient('wooms_variant_offset')) {
-            $offset = 0;
-            set_transient('wooms_variant_offset', $offset);
-            delete_transient('wooms_count_variant_stat');
-        }
-
-        $ms_api_args = array(
-            'offset' => $offset,
-            'limit'  => $count,
-            'scope'  => 'variant',
-        );
-
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
-
-        $url = add_query_arg($ms_api_args, $url);
-
-        $url = apply_filters('wooms_url_get_variants', $url);
-
-        try {
-
-            delete_transient('wooms_variant_end_timestamp');
-            set_transient('wooms_variant_start_timestamp', time());
-            $data = wooms_request($url);
-
-            do_action('wooms_logger',
-                __CLASS__,
-                sprintf('Отправлен запрос на вариации: %s', $url)
-            );
-
-            //Check for errors and send message to UI
-            if (isset($data['errors'])) {
-                $error_code = $data['errors'][0]["code"];
-                if ($error_code == 1056) {
-                    $msg = sprintf('Ошибка проверки имени и пароля. Код %s, исправьте в <a href="%s">настройках</a>',
-                        $error_code, admin_url('options-general.php?page=mss-settings'));
-                    throw new \Exception($msg);
-                } else {
-                    throw new \Exception($error_code . ': ' . $data['errors'][0]["error"]);
-                }
-            }
-
-            //If no rows, that send 'end' and stop walker
-            if (isset($data['rows']) && empty($data['rows'])) {
-                self::walker_finish();
-
-                return true;
-            }
-
-            if (empty($data['rows'])) {
-                do_action('wooms_logger_error', __CLASS__,
-                    'Ошибка - пустой data row',
-                    print_r($data, true)
-                );
-            }
-
-            $i = 0;
-            foreach ($data['rows'] as $key => $item) {
-                $i++;
-
-                if ($item["meta"]["type"] != 'variant') {
-                    continue;
-                }
-
-                do_action('wooms_products_variations_item', $item);
-
-                /**
-                 * deprecated
-                 */
-                do_action('wooms_product_variant_import_row', $item, $key, $data);
-            }
-
-            if ($count_saved = get_transient('wooms_count_variant_stat')) {
-                set_transient('wooms_count_variant_stat', $i + $count_saved);
-            } else {
-                set_transient('wooms_count_variant_stat', $i);
-            }
-
-            set_transient('wooms_variant_offset', $offset + $i);
-
-            return;
-        } catch (\Exception $e) {
-            delete_transient('wooms_variant_start_timestamp');
-            do_action('wooms_logger_error', __CLASS__,
-                $e->getMessage()
-            );
-        }
-    }
 
     /**
      * Check for stopping imports from MoySklad
@@ -523,7 +539,6 @@ class ProductVariable
     {
         if (get_transient('wooms_variant_walker_stop')) {
             delete_transient('wooms_variant_start_timestamp');
-            delete_transient('wooms_variant_offset');
             delete_transient('wooms_variant_walker_stop');
 
             return true;
@@ -537,26 +552,28 @@ class ProductVariable
      */
     public static function walker_finish()
     {
-        delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_offset');
-        delete_transient('wooms_variant_manual_sync');
-        delete_transient('wooms_variations_sync_for_manual_start');
+
+        self::set_state('end_timestamp', time());
+        self::set_state('lock', 0);
+
+        // delete_transient('wooms_variant_start_timestamp');
+        // delete_transient('wooms_variant_manual_sync');
+        // delete_transient('wooms_variations_sync_for_manual_start');
 
         //Отключаем обработчик или ставим на паузу
-        if (empty(get_option('woomss_walker_cron_enabled'))) {
-            $timer = 0;
-        } else {
-            $timer = 60 * 60 * intval(get_option('woomss_walker_cron_timer', 24));
-        }
+        // if (empty(get_option('woomss_walker_cron_enabled'))) {
+        //     $timer = 0;
+        // } else {
+        //     $timer = 60 * 60 * intval(get_option('woomss_walker_cron_timer', 24));
+        // }
 
-        set_transient('wooms_variant_end_timestamp', date("Y-m-d H:i:s"), $timer);
+        // set_transient('wooms_variant_end_timestamp', date("Y-m-d H:i:s"), $timer);
 
         do_action('wooms_wakler_variations_finish');
 
         do_action('wooms_logger',
             __CLASS__,
-            'Обработчик вариаций финишировал',
-            sprintf('Поставлена пауза в секундах: %s', PHP_EOL . print_r($timer, true))
+            'Вариации. Обработчик финишировал'
         );
 
         return true;
@@ -567,11 +584,14 @@ class ProductVariable
      */
     public static function stop_manually()
     {
-        set_transient('wooms_variant_walker_stop', 1, 60 * 60);
-        delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_offset');
-        delete_transient('wooms_variant_end_timestamp');
-        delete_transient('wooms_variant_manual_sync');
+        // set_transient('wooms_variant_walker_stop', 1, 60 * 60);
+        // delete_transient('wooms_variant_start_timestamp');
+        // delete_transient('wooms_variant_end_timestamp');
+        // delete_transient('wooms_variant_manual_sync');
+
+        as_unschedule_all_actions(self::$walker_hook_name);
+
+        self::walker_finish();
         wp_redirect(admin_url('admin.php?page=moysklad'));
     }
 
@@ -603,33 +623,53 @@ class ProductVariable
         return false;
     }
 
+
+    public static function is_wait() {
+
+        //check finish main walker
+        if (as_next_scheduled_action('wooms_products_walker_batch', null, 'WooMS')) {
+            return true;
+        }
+
+        if( ! empty(self::get_state('end_timestamp')) ){
+            return true;
+        }
+
+        return false;
+
+    }
+
+
     /**
-   * Add schedule hook
-   */
-  public static function add_schedule_hook()
-  {
-    if (empty(get_option('woomss_variations_sync_enabled'))) {
-        return;
-    }
+     * Add schedule hook
+     */
+    public static function add_schedule_hook($force = false)
+    {
+        if ( ! self::is_enable() ) {
+            return;
+        }
 
-    if (!self::can_schedule_start()) {
-        return;
-    }
+        if( self::is_wait() ){
+            return;
+        }
 
-    if (!as_next_scheduled_action('wooms_schedule_variation_walker', [], 'ProductWalker')) {
-      // Adding schedule hook
-      as_schedule_single_action(
-        time() + 60,
-        'wooms_schedule_variation_walker',
-        [],
-        'ProductWalker'
-      );
+
+        // if (!self::can_schedule_start()) {
+            // return;
+        // }
+
+        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS')) {
+            return;
+        }
+
+        // Adding schedule hook
+        as_schedule_single_action(time() + 5, self::$walker_hook_name, self::get_state(), 'WooMS');
     }
-    
-  }
 
     /**
      * Starting walker from cron
+     * 
+     * XXX for remove
      */
     public static function walker_starter_by_cron()
     {
@@ -637,7 +677,7 @@ class ProductVariable
         self::$is_cron = true;
 
         if (self::can_schedule_start()) {
-            self::walker();
+            self::walker($args = []);
         }
     }
 
@@ -742,68 +782,105 @@ class ProductVariable
     {
         set_transient('wooms_variant_walker_stop', 1, 60 * 60);
         delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_offset');
         delete_transient('wooms_variant_end_timestamp');
         delete_transient('wooms_variant_manual_sync');
     }
+
 
     /**
      * Manual start variations
      */
     public static function ui_for_manual_start()
     {
-        if (empty(get_option('woomss_variations_sync_enabled'))) {
+        if ( ! self::is_enable() ) {
             return;
         }
 
         echo '<h2>Вариации (Модификации)</h2>';
 
-        do_action('wooms_variants_display_state');
-
-        if (empty(get_transient('wooms_variant_start_timestamp'))) {
-            echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
-            echo "<p><strong>Внимание!</strong> Синхронизацию вариативных товаров необходимо поводить <strong>после</strong> общей синхронизации товаров</p>";
-            if (empty(get_transient('wooms_start_timestamp'))) {
-                printf('<a href="%s" class="button button-primary">Выполнить</a>',
-                    add_query_arg('a', 'wooms_import_variations_manual_start', admin_url('admin.php?page=moysklad')));
-            } else {
-                printf('<span href="%s" class="button button-secondary" style="display:inline-block">Выполнить</span>',
-                    add_query_arg('a', 'wooms_import_variations_manual_start', admin_url('admin.php?page=moysklad')));
-            }
-
+        echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
+        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS') ) {
+            printf('<a href="%s" class="button button-secondary">Остановить синхронизацию вариативных продуктов</a>',
+            add_query_arg('a', 'wooms_import_variations_manual_stop', admin_url('admin.php?page=moysklad')));
         } else {
-            printf('<a href="%s" class="button button-secondary">Остановить</a>',
-                add_query_arg('a', 'wooms_import_variations_manual_stop', admin_url('admin.php?page=moysklad')));
+            printf('<a href="%s" class="button button-primary">Запустить синхронизацию вариативных продуктов</a>',
+                add_query_arg('a', 'wooms_import_variations_manual_start', admin_url('admin.php?page=moysklad')));
         }
+
+        self::display_state();
+
     }
+
+
+    /**
+     * display_state
+     */
+    public static function display_state()
+    {
+
+        $strings = [];
+
+        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS') ) {
+          $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
+        }
+    
+        if (self::is_wait()) {
+          $strings[] = sprintf('<strong>Статус:</strong> %s', 'в ожидании');
+        }
+    
+        if($end_timestamp = self::get_state('end_timestamp')){
+          $strings[] = sprintf('Последняя успешная синхронизация (отметка времени): %s', $end_timestamp);
+        }
+    
+        $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_variables_walker_batch&orderby=schedule&order=desc'));
+        
+        
+        if(defined('WC_LOG_HANDLER') && 'WC_Log_Handler_DB' == WC_LOG_HANDLER){
+          $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs&source=wooms-WooMS-ProductVariable'));
+        } else {
+          $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
+        }
+
+        $strings[] = sprintf('Количество обработанных записей: %s', self::get_state('count'));
+
+        ?>
+        <div class="wrap">
+            <div id="message" class="notice notice-warning">
+                <?php
+                foreach($strings as $string){
+                    printf('<p>%s</p>', $string);
+                } 
+                ?>
+            </div>
+        </div>
+        <?php
+    }
+
 
     /**
      * Settings import variations
      */
     public static function settings_init()
     {
-        register_setting('mss-settings', 'woomss_variations_sync_enabled');
+        $option_name = 'woomss_variations_sync_enabled';
+        register_setting('mss-settings', $option_name);
         add_settings_field(
-            $id = 'woomss_variations_sync_enabled',
+            $id = $option_name,
             $title = 'Включить синхронизацию вариаций',
-            $callback = array(__CLASS__, 'display_variations_sync_enabled'),
+            $callback = function($args)
+            {
+                printf('<input type="checkbox" name="%s" value="1" %s />', $args['name'], checked(1, $args['value'], false));
+                printf('<p><strong>%s</strong></p>', 'Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.');
+            },
             $page = 'mss-settings',
-            $section = 'woomss_section_other'
+            $section = 'woomss_section_other',
+            $args = [
+                'name' => $option_name,
+                'value' => get_option($option_name),
+            ]
         );
     }
 
-    /**
-     * Option import variations
-     */
-    public static function display_variations_sync_enabled()
-    {
-        $option = 'woomss_variations_sync_enabled';
-        printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked(1, get_option($option), false));
-        ?>
-        <p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии
-                сайта.</strong></p>
-        <?php
-    }
 
     /**
      * Получаем данные таксономии по id глобального артибута
@@ -830,14 +907,28 @@ class ProductVariable
         return $taxonomy;
     }
 
+
+    /**
+     * checking is enable
+     */
+    public static function is_enable(){
+        if (empty(get_option('woomss_variations_sync_enabled'))) {
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Update product from source data
      */
-    public static function update_product($product, $item, $data)
+    public static function update_product($product, $data_api)
     {
-        if (empty(get_option('woomss_variations_sync_enabled'))) {
+        $item = $data_api;
+
+        if ( ! self::is_enable() ) {
             if ($product->is_type('variable')) {
-                $product = new \WC_Product($product);
+                $product = new \WC_Product_Simple($product);
             }
 
             return $product;
@@ -845,7 +936,7 @@ class ProductVariable
 
         if (empty($item['modificationsCount'])) {
             if ($product->is_type('variable')) {
-                $product = new \WC_Product($product);
+                $product = new \WC_Product_Simple($product);
             }
 
             return $product;
@@ -865,54 +956,47 @@ class ProductVariable
         return $product;
     }
 
+
+
     /**
-     * display_state
+     * get state data
      */
-    public static function display_state()
+    public static function get_state($key = '')
     {
-        $time_stamp  = get_transient('wooms_variant_start_timestamp');
-        $diff_sec    = time() - $time_stamp;
-        $time_string = date('Y-m-d H:i:s', $time_stamp);
-
-        $variation_count = get_transient('wooms_count_variant_stat');
-        if (empty($variation_count)) {
-            $variation_count = 'в процессе';
+        if( ! $state = get_transient(self::$state_transient_key)){
+        $state = [];
+        set_transient(self::$state_transient_key, $state);
         }
 
-        $state = '<strong>Выполняется</strong>';
+        if(empty($key)){
+        return $state;
+        }
 
-        $finish_timestamp = get_transient('wooms_variant_end_timestamp');
-        if (empty($finish_timestamp)) {
-            $finish_timestamp = '';
+        if(empty($state[$key])){
+        return null;
+        }
+
+        return $state[$key];
+        
+    }
+
+    /**
+     * set state data
+     */
+    public static function set_state($key, $value){
+
+        if( ! $state = get_transient(self::$state_transient_key)){
+        $state = [];
+        }
+
+        if(is_array($state)){
+        $state[$key] = $value;
         } else {
-            $state = 'Выполнено';
+        $state = [];
+        $state[$key] = $value;
         }
 
-        if (empty(get_transient('wooms_end_timestamp'))) {
-            $state = 'Работа заблокирована до окончания обмена по основным товарам';
-        }
-
-        $cron_on = get_option('woomss_walker_cron_enabled');
-
-        ?>
-        <div class="wrap">
-            <div id="message" class="notice notice-warning">
-                <p>Статус: <?= $state ?></p>
-                <?php if ($finish_timestamp): ?>
-                    <p>Последняя успешная синхронизация (отметка времени): <?= $finish_timestamp ?></p>
-                <?php endif; ?>
-                <p>Количество обработанных записей: <?= $variation_count ?></p>
-                <?php if ( ! $cron_on): ?>
-                    <p>Обмен по расписанию отключен</p>
-                <?php endif; ?>
-                <?php if ( ! empty($time_stamp)): ?>
-                    <p>Отметка времени о последней итерации: <?= $time_string ?></p>
-                    <p>Секунд прошло: <?= $diff_sec ?>.<br/> Следующая серия данных должна отправиться примерно через
-                        минуту. Можно обновить страницу для проверки результатов работы.</p>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php
+        set_transient(self::$state_transient_key, $state);
     }
 }
 
