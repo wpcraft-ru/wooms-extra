@@ -27,17 +27,6 @@ class ProductVariable
      */
     public static function init()
     {
-
-
-        add_action('init', function(){
-            if(isset($_GET['dd'])){
-
-                self::add_schedule_hook();
-
-                var_dump(0); exit;
-            }
-
-        });
         add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
 
@@ -46,7 +35,7 @@ class ProductVariable
 
         //Other
         add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
-        add_action('woomss_tool_actions_btns', array(__CLASS__, 'ui_for_manual_start'), 15);
+        add_action('woomss_tool_actions_btns', array(__CLASS__, 'render_ui'), 15);
         add_action('woomss_tool_actions_wooms_import_variations_manual_start', array(__CLASS__, 'start_manually'));
         add_action('woomss_tool_actions_wooms_import_variations_manual_stop', array(__CLASS__, 'stop_manually'));
         add_action('wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
@@ -68,7 +57,6 @@ class ProductVariable
             return; // блокировка состояни гонки
         }
         self::set_state('lock', 1);
-
 
         //reset state if new session
         if(empty($state['timestamp'])){
@@ -96,16 +84,12 @@ class ProductVariable
 
         try {
 
-            do_action('wooms_logger',
-                __CLASS__,
+            do_action('wooms_logger', __CLASS__,
                 sprintf('Вариации. Отправлен запрос: %s', $url),
                 $state 
             );
 
-            // delete_transient('wooms_variant_end_timestamp');
-            // set_transient('wooms_variant_start_timestamp', time());
             $data = wooms_request($url);
-
 
             //Check for errors and send message to UI
             if (isset($data['errors'][0]["error"])) {
@@ -653,13 +637,18 @@ class ProductVariable
             return;
         }
 
-
-        // if (!self::can_schedule_start()) {
-            // return;
-        // }
-
         if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS')) {
             return;
+        }
+
+        if(self::get_state('lock')){
+            return;
+        }
+
+        if($force){
+            self::set_state('force', 1);
+        } else {
+            self::set_state('force', 0);
         }
 
         // Adding schedule hook
@@ -790,7 +779,7 @@ class ProductVariable
     /**
      * Manual start variations
      */
-    public static function ui_for_manual_start()
+    public static function render_ui()
     {
         if ( ! self::is_enable() ) {
             return;
