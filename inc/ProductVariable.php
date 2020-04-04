@@ -822,6 +822,7 @@ class ProductVariable
         }
     
         if($end_timestamp = self::get_state('end_timestamp')){
+          $end_timestamp = date('Y-m-d H:i:s', $end_timestamp);
           $strings[] = sprintf('Последняя успешная синхронизация (отметка времени): %s', $end_timestamp);
         }
     
