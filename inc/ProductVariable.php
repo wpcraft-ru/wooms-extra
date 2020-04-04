@@ -51,6 +51,10 @@ class ProductVariable
     public static function walker($args = [])
     {
        
+        if(self::is_wait()){
+            return;
+        }
+        
         $state = self::get_state();
 
         if( ! empty($state['lock'])){
