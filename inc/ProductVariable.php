@@ -24,10 +24,6 @@ class ProductVariable
      */
     public static $walker_hook_name = 'wooms_variables_walker_batch';
 
-    /**
-     * tag for cron detected
-     */
-    public static $is_cron = false;
 
     /**
      * The init
@@ -117,11 +113,12 @@ class ProductVariable
 
             $i = 0;
             foreach ($data['rows'] as $key => $item) {
-                $i++;
 
                 if ($item["meta"]["type"] != 'variant') {
                     continue;
                 }
+
+                $i++;
 
                 do_action('wooms_products_variations_item', $item);
 
@@ -132,7 +129,7 @@ class ProductVariable
             }
 
             //update count
-            self::set_state( 'count', self::get_state('count') + count($data['rows']) );
+            self::set_state( 'count', self::get_state('count') + $i );
 
             //update offset 
             $query_arg['offset'] = $query_arg['offset'] + count($data['rows']);
@@ -154,16 +151,17 @@ class ProductVariable
     }
 
 
-
     /**
      * reset_after_main_walker_finish
      */
     public static function reset_after_main_walker_finish()
     {
         self::set_state('timestamp', 0);
+        self::set_state('count', 0);
         self::set_state('end_timestamp', 0);
         self::add_schedule_hook();
     }
+
 
     /**
      * Set attributes for variables
@@ -273,6 +271,7 @@ class ProductVariable
         );
     }
 
+
     /**
      * Set attributes and value for variation
      *
@@ -331,6 +330,7 @@ class ProductVariable
         return $variation;
     }
 
+
     /**
      * Installation of variations for variable product
      */
@@ -361,6 +361,7 @@ class ProductVariable
         do_action('wooms_product_variant', $product_id, $variant);
     }
 
+
     /**
      * Get product variant ID
      *
@@ -368,7 +369,6 @@ class ProductVariable
      */
     public static function get_product_id_by_uuid($uuid)
     {
-
         if (strpos($uuid, 'http') !== false) {
             $uuid = str_replace('https://online.moysklad.ru/api/remap/1.1/entity/product/', '', $uuid);
         }
@@ -381,6 +381,7 @@ class ProductVariable
         return $posts[0]->ID;
     }
 
+
     /**
      * Update and add variables from product
      *
@@ -389,7 +390,6 @@ class ProductVariable
      */
     public static function update_variant_for_product($product_id, $data_api)
     {
-
         $variant_data = $data_api;
         if (empty($data_api)) {
             return;
@@ -435,7 +435,6 @@ class ProductVariable
             );
         }
 
-
         /**
          * deprecated
          */
@@ -463,6 +462,7 @@ class ProductVariable
         do_action('wooms_variation_id', $variation_id, $variant_data);
     }
 
+
     /**
      * Get product parent ID
      */
@@ -482,12 +482,12 @@ class ProductVariable
         return $posts[0]->ID;
     }
 
+
     /**
      * Add variables from product
      */
     public static function add_variation($product_id, $value)
     {
-
         $variation = new \WC_Product_Variation();
         $variation->set_parent_id(absint($product_id));
         $variation->set_status('publish');
@@ -506,22 +506,13 @@ class ProductVariable
         return $variation_id;
     }
 
+
     /**
      * Start import manually
      */
     public static function start_manually()
     {
-
         delete_transient(self::$state_transient_key);
-        // self::set_state('timestamp', 0);
-        // self::set_state('end_timestamp', 0);
-
-        // delete_transient('wooms_variant_start_timestamp');
-        // delete_transient('wooms_variant_end_timestamp');
-        // delete_transient('wooms_variant_walker_stop');
-        // delete_transient('wooms_variations_sync_for_manual_start');
-        // set_transient('wooms_variant_manual_sync', 1);
-        // self::walker();
         self::add_schedule_hook();
         wp_redirect(admin_url('admin.php?page=moysklad'));
     }
@@ -542,27 +533,14 @@ class ProductVariable
         }
     }
 
+
     /**
      * Stopping walker imports from MoySklad
      */
     public static function walker_finish()
     {
-
         self::set_state('end_timestamp', time());
         self::set_state('lock', 0);
-
-        // delete_transient('wooms_variant_start_timestamp');
-        // delete_transient('wooms_variant_manual_sync');
-        // delete_transient('wooms_variations_sync_for_manual_start');
-
-        //Отключаем обработчик или ставим на паузу
-        // if (empty(get_option('woomss_walker_cron_enabled'))) {
-        //     $timer = 0;
-        // } else {
-        //     $timer = 60 * 60 * intval(get_option('woomss_walker_cron_timer', 24));
-        // }
-
-        // set_transient('wooms_variant_end_timestamp', date("Y-m-d H:i:s"), $timer);
 
         do_action('wooms_wakler_variations_finish');
 
@@ -579,14 +557,10 @@ class ProductVariable
      */
     public static function stop_manually()
     {
-        // set_transient('wooms_variant_walker_stop', 1, 60 * 60);
-        // delete_transient('wooms_variant_start_timestamp');
-        // delete_transient('wooms_variant_end_timestamp');
-        // delete_transient('wooms_variant_manual_sync');
-
         as_unschedule_all_actions(self::$walker_hook_name);
 
         self::walker_finish();
+
         wp_redirect(admin_url('admin.php?page=moysklad'));
     }
 
@@ -666,20 +640,6 @@ class ProductVariable
         as_schedule_single_action(time() + 5, self::$walker_hook_name, self::get_state(), 'WooMS');
     }
 
-    /**
-     * Starting walker from cron
-     * 
-     * XXX for remove
-     */
-    public static function walker_starter_by_cron()
-    {
-
-        self::$is_cron = true;
-
-        if (self::can_schedule_start()) {
-            self::walker($args = []);
-        }
-    }
 
     /**
      * Can cron start
@@ -842,7 +802,7 @@ class ProductVariable
           $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
         }
 
-        $strings[] = sprintf('Количество обработанных записей: %s', self::get_state('count'));
+        $strings[] = sprintf('Количество обработанных записей: %s', empty(self::get_state('count')) ? 0 : self::get_state('count') );
 
         ?>
         <div class="wrap">
