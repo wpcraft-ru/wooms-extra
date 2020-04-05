@@ -790,7 +790,7 @@ class ProductVariable
     
         if($end_timestamp = self::get_state('end_timestamp')){
           $end_timestamp = date('Y-m-d H:i:s', $end_timestamp);
-          $strings[] = sprintf('Последняя успешная синхронизация (отметка времени): %s', $end_timestamp);
+          $strings[] = sprintf('Последняя успешная синхронизация (отметка времени UTC): %s', $end_timestamp);
         }
     
         $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_variables_walker_batch&orderby=schedule&order=desc'));
