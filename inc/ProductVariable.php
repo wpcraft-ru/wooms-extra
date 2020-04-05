@@ -10,12 +10,19 @@ defined('ABSPATH') || exit;
  */
 class ProductVariable
 {
-
-
+    /**
+     * Save state in DB
+     * 
+     * @var string
+     */
     public static $state_transient_key = 'wooms_variables_walker_state';
-    public static $walker_hook_name = 'wooms_variables_walker_batch';
 
-    
+    /**
+     * Hookd and key for ActionSheduler
+     *
+     * @var string
+     */
+    public static $walker_hook_name = 'wooms_variables_walker_batch';
 
     /**
      * tag for cron detected
