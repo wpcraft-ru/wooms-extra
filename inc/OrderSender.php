@@ -211,7 +211,7 @@ class OrderSender
                 time() + 60,
                 'wooms_schedule_order_sender',
                 [],
-                'ProductOrders'
+                'WooMS'
             );
         }
 
@@ -244,7 +244,7 @@ class OrderSender
         }
 
         // If next schedule is not this one and the sync is active
-        if (as_next_scheduled_action('wooms_schedule_order_sender', [], 'ProductOrders')) {
+        if (as_next_scheduled_action('wooms_schedule_order_sender')) {
             return false;
         }
 
@@ -859,7 +859,6 @@ class OrderSender
      */
     public static function add_settings()
     {
-
         add_settings_section('wooms_section_orders', 'Заказы - передача в МойСклад', '', 'mss-settings');
 
         $orders_sender_enable_key = 'wooms_orders_sender_enable';
