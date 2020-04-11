@@ -14,37 +14,96 @@ class ProductAttributes
   /**
    * The Init
    */
-    public static function init()
-    {
-        add_action('wooms_product_save', array(__CLASS__, 'update_product'), 10, 3);
+  public static function init()
+  {
+    add_action('wooms_product_save', array(__CLASS__, 'update_product'), 10, 2);
 
-        add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
-        add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
+    add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
+    add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
 
-        add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
+    add_action('admin_init', array(__CLASS__, 'add_settings'), 150);
+  }
+
+
+  /**
+   * Update product
+   */
+  public static function update_product($product, $item)
+  {
+    if (empty(get_option('wooms_attr_enabled'))) {
+      return $product;
     }
+    $product_id = $product->get_id();
+
+
+    if (!empty($item['weight'])) {
+      $product->set_weight($item['weight']);
+    }
+
+    if (!empty($item['attributes'])) {
+      foreach ($item['attributes'] as $attribute) {
+        if (empty($attribute['name'])) {
+          continue;
+        }
+
+        if ($attribute['name'] == 'Ширина') {
+          $product->set_width($attribute['value']);
+          continue;
+        }
+
+        if ($attribute['name'] == 'Высота') {
+          $product->set_height($attribute['value']);
+          continue;
+        }
+
+        if ($attribute['name'] == 'Длина') {
+          $product->set_length($attribute['value']);
+          continue;
+        }
+      }
+    }
+
+
+    $product_attributes = $product->get_attributes('edit');
+
+    if (empty($product_attributes)) {
+      $product_attributes = array();
+    }
+
+    $product_attributes = apply_filters('wooms_attributes', $product_attributes, $product_id, $item);
+
+    do_action( 'wooms_logger', __CLASS__,
+      sprintf('Артибуты Продукта: %s (%s) сохранены', $product->get_title(), $product->get_id()), 
+      $product_attributes
+    );
+
+    $product->set_attributes($product_attributes);
+
+    return $product;
+  }
 
   /**
    * Get attribute id by label
    * or false
    */
-  public static function get_attribute_id_by_label($label = ''){
-    if(empty($label)){
+  public static function get_attribute_id_by_label($label = '')
+  {
+    if (empty($label)) {
       return false;
     }
 
     $attr_taxonomies = wc_get_attribute_taxonomies();
-    if(empty($attr_taxonomies)){
+    if (empty($attr_taxonomies)) {
       return false;
     }
 
-    if( ! is_array($attr_taxonomies) ){
+    if (!is_array($attr_taxonomies)) {
       return false;
     }
 
     foreach ($attr_taxonomies as $attr) {
-      if($attr->attribute_label == $label){
-        return (int)$attr->attribute_id;
+      if ($attr->attribute_label == $label) {
+        return (int) $attr->attribute_id;
       }
     }
 
@@ -124,113 +183,61 @@ class ProductAttributes
       return $product_attributes;
   }
 
-  /**
-   * Update product
-   */
-  public static function update_product( $product, $item, $data )
-  {
-    if(empty(get_option('wooms_attr_enabled'))){
-      return $product;
-    }
-    $product_id = $product->get_id();
-
-
-    if( ! empty($item['weight']) ){
-        $product->set_weight($item['weight']);
-    }
-
-    if( ! empty($item['attributes']) ){
-        foreach ($item['attributes'] as $attribute) {
-            if(empty($attribute['name'])){
-                continue;
-            }
-
-            if($attribute['name'] == 'Ширина'){
-                $product->set_width($attribute['value']);
-                continue;
-            }
-
-            if($attribute['name'] == 'Высота'){
-                $product->set_height($attribute['value']);
-                continue;
-            }
-
-            if($attribute['name'] == 'Длина'){
-                $product->set_length($attribute['value']);
-                continue;
-            }
-
-        }
-    }
-
-
-    $product_attributes = $product->get_attributes('edit');
-
-    if(empty($product_attributes)){
-      $product_attributes = array();
-    }
-
-    $product_attributes = apply_filters('wooms_attributes', $product_attributes, $product_id, $item, $data);
-
-    $product->set_attributes( $product_attributes );
-
-    return $product;
-  }
 
   /**
    * Sync attributes
    *
    * TODO - delete
    */
-  public static function update_data($product_id, $item, $data)
-  {
-      if(empty(get_option('wooms_attr_enabled'))){
-        return;
-      }
+  // public static function update_data($product_id, $item, $data)
+  // {
+  //     if(empty(get_option('wooms_attr_enabled'))){
+  //       return;
+  //     }
 
-      $product = wc_get_product($product_id);
+  //     $product = wc_get_product($product_id);
 
-      if( ! empty($item['weight']) ){
-          $product->set_weight($item['weight']);
-      }
+  //     if( ! empty($item['weight']) ){
+  //         $product->set_weight($item['weight']);
+  //     }
 
-      if( ! empty($item['attributes']) ){
-          foreach ($item['attributes'] as $attribute) {
-              if(empty($attribute['name'])){
-                  continue;
-              }
+  //     if( ! empty($item['attributes']) ){
+  //         foreach ($item['attributes'] as $attribute) {
+  //             if(empty($attribute['name'])){
+  //                 continue;
+  //             }
 
-              if($attribute['name'] == 'Ширина'){
-                  $product->set_width($attribute['value']);
-                  continue;
-              }
+  //             if($attribute['name'] == 'Ширина'){
+  //                 $product->set_width($attribute['value']);
+  //                 continue;
+  //             }
 
-              if($attribute['name'] == 'Высота'){
-                  $product->set_height($attribute['value']);
-                  continue;
-              }
+  //             if($attribute['name'] == 'Высота'){
+  //                 $product->set_height($attribute['value']);
+  //                 continue;
+  //             }
 
-              if($attribute['name'] == 'Длина'){
-                  $product->set_length($attribute['value']);
-                  continue;
-              }
+  //             if($attribute['name'] == 'Длина'){
+  //                 $product->set_length($attribute['value']);
+  //                 continue;
+  //             }
 
-          }
-      }
+  //         }
+  //     }
 
 
-      $product_attributes = $product->get_attributes('edit');
+  //     $product_attributes = $product->get_attributes('edit');
 
-      if(empty($product_attributes)){
-        $product_attributes = array();
-      }
+  //     if(empty($product_attributes)){
+  //       $product_attributes = array();
+  //     }
 
-      $product_attributes = apply_filters('wooms_attributes', $product_attributes, $product_id, $item, $data);
+  //     $product_attributes = apply_filters('wooms_attributes', $product_attributes, $product_id, $item, $data);
 
-      $product->set_attributes( $product_attributes );
-      $product->save();
+  //     $product->set_attributes( $product_attributes );
+  //     $product->save();
 
-   }
+  //  }
 
 
 
@@ -264,30 +271,29 @@ class ProductAttributes
     return $product_attributes;
   }
 
+
   /**
    * Settings UI
    */
-  public static function settings_init()
+  public static function add_settings()
   {
-    register_setting('mss-settings', 'wooms_attr_enabled');
+    $option_name = 'wooms_attr_enabled';
+    register_setting('mss-settings', $option_name);
     add_settings_field(
-      $id = 'wooms_attr_enabled',
+      $id = $option_name,
       $title = 'Включить синхронизацию доп. полей как атрибутов',
-      $callback = [__CLASS__, 'display_wooms_attr_enabled'],
+      $callback = function($args){
+        printf('<input type="checkbox" name="%s" value="1" %s />', $args['name'], checked( 1, $args['value'], false ));
+        printf('<p>%s</p>', 'Позволчет синхронизировать доп поля МойСклад как атрибуты продукта. Вес, ДВШ - сохраняются в базовые поля продукта, остальные поля как индивидуальные атрибуты.');
+        printf('<p><strong>%s</strong></p>', 'Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.');
+      },
       $page = 'mss-settings',
-      $section = 'woomss_section_other'
+      $section = 'woomss_section_other',
+      $args = [
+        'name' => $option_name,
+        'value' => get_option($option_name),
+      ]
     );
-  }
-
-  /**
-   * Field display
-   */
-  public static function display_wooms_attr_enabled()
-  {
-    $option = 'wooms_attr_enabled';
-    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option($option), false ));
-    echo '<p>Позволчет синхронизировать доп поля МойСклад как атрибуты продукта. Вес, ДВШ - сохраняются в базовые поля продукта, остальные поля как индивидуальные атрибуты.</p>';
-    echo '<p><strong>Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.</strong></p>';
   }
 }
 
