@@ -17,13 +17,13 @@ class OrderStatusesFromMoySklad
     {
         add_action('rest_api_init', array(__CLASS__, 'rest_api_init_callback_endpoint'));
 
-        add_action('admin_init', array(__CLASS__, 'settings_init'), 100);
+        add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
     }
 
     /**
      * Setting
      */
-    public static function settings_init()
+    public static function add_settings()
     {
 
         register_setting('mss-settings', 'wooms_enable_webhooks');
