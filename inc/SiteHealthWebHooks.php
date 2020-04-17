@@ -5,11 +5,13 @@ class SiteHealthWebHooks
 {
     public static function init()
     {
-        add_filter('site_status_tests', function($tests){
 
-            if ( ! get_option('wooms_enable_webhooks')) {
-                return $tests;
-            }
+        //load class only if webhook is active
+        if ( ! get_option('wooms_enable_webhooks')) {
+            return;
+        }
+
+        add_filter('site_status_tests', function($tests){
 
             $tests['async']['wooms_check_webhooks'] = [
                 'test'  => 'check_webhooks',
@@ -20,6 +22,32 @@ class SiteHealthWebHooks
 
         add_action('wp_ajax_health-check-check-webhooks', [__CLASS__, 'check_webhooks']);
 
+        add_filter('add_wooms_plugin_debug', [__CLASS__, 'wooms_check_moy_sklad_user_tarrif']);
+
+
+    }
+
+
+    /**
+     * Check can we add webhooks
+     *
+     * @param [type] $debug_info
+     * @return void
+     */
+    public static function wooms_check_moy_sklad_user_tarrif($debug_info)
+    {
+
+        if (!get_transient('wooms_check_moysklad_tariff')) {
+            return $debug_info;
+        }
+
+        $debug_info['wooms-plugin-debug']['fields']['wooms-tariff-for-orders'] = [
+            'label'    => 'Подписка МойСклад',
+            'value'   => get_transient('wooms_check_moysklad_tariff'),
+        ];
+
+
+        return $debug_info;
     }
 
 
