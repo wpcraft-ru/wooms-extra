@@ -14,6 +14,11 @@ if (!defined('ABSPATH')) {
  */
 class SiteHealthXT
 {
+
+    public static $plugin_dir = ABSPATH . "wp-content/plugins/";
+    public static $base_plugin_url = "wooms/wooms.php";
+    public static $xt_plugin_url = "wooms-extra/wooms-extra.php";
+
  
     public static function init()
     {
@@ -38,7 +43,65 @@ class SiteHealthXT
             'test'  => [__CLASS__,'wooms_check_base_plugin'],
         ];
 
+        $tests['direct']['wooms_check_different_versions'] = [
+            'test'  => [__CLASS__, 'wooms_check_different_versions_of_plugins'],
+        ];
+
+
         return $tests;
+    }
+
+
+    /**
+     * Check different versions of plugins WooMS and WoomsXT
+     *
+     * @return void
+     */
+    public static function wooms_check_different_versions_of_plugins()
+    {
+
+        $base_plugin_data = get_plugin_data(self::$plugin_dir . self::$base_plugin_url);
+        $xt_plugin_data = get_plugin_data(self::$plugin_dir . self::$xt_plugin_url);
+        $base_version = $base_plugin_data['Version'];
+        $xt_version = $xt_plugin_data['Version'];
+
+        $result = [
+            'label' => 'Разные версии плагина WooMS & WooMS XT',
+            'status'      => 'good',
+            'badge'       => [
+                'label' => 'Уведомление WooMS',
+                'color' => 'blue',
+            ],
+            'description' => sprintf('Все хорошо! Спасибо что выбрали наш плагин %s', '🙂'),
+            'test' => 'wooms_check_different_versions' // this is only for class in html block
+        ];
+
+        if ($base_version !== $xt_version) {
+            $result['status'] = 'critical';
+            $result['badge']['color'] = 'red';
+            $result['actions'] = sprintf(
+                '<p><a href="%s">%s</a></p>',
+                admin_url('plugins.php'),
+                sprintf("Обновить плагин")
+            );
+        }
+
+        /**
+         * if base version is lower
+         */
+        if ($base_version < $xt_version) {
+
+            $result['description'] = sprintf('Пожалуйста, обновите плагин %s для лучшей производительности', $base_plugin_data['Name']);
+        }
+
+        /**
+         * if xt version is lower
+         */
+        if ($base_version > $xt_version) {
+            $result['description'] = sprintf('Пожалуйста, обновите плагин %s для лучшей производительности', $xt_plugin_data['Name']);
+        }
+
+        return $result;
     }
 
     /**
