@@ -7,6 +7,7 @@ class SiteHealthWebHooks
     {
 
         //load class only if webhook is active
+        // https://github.com/wpcraft-ru/wooms/issues/271
         if ( ! get_option('wooms_enable_webhooks')) {
             return;
         }
