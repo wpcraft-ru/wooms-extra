@@ -15,7 +15,7 @@ class OrderSender
     public static function init()
     {
 
-        add_action('wooms_schedule_order_sender', array(__CLASS__, 'schedule_starter_walker'));
+        add_action('wooms_schedule_order_sender', array(__CLASS__, 'walker'));
 
         //schedule
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
@@ -184,18 +184,6 @@ class OrderSender
     }
 
 
-    /**
-     * Start by schedule
-     */
-    public static function schedule_starter_walker()
-    {
-        if (empty(get_option('wooms_orders_sender_enable'))) {
-            return;
-        }
-
-        self::walker();
-    }
-
      /**
      * Setup schedule
      *
@@ -251,11 +239,16 @@ class OrderSender
         return true;
     }
 
+
     /**
      * Main walker for send orders
      */
     public static function walker()
     {
+        if (empty(get_option('wooms_orders_sender_enable'))) {
+            return;
+        }
+
         $args = array(
             'numberposts'  => apply_filters('wooms_orders_number', 5),
             'post_type'    => 'shop_order',
@@ -278,18 +271,20 @@ class OrderSender
 
         $result_list = [];
         foreach ($orders as $order) {
-            $check = self::update_order($order->ID);
+            // $order = wc_get_order($order->ID);
+            $order = new \WC_Order($order->ID);
+
+            $check = self::update_order($order->get_id());
             if (false != $check) {
-                update_post_meta($order->ID, 'wooms_send_timestamp', date("Y-m-d H:i:s"));
-                $result_list[] = $order->ID;
+                // update_post_meta($order->get_id(), 'wooms_send_timestamp', date("Y-m-d H:i:s"));
+                $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
+                $result_list[] = $order->get_id();
             }
+            $order->delete_meta_data('wooms_order_sync');
+            $order->save();
+
         }
 
-        if (empty($result_list)) {
-            return false;
-        }
-
-        return $result_list;
     }
 
     /**
