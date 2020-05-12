@@ -28,6 +28,7 @@ class OrderSender
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
 
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
@@ -177,6 +178,12 @@ class OrderSender
             );
         } else {
             $order->delete_meta_data('wooms_order_sync');
+
+            $order = apply_filters( 'wooms_order_send_save', $order, $data );
+
+            $data_json = json_encode($data, JSON_PRETTY_PRINT);
+            $order->update_meta_data('wooms_data', $data_json);
+        
             $order->save();
 
             return true;
@@ -401,7 +408,6 @@ class OrderSender
         }
 
         $data["agent"]       = self::get_data_agent($order_id);
-        $data["moment"]      = self::get_date_created_moment($order_id);
         $data["description"] = self::get_order_note($order_id);
 
         return $data;
@@ -817,12 +823,16 @@ class OrderSender
      * @param $order_id
      *
      * @return string
+     * 
+     * XXX tt
      */
-    public static function get_date_created_moment($order_id)
+    public static function add_moment($data_order, $order_id)
     {
         $order = wc_get_order($order_id);
 
-        return $order->get_date_created()->date('Y-m-d H:i:s');
+        $data_order['moment'] = $order->get_date_created()->date('Y-m-d H:i:s');
+
+         return $data_order;
     }
 
     /**
