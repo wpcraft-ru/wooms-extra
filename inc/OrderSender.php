@@ -830,7 +830,12 @@ class OrderSender
     {
         $order = wc_get_order($order_id);
 
-        $data_order['moment'] = $order->get_date_created()->date('Y-m-d H:i:s');
+        $timezone = new \DateTimeZone( "Europe/Moscow" );
+        $date = $order->get_date_created();
+        $date = $date->setTimeZone($timezone);
+        $date = $date->date('Y-m-d H:i:s');
+
+        $data_order['moment'] = $date;
 
          return $data_order;
     }
