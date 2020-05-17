@@ -17,7 +17,6 @@ class OrderSender
 
         add_action('wooms_schedule_order_sender', array(__CLASS__, 'walker'));
 
-        //schedule
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
         add_action('save_post', array(__CLASS__, 'save_data_form'));
@@ -33,6 +32,11 @@ class OrderSender
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
         });
+
+        // https://github.com/wpcraft-ru/wooms/issues/289
+        // add_action('wooms_order_metabox_controls', array(__CLASS__, 'add_controle_for_sync'));
+        // add_action('save_post', array(__CLASS__, 'check_order_autosync'), 20);
+
     }
 
     /**
@@ -91,10 +95,14 @@ class OrderSender
         }
     }
 
+
     /**
-     * Description
+     * check_order_autosync
+     *
+     * @param [type] $post_id
+     * @return void
      */
-    public static function save_data_form($post_id)
+    public static function check_order_autosync($post_id)
     {
         if ("shop_order" != get_post_type($post_id)) {
             return;
@@ -108,13 +116,29 @@ class OrderSender
             return;
         }
 
-        $order_id = $post_id;
         if (empty($_POST['wooms_order_sync'])) {
-            delete_post_meta($order_id, 'wooms_order_sync');
+            delete_post_meta($post_id, 'wooms_order_sync');
         } else {
-            update_post_meta($order_id, 'wooms_order_sync', 1);
-            self::update_order($order_id);
+            update_post_meta($post_id, 'wooms_order_sync', 1);
         }
+    }
+
+    /**
+     * handler order save
+     */
+    public static function save_data_form($post_id)
+    {
+        if ("shop_order" != get_post_type($post_id)) {
+            return;
+        }
+
+        if (wp_is_post_revision($post_id)) {
+            return;
+        }
+
+        $order_id = $post_id;
+        update_post_meta($order_id, 'wooms_order_sync', 1);
+        self::update_order($order_id);
     }
 
     /**
@@ -179,11 +203,11 @@ class OrderSender
         } else {
             $order->delete_meta_data('wooms_order_sync');
 
-            $order = apply_filters( 'wooms_order_send_save', $order, $data );
+            $order = apply_filters('wooms_order_send_save', $order, $data);
 
             $data_json = json_encode($data, JSON_PRETTY_PRINT);
             $order->update_meta_data('wooms_data', $data_json);
-        
+
             $order->save();
 
             return true;
@@ -191,14 +215,14 @@ class OrderSender
     }
 
 
-     /**
+    /**
      * Setup schedule
      *
      * @return mixed
      */
     public static function add_schedule_hook()
     {
-        
+
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
         if (self::check_schedule_needed()) {
             // Adding schedule hook
@@ -209,7 +233,6 @@ class OrderSender
                 'WooMS'
             );
         }
-
     }
 
     /**
@@ -289,9 +312,7 @@ class OrderSender
             }
             $order->delete_meta_data('wooms_order_sync');
             $order->save();
-
         }
-
     }
 
     /**
@@ -830,14 +851,14 @@ class OrderSender
     {
         $order = wc_get_order($order_id);
 
-        $timezone = new \DateTimeZone( "Europe/Moscow" );
+        $timezone = new \DateTimeZone("Europe/Moscow");
         $date = $order->get_date_created();
         $date = $date->setTimeZone($timezone);
         $date = $date->date('Y-m-d H:i:s');
 
         $data_order['moment'] = $date;
 
-         return $data_order;
+        return $data_order;
     }
 
     /**
@@ -863,6 +884,22 @@ class OrderSender
 
         return $customer_notes;
     }
+
+
+    /**
+     * check is enable
+     *
+     * @return boolean
+     */
+    public static function is_enable()
+    {
+        if (get_option('wooms_orders_sender_enable', false)) {
+            return true;
+        }
+
+        return false;
+    }
+
 
     /**
      * Setting
@@ -999,6 +1036,26 @@ class OrderSender
         );
     }
 
+
+    /**
+     * add_controle_for_sync
+     */
+    public static function add_controle_for_sync()
+    {
+        $post    = get_post();
+
+        $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
+        echo '<hr/>';
+        printf(
+            '
+            <input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
+            <label for="wooms-order-sync">%s</label>
+            ',
+            checked($need_update, 1, false),
+            'Синхронизировать'
+        );
+    }
+
     /**
      * Meta box in order
      */
@@ -1017,16 +1074,9 @@ class OrderSender
         }
         echo $meta_data;
 
-        $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
-        echo '<hr/>';
-        printf(
-            '
-            <input id="wooms-order-sync" type="checkbox" name="wooms_order_sync" %s>
-            <label for="wooms-order-sync">%s</label>
-            ',
-            checked($need_update, 1, false),
-            'Синхронизировать'
-        );
+        do_action('wooms_order_metabox_controls');
+
+ 
     }
 }
 
