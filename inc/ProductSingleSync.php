@@ -12,6 +12,8 @@ if (!defined('ABSPATH')) {
 class ProductSingleSync
 {
 
+  public static $state_key = 'wooms_product_single_sync_state';
+
   /**
    * The Init
    */
@@ -47,12 +49,54 @@ class ProductSingleSync
 
   }
 
+
+  /**
+   * get_state
+   */
+  public static function get_state($key = ''){
+    $state = get_transient(self::$state_key);
+    if(empty($key)){
+      return $state;
+    }
+
+    if(isset($state[$key])){
+      return $state[$key];
+    }
+
+    return null;
+  }
+
+
+  /**
+   * set_state
+   */
+  public static function set_state($key = '', $value = ''){
+
+    $state = get_transient(self::$state_key);
+
+    if( is_array($state) ){
+      $state[$key] = $value;
+    } else {
+      $state = [
+        $key => $value
+      ];
+    }
+
+    set_transient(self::$state_key, $state);
+
+    return $state;
+  }
+
+
   /**
    * update_variations
    */
-  public static function update_variations()
+  public static function update_variations($product_id = 0)
   {
-    $product_id = get_transient('wooms_update_single_product_id');
+    if(empty($product_id)){
+      $product_id = self::get_state('product_id');
+    }
+
     if (empty($product_id)) {
       $product_id = self::need_update_variations_product_id();
     }
@@ -65,17 +109,15 @@ class ProductSingleSync
     $wooms_id = $product->get_meta('wooms_id', true);
 
     $url_args = array(
-      'limit'  => 10,
+      'limit'  => 20,
       'offset' => 0,
     );
 
-    if ($offset = get_transient('wooms_update_single_product_offset')) {
+    if ($offset = self::get_state('offset')) {
       $url_args['offset'] = $offset;
-    } else {
-      $offset = 0;
-    }
+    } 
 
-    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/variant/?filter=productid=' . $wooms_id;
+    $url = 'https://online.moysklad.ru/api/remap/1.2/entity/variant/?filter=productid=' . $wooms_id;
     $url = add_query_arg($url_args, $url);
 
     do_action(
@@ -88,8 +130,8 @@ class ProductSingleSync
 
     if (empty($data_api['rows'])) {
       //finish
-      delete_transient('wooms_update_single_product_id');
-      delete_transient('wooms_update_single_product_offset');
+      self::set_state('product_id', 0);
+      self::set_state('offset', 0);
       $product->delete_meta_data('wooms_need_update_variations');
       $product->save();
 
@@ -99,10 +141,12 @@ class ProductSingleSync
     $i = 0;
     foreach ($data_api['rows'] as $item) {
       $i++;
+
       do_action('wooms_products_variations_item', $item);
     }
 
-    set_transient('wooms_update_single_product_offset', $offset + $i);
+    self::set_state('offset', self::get_state('offset') + $i);
+
     return true;
   }
 
@@ -134,7 +178,8 @@ class ProductSingleSync
 
     if (isset($posts[0]->ID)) {
       $product_id = $posts[0]->ID;
-      set_transient('wooms_update_single_product_id', $product_id);
+      self::set_state('product_id', $product_id);
+
       
       return $product_id;
     }

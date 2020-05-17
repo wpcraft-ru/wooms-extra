@@ -353,6 +353,7 @@ class ProductVariable
             return;
         }
 
+
         self::update_variant_for_product($product_id, $variant);
 
         /**
@@ -371,6 +372,7 @@ class ProductVariable
     {
         if (strpos($uuid, 'http') !== false) {
             $uuid = str_replace('https://online.moysklad.ru/api/remap/1.1/entity/product/', '', $uuid);
+            $uuid = str_replace('https://online.moysklad.ru/api/remap/1.2/entity/product/', '', $uuid);
         }
 
         $posts = get_posts('post_type=product&meta_key=wooms_id&meta_value=' . $uuid);
