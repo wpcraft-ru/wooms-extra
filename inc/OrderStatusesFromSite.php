@@ -15,7 +15,6 @@ class OrderStatusesFromSite
      */
     public static function init()
     {
-
         add_action('admin_init', array(__CLASS__, 'settings_init'), 100);
 
         /**
@@ -86,6 +85,7 @@ class OrderStatusesFromSite
         }
 
         update_post_meta($order_id, 'wooms_changed_status', $status_transition_to);
+
     }
 
     public static function wooms_changed_statuses_list()
@@ -156,20 +156,19 @@ class OrderStatusesFromSite
         self::$statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
 
         $order = wc_get_order($order_id);
-        $changed_status = get_post_meta($order_id, 'wooms_changed_status', true);
-        $changed_status = 'processing';
 
-        if (empty(self::$statuses_match['wc-' . $changed_status])) {
+        $status = $order->get_status();
+
+        if (empty(self::$statuses_match['wc-' . $status])) {
             $ms_status = '';
         } else {
-            $ms_status = self::$statuses_match['wc-' . $changed_status];
+            $ms_status = self::$statuses_match['wc-' . $status];
         }
 
         /**
          * Возможность поменять связку статуса на Сайте и Складе
          */
-        $ms_status = apply_filters('wooms_order_ms_status', $ms_status, $changed_status);
-
+        $ms_status = apply_filters('wooms_order_ms_status', $ms_status, $status);
 
         if ($ms_status) {
             $meta_status = self::get_meta_status_for_orders($ms_status);
@@ -182,7 +181,7 @@ class OrderStatusesFromSite
         /**
          * Возможность перехватить метастатус для сторонних плагинов
          */
-        $meta_status = apply_filters('wooms_order_meta_status', $meta_status, $order_id, $changed_status);
+        $meta_status = apply_filters('wooms_order_meta_status', $meta_status, $order_id, $status);
 
         /**
          * Если с таким статусом ничего не вышло, то удаляем мету
