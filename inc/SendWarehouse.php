@@ -52,9 +52,16 @@ final class SendWarehouse {
         add_settings_field(
             $id = 'wooms_orders_send_warehouse',
             $title = 'Отправлять выбранный склад в Заказе',
-            $callback = array(__CLASS__, 'display_wooms_orders_send_warehouse', ),
+            $callback = function($args){
+              printf( '<input type="checkbox" name="%s" value="1" %s />', $args['key'], checked( 1, $args['value'], false ) );
+              printf( '<p>%s<p/>', 'Активация опции позволяет передавать выбранный склад в Заказе' );
+            },
             $page = 'mss-settings',
-            $section = 'wooms_section_orders'
+            $section = 'wooms_section_orders',
+            $args = [
+              'key' => 'wooms_orders_send_warehouse',
+              'value' => get_option('wooms_orders_send_warehouse'),
+            ]
         );
       }
 
@@ -63,9 +70,7 @@ final class SendWarehouse {
   /**
    * display_wooms_orders_send_warehouse
    */
-  public static function display_wooms_orders_send_warehouse(){
-    $option = 'wooms_orders_send_warehouse';
-    printf( '<input type="checkbox" name="%s" value="1" %s />', $option, checked( 1, get_option( $option ), false ) );
+  public static function display_wooms_orders_send_warehouse($args){
   }
 }
 
