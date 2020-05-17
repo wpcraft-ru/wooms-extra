@@ -15,19 +15,6 @@ class OrderStatusesFromSite
      */
     public static function init()
     {
-
-        add_action( 'init', function($oid){
-            if(!isset($_GET['dd'])){
-                return;
-            }
-
-            echo '<pre>';
-            self::order_send_status(25806);
-            var_dump(0);
-            exit;
-
-        } );
-
         add_action('admin_init', array(__CLASS__, 'settings_init'), 100);
 
         /**
