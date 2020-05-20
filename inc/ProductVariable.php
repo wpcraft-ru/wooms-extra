@@ -83,7 +83,7 @@ class ProductVariable
 
         $query_arg = self::get_state('query_arg');
  
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/assortment';
+        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/assortment';
 
         $url = add_query_arg($query_arg, $url);
 
