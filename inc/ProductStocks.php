@@ -26,9 +26,23 @@ class ProductStocks {
 
     if ( ! empty( get_option( 'woomss_warehouse_id' ) ) ) {
       add_filter( 'wooms_url_get_products', array( __CLASS__, 'add_filter_by_warehouse_id' ), 10 );
-      add_filter( 'wooms_url_get_variants', array( __CLASS__, 'add_filter_by_warehouse_id' ), 10 );
+      add_filter( 'wooms_url_get_variants_filter', array( __CLASS__, 'variants_add_filter_by_warehouse_id' ), 10 );
     }
 
+  }
+
+
+
+  public static function variants_add_filter_by_warehouse_id($filter){
+
+    $warehouse_id = get_option( 'woomss_warehouse_id' );
+    if(empty($warehouse_id)){
+      return $filter;
+    }
+
+    $filter[] = 'stockStore=' . sprintf('https://online.moysklad.ru/api/remap/1.2/entity/store/%s', $warehouse_id);
+
+    return $filter;
   }
 
   /**

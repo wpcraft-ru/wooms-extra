@@ -20,6 +20,15 @@ class ProductVariableImage
 
         add_filter('wooms_variation_save', [__CLASS__, 'add_image_task'], 10, 3);
         add_action('init', [__CLASS__, 'add_schedule_hook']);
+        add_action('wooms_wakler_variations_finish', [__CLASS__, 'restart']);
+    }
+
+
+    /**
+     * restart if finish variations walker
+     */
+    public static function restart(){
+        delete_transient('wooms_variations_image_sync_finish_timestamp');
     }
 
 
@@ -120,7 +129,7 @@ class ProductVariableImage
                 time() + 60,
                 'wooms_variaion_image_sync',
                 [],
-                'VariationImageSync'
+                'WooMS'
             );
         }
     }

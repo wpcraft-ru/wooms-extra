@@ -30,6 +30,24 @@ class ProductVariable
      */
     public static function init()
     {
+
+
+        add_action('init', function(){
+
+            if(!isset($_GET['dd'])){
+                return;
+            }
+
+            self::set_state('lock', 0);
+
+            self::walker();
+
+            dd(0);
+        });
+
+
+
+
         add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
 
@@ -53,16 +71,12 @@ class ProductVariable
      */
     public static function walker($args = [])
     {
-       
-        if(self::is_wait()){
-            return;
-        }
-        
         $state = self::get_state();
 
         if( ! empty($state['lock'])){
             return; // блокировка состояни гонки
         }
+        
         self::set_state('lock', 1);
 
         //reset state if new session
@@ -75,7 +89,6 @@ class ProductVariable
             $query_arg_default = [
                 'offset' => 0,
                 'limit'  => apply_filters('wooms_variant_iteration_size', 30),
-                'scope'  => 'variant',
             ];
 
             self::set_state('query_arg', $query_arg_default);
@@ -86,6 +99,14 @@ class ProductVariable
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/assortment';
 
         $url = add_query_arg($query_arg, $url);
+
+        $filters =[
+            'type=variant'
+        ];
+
+        $filters = apply_filters('wooms_url_get_variants_filter', $filters);
+
+        $url = add_query_arg('filter', implode(';', $filters), $url);
 
         $url = apply_filters('wooms_url_get_variants', $url);
 
@@ -597,11 +618,6 @@ class ProductVariable
 
     public static function is_wait() {
 
-        //check finish main walker
-        if (as_next_scheduled_action('wooms_products_walker_batch', null, 'WooMS')) {
-            return true;
-        }
-
         if( ! empty(self::get_state('end_timestamp')) ){
             return true;
         }
@@ -624,7 +640,7 @@ class ProductVariable
             return;
         }
 
-        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS')) {
+        if (as_next_scheduled_action(self::$walker_hook_name)) {
             return;
         }
 
@@ -761,7 +777,7 @@ class ProductVariable
         echo '<h2>Вариации (Модификации)</h2>';
 
         echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
-        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS') ) {
+        if (as_next_scheduled_action(self::$walker_hook_name) ) {
             printf('<a href="%s" class="button button-secondary">Остановить синхронизацию вариативных продуктов</a>',
             add_query_arg('a', 'wooms_import_variations_manual_stop', admin_url('admin.php?page=moysklad')));
         } else {
@@ -782,7 +798,7 @@ class ProductVariable
 
         $strings = [];
 
-        if (as_next_scheduled_action(self::$walker_hook_name, null, 'WooMS') ) {
+        if (as_next_scheduled_action(self::$walker_hook_name) ) {
           $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
         }
     
