@@ -664,7 +664,7 @@ class ProductVariable
             return;
         }
 
-        if (as_next_scheduled_action(self::$walker_hook_name)) {
+        if (as_next_scheduled_action(self::$walker_hook_name) && ! $force) {
             return;
         }
 
