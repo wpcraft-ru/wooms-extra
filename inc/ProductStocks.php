@@ -363,7 +363,7 @@ class ProductStocks
     if( ! get_option('woomss_warehouses_sync_enabled')){
       return $filter;
     }
-    
+
     if (!$warehouse_id = get_option('woomss_warehouse_id')) {
       return $filter;
     }
@@ -390,13 +390,12 @@ class ProductStocks
    */
   public static function update_variation($variation, $data_api, $product_id)
   {
-
-    $variant_data = $data_api;
-
     if (empty(get_option('woomss_stock_sync_enabled'))) {
 
-      $variation->set_manage_stock('no');
+      $variation->set_catalog_visibility('visible');
       $variation->set_stock_status('instock');
+      $variation->set_manage_stock('no');
+      $variation->set_status('publish');
 
       return $variation;
     }
@@ -411,11 +410,11 @@ class ProductStocks
    */
   public static function update_product($product, $data_api, $data)
   {
-    $item = $data_api;
-
     if (empty(get_option('woomss_stock_sync_enabled'))) {
-      $product->set_manage_stock('no');
+      $product->set_catalog_visibility('visible');
       $product->set_stock_status('instock');
+      $product->set_manage_stock('no');
+      $product->set_status('publish');
 
       return $product;
     }
