@@ -43,7 +43,7 @@ class SalePrices {
 
       foreach ( $value['salePrices'] as $price ) {
 
-        if($price['priceType'] == $price_name && floatval($price['value']) > 0){
+        if($price['priceType']["name"] == $price_name && floatval($price['value']) > 0){
           $sale_price = apply_filters('wooms_sale_price', floatval($price['value']/100));
           $product->set_sale_price( $sale_price );
 
@@ -56,7 +56,7 @@ class SalePrices {
             )
           );
 
-        } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
+        } elseif ($price['priceType']["name"] == $price_name && floatval($price['value']) == 0){
           $product->set_sale_price( '' );
         }
       }
@@ -86,7 +86,7 @@ class SalePrices {
     if ( ! empty($variant_data['salePrices']) ) {
       foreach ( $variant_data['salePrices'] as $price ) {
 
-        if($price['priceType'] == $price_name && floatval($price['value']) > 0){
+        if($price['priceType']["name"] == $price_name && floatval($price['value']) > 0){
           $sale_price = apply_filters('wooms_sale_price_variation', floatval($price['value']/100), $variation, $product_id);
           $variation->set_sale_price( $sale_price );
 
@@ -94,7 +94,7 @@ class SalePrices {
             sprintf('Цена распродажи %s сохранена для вариации %s и продукта %s', $sale_price, $variation_id, $product_id)
           );
 
-        } elseif ($price['priceType'] == $price_name && floatval($price['value']) == 0){
+        } elseif ($price['priceType']["name"] == $price_name && floatval($price['value']) == 0){
           $variation->set_sale_price( '' );
         }
       }
