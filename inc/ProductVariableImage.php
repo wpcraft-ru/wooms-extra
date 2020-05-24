@@ -27,12 +27,14 @@ class ProductVariableImage
     /**
      * restart if finish variations walker
      */
-    public static function restart(){
+    public static function restart()
+    {
         delete_transient('wooms_variations_image_sync_finish_timestamp');
     }
 
 
-    public static function walker(){
+    public static function walker()
+    {
         $state = self::get_state();
 
         $variants = get_posts(array(
@@ -46,28 +48,27 @@ class ProductVariableImage
             ),
         ));
 
-  
-        if(empty($variants)){
+        if (empty($variants)) {
             set_transient('wooms_variations_image_sync_finish_timestamp', time(), HOUR_IN_SECONDS);
         }
 
-        foreach($variants as $variant){
+        foreach ($variants as $variant) {
             self::download_img_for_product($variant->ID);
         }
-
     }
 
 
     /**
      * download_img_for_product
      */
-    public static function download_img_for_product($variation_id){
+    public static function download_img_for_product($variation_id)
+    {
 
         $img_meta = get_post_meta($variation_id, self::$image_meta_key, true);
         $img_meta = json_decode($img_meta, true);
 
 
-        if(empty($img_meta['meta']['downloadHref'])){
+        if (empty($img_meta['meta']['downloadHref'])) {
             return false;
         }
 
@@ -81,7 +82,6 @@ class ProductVariableImage
         $variation->set_image_id($check_id);
         $variation->delete_meta_data(self::$image_meta_key);
         $variation->save();
-
     }
 
 
@@ -119,32 +119,34 @@ class ProductVariableImage
     public static function add_schedule_hook()
     {
 
-        if (!self::need_shedule_action()) {
+        if (self::is_wait()) {
             return;
         }
 
-        if (!as_next_scheduled_action('wooms_variaion_image_sync')) {
-            // Adding schedule hook
-            as_schedule_single_action(
-                time() + 60,
-                'wooms_variaion_image_sync',
-                [],
-                'WooMS'
-            );
+        if (as_next_scheduled_action('wooms_variaion_image_sync')) {
+            return;
         }
+        
+        // Adding schedule hook
+        as_schedule_single_action(
+            time() + 60,
+            'wooms_variaion_image_sync',
+            [],
+            'WooMS'
+        );
     }
 
 
     /**
      * check need walker start or not
      */
-    public static function need_shedule_action(){
-
-        if(get_transient('wooms_variations_image_sync_finish_timestamp')){
-            return false;
+    public static function is_wait()
+    {
+        if (get_transient('wooms_variations_image_sync_finish_timestamp')) {
+            return true;
         }
 
-        return true;
+        return false;
     }
 
 
@@ -186,7 +188,6 @@ class ProductVariableImage
 
         return $state;
     }
-
 }
 
 ProductVariableImage::init();
