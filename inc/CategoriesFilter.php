@@ -328,7 +328,7 @@ class CategoriesFilter
       $arts = [
         'key' => 'wooms_set_folders',
         'value' => get_option('wooms_set_folders'),
-      ],
+      ]
     );
 
 
