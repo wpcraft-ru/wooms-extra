@@ -36,6 +36,7 @@ class ProductVariable
         //     return;
         //   }
 
+        //   self::set_state('timestamp', 0);
         //   self::bath_handler();
 
         //   dd(0);
@@ -104,7 +105,8 @@ class ProductVariable
         $url = add_query_arg($query_arg, $url);
 
         $filters = [
-            // 'type=variant'
+            // 'productid=4dc138a7-d532-11e7-7a69-8f55000890d1',
+            // 'productid=2d0310cd-9194-11e7-7a6c-d2a9002dc49e',
         ];
 
         $filters = apply_filters('wooms_url_get_variants_filter', $filters);
@@ -112,7 +114,6 @@ class ProductVariable
         $url = add_query_arg('filter', implode(';', $filters), $url);
 
         $url = apply_filters('wooms_url_get_variants', $url);
-
 
         try {
 

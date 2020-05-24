@@ -334,7 +334,6 @@ class CategoriesFilter
 
 
 
-
     //XXX for delete
     // register_setting('mss-settings', 'woomss_include_categories_sync');
     // add_settings_field(
@@ -353,6 +352,7 @@ class CategoriesFilter
     //   $page = 'mss-settings',
     //   $section = 'wooms_product_cat'
     // );
+
   }
 
   /**
