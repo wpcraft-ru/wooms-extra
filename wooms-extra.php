@@ -15,7 +15,7 @@
  * WC tested up to: 4.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 7.2
+ * Version: 7.1
  */
 
 defined('ABSPATH') || exit;
@@ -55,4 +55,17 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/SiteHealthWebHooks.php';
         // require_once __DIR__ . '/inc/AssortmentSync.php';
     }
+});
+
+/**
+ * need for migrations and disable plugins
+ */
+add_filter( 'wooms_xt_version', function($version){
+
+    if( ! is_admin()){
+        return $version;
+    }
+
+    $data = get_plugin_data(__FILE__);
+    return $data["Version"];
 });
