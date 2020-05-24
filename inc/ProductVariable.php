@@ -31,56 +31,55 @@ class ProductVariable
     public static function init()
     {
 
+        // add_action('init', function(){
+        //   if(!isset($_GET['dd'])){
+        //     return;
+        //   }
 
-        add_action('init', function(){
+        //   self::bath_handler();
 
-            if(!isset($_GET['dd'])){
-                return;
-            }
+        //   dd(0);
+        // });
 
-            self::set_state('lock', 0);
-
-            self::walker();
-
-            dd(0);
-        });
-
-
-
+        //walker
+        add_action('wooms_variables_walker_batch', array(__CLASS__, 'bath_handler'));
 
         add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
-
 
         add_filter('wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
         add_action('wooms_products_variations_item', array(__CLASS__, 'load_data_variant'), 15);
 
         //Other
         add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
-        add_action('woomss_tool_actions_btns', array(__CLASS__, 'render_ui'), 15);
         add_action('woomss_tool_actions_wooms_import_variations_manual_start', array(__CLASS__, 'start_manually'));
         add_action('woomss_tool_actions_wooms_import_variations_manual_stop', array(__CLASS__, 'stop_manually'));
         add_action('wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
+        add_action('wooms_main_walker_started', array(__CLASS__, 'set_wait'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
-        add_action('wooms_variables_walker_batch', array(__CLASS__, 'walker'));
+
+        add_action('woomss_tool_actions_btns', array(__CLASS__, 'display_state'), 15);
     }
 
 
     /**
      * Walker for data variant product from MoySklad
      */
-    public static function walker($args = [])
+    public static function bath_handler($args = [])
     {
+
         $state = self::get_state();
 
-        if( ! empty($state['lock'])){
-            return; // блокировка состояни гонки
+        if (!empty($state['lock'])) {
+            // return; // блокировка состояни гонки
         }
-        
+
+        // dd($state);
+
         self::set_state('lock', 1);
 
         //reset state if new session
-        if(empty($state['timestamp'])){
+        if (empty($state['timestamp'])) {
 
             self::set_state('timestamp', date("YmdHis"));
             self::set_state('end_timestamp', 0);
@@ -94,14 +93,18 @@ class ProductVariable
             self::set_state('query_arg', $query_arg_default);
         }
 
+
         $query_arg = self::get_state('query_arg');
- 
-        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/assortment';
+
+        /**
+         * issue https://github.com/wpcraft-ru/wooms/issues/296
+         */
+        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/variant';
 
         $url = add_query_arg($query_arg, $url);
 
-        $filters =[
-            'type=variant'
+        $filters = [
+            // 'type=variant'
         ];
 
         $filters = apply_filters('wooms_url_get_variants_filter', $filters);
@@ -110,11 +113,14 @@ class ProductVariable
 
         $url = apply_filters('wooms_url_get_variants', $url);
 
+
         try {
 
-            do_action('wooms_logger', __CLASS__,
+            do_action(
+                'wooms_logger',
+                __CLASS__,
                 sprintf('Вариации. Отправлен запрос: %s', $url),
-                $state 
+                $state
             );
 
             $data = wooms_request($url);
@@ -150,7 +156,7 @@ class ProductVariable
             }
 
             //update count
-            self::set_state( 'count', self::get_state('count') + $i );
+            self::set_state('count', self::get_state('count') + $i);
 
             //update offset 
             $query_arg['offset'] = $query_arg['offset'] + count($data['rows']);
@@ -161,10 +167,14 @@ class ProductVariable
 
             self::add_schedule_hook(true);
 
+            do_action('wooms_variations_batch_end');
+
             return true;
         } catch (\Exception $e) {
             self::set_state('lock', 0);
-            do_action('wooms_logger_error', __CLASS__,
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
                 $e->getMessage()
             );
             return false;
@@ -173,12 +183,24 @@ class ProductVariable
 
 
     /**
-     * reset_after_main_walker_finish
+     * If started main walker - set wait
+     */
+    public static function set_wait()
+    {
+        as_unschedule_all_actions(self::$walker_hook_name);
+        self::set_state('end_timestamp', time());
+    }
+
+
+    /**
+     * Resetting state after completing the main walker
+     * And restart schedules for sync variations
      */
     public static function reset_after_main_walker_finish()
     {
         self::set_state('timestamp', 0);
         self::set_state('count', 0);
+        self::set_state('lock', 0);
         self::set_state('end_timestamp', 0);
         self::add_schedule_hook();
     }
@@ -207,14 +229,13 @@ class ProductVariable
             $attribute_label = $characteristic["name"];
 
             if ($attribute_taxonomy_id = self::get_attribute_id_by_label($characteristic['name'])) {
-                $taxonomy_name  = wc_attribute_taxonomy_name_by_id((int)$attribute_taxonomy_id);
+                $taxonomy_name  = wc_attribute_taxonomy_name_by_id((int) $attribute_taxonomy_id);
                 $current_values = $product->get_attribute($taxonomy_name);
 
                 if ($current_values) {
                     $current_values = explode(', ', $current_values);
                     $current_values = array_map('trim', $current_values);
                 }
-
             } else {
                 $current_values = $product->get_attribute($characteristic['name']);
                 $current_values = explode(' | ', $current_values);
@@ -227,8 +248,12 @@ class ProductVariable
                 $values[] = $characteristic['value'];
             }
 
-            $values                                    = apply_filters('wooms_product_attribute_save_values', $values,
-                $product, $characteristic);
+            $values                                    = apply_filters(
+                'wooms_product_attribute_save_values',
+                $values,
+                $product,
+                $characteristic
+            );
             $ms_attributes[$attribute_label]['values'] = $values;
         }
 
@@ -257,13 +282,12 @@ class ProductVariable
                 $attribute_object->set_visible(0);
                 $attribute_object->set_variation(1);
                 $attributes[$attribute_slug] = $attribute_object;
-
             } else {
                 //Очищаем индивидуальный атрибут с таким именем если есть
                 if (isset($attributes[$attribute_slug])) {
                     unset($attributes[$attribute_slug]);
                 }
-                $taxonomy_name    = wc_attribute_taxonomy_name_by_id((int)$attribute_taxonomy_id);
+                $taxonomy_name    = wc_attribute_taxonomy_name_by_id((int) $attribute_taxonomy_id);
                 $attribute_object = new \WC_Product_Attribute();
                 $attribute_object->set_id($attribute_taxonomy_id);
                 $attribute_object->set_name($taxonomy_name);
@@ -281,7 +305,8 @@ class ProductVariable
 
         $product->save();
 
-        do_action('wooms_logger',
+        do_action(
+            'wooms_logger',
             __CLASS__,
             sprintf(
                 'Сохранены атрибуты для продукта: %s (%s)',
@@ -324,25 +349,24 @@ class ProductVariable
 
                 $term = get_term_by('name', $attribute_value, $taxonomy_name);
 
-                if ($term && ! is_wp_error($term)) {
+                if ($term && !is_wp_error($term)) {
                     $attribute_value = $term->slug;
                 } else {
                     $attribute_value = sanitize_title($attribute_value);
                 }
 
                 $attributes[$taxonomy_name] = $attribute_value;
-
             } else {
                 $attributes[$attribute_slug] = $characteristic['value'];
             }
-
         }
 
         $attributes = apply_filters('wooms_variation_attributes', $attributes, $data_api, $variation);
 
         $variation->set_attributes($attributes);
 
-        do_action('wooms_logger',
+        do_action(
+            'wooms_logger',
             __CLASS__,
             sprintf('Сохранены атрибуты для вариации %s (продукт: %s)', $variation_id, $product_id),
             wc_print_r($attributes, true)
@@ -357,7 +381,7 @@ class ProductVariable
      */
     public static function load_data_variant($variant)
     {
-        if ( ! empty($variant['archived'])) {
+        if (!empty($variant['archived'])) {
             return;
         }
 
@@ -366,9 +390,15 @@ class ProductVariable
 
         if (empty($product_id)) {
 
-            do_action('wooms_logger_error',
+            /**
+             * придумать подход при котором вариации будут фильтроваться с учетом уже доступных продуктов на сайте
+             * до этого момента, эта ошибка будет возникать постоянно
+             */
+            do_action(
+                'wooms_logger_error',
                 __CLASS__,
-                sprintf('Ошибка получения product_id для url %s', $product_href)
+                sprintf('Ошибка получения product_id для url %s', $product_href),
+                $variant
             );
 
             return;
@@ -421,7 +451,7 @@ class ProductVariable
         //добавление атрибутов к основному продукту с пометкой для вариаций
         self::set_product_attributes_for_variation($product_id, $variant_data);
 
-        if ( ! $variation_id = self::get_variation_by_wooms_id($product_id, $variant_data['id'])) {
+        if (!$variation_id = self::get_variation_by_wooms_id($product_id, $variant_data['id'])) {
             $variation_id = self::add_variation($product_id, $variant_data);
         }
 
@@ -430,7 +460,7 @@ class ProductVariable
 
         $variation->set_stock_status('instock');
 
-        if ( ! empty($variant_data["salePrices"][0]['value'])) {
+        if (!empty($variant_data["salePrices"][0]['value'])) {
             $price = $variant_data["salePrices"][0]['value'];
         } else {
             $price = 0;
@@ -442,17 +472,19 @@ class ProductVariable
         $variation->set_price($price);
         $variation->set_regular_price($price);
 
-        do_action('wooms_logger',
+        do_action(
+            'wooms_logger',
             __CLASS__,
             sprintf('Цена %s сохранена (для вариации %s продукта %s)', $price, $variation_id, $product_id)
         );
 
         $product_parent = wc_get_product($product_id);
-        if ( ! $product_parent->is_type('variable')) {
+        if (!$product_parent->is_type('variable')) {
             $product_parent = new \WC_Product_Variable($product_parent);
             $product_parent->save();
 
-            do_action('wooms_logger_error',
+            do_action(
+                'wooms_logger_error',
                 __CLASS__,
                 sprintf('Снова сохранили продукт как вариативный %s', $product_id)
             );
@@ -471,7 +503,8 @@ class ProductVariable
 
         $variation->save();
 
-        do_action('wooms_logger',
+        do_action(
+            'wooms_logger',
             __CLASS__,
             sprintf(
                 'Сохранена вариация: %s (%s), для продукта %s (%s)',
@@ -542,22 +575,6 @@ class ProductVariable
 
 
     /**
-     * Check for stopping imports from MoySklad
-     */
-    public static function check_stop_manual()
-    {
-        if (get_transient('wooms_variant_walker_stop')) {
-            delete_transient('wooms_variant_start_timestamp');
-            delete_transient('wooms_variant_walker_stop');
-
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-
-    /**
      * Stopping walker imports from MoySklad
      */
     public static function walker_finish()
@@ -567,7 +584,8 @@ class ProductVariable
 
         do_action('wooms_wakler_variations_finish');
 
-        do_action('wooms_logger',
+        do_action(
+            'wooms_logger',
             __CLASS__,
             'Вариации. Обработчик финишировал'
         );
@@ -602,13 +620,13 @@ class ProductVariable
             return false;
         }
 
-        if ( ! is_array($attr_taxonomies)) {
+        if (!is_array($attr_taxonomies)) {
             return false;
         }
 
         foreach ($attr_taxonomies as $attr) {
             if ($attr->attribute_label == $label) {
-                return (int)$attr->attribute_id;
+                return (int) $attr->attribute_id;
             }
         }
 
@@ -616,14 +634,19 @@ class ProductVariable
     }
 
 
-    public static function is_wait() {
+    public static function is_wait()
+    {
+        //check run main walker
+        if (as_next_scheduled_action('wooms_products_walker_batch')) {
+            return true;
+        }
 
-        if( ! empty(self::get_state('end_timestamp')) ){
+        //check end pause 
+        if (!empty(self::get_state('end_timestamp'))) {
             return true;
         }
 
         return false;
-
     }
 
 
@@ -632,11 +655,11 @@ class ProductVariable
      */
     public static function add_schedule_hook($force = false)
     {
-        if ( ! self::is_enable() ) {
+        if (!self::is_enable()) {
             return;
         }
 
-        if( self::is_wait() ){
+        if (self::is_wait()) {
             return;
         }
 
@@ -644,11 +667,7 @@ class ProductVariable
             return;
         }
 
-        if(self::get_state('lock')){
-            return;
-        }
-
-        if($force){
+        if ($force) {
             self::set_state('force', 1);
         } else {
             self::set_state('force', 0);
@@ -660,179 +679,66 @@ class ProductVariable
 
 
     /**
-     * Can cron start
-     *
-     * @return bool
+     * display_state
      */
-    public static function can_schedule_start()
+    public static function display_state()
     {
 
-        /**
-         * if manual start - we can start
-         */
-        if ( ! empty(get_transient('wooms_variant_manual_sync'))) {
-            return true;
-        }
-
-        /**
-         * If general walker finished and set the tag for manual start - we can started
-         */
-        if (get_transient('wooms_variations_sync_for_manual_start') && get_transient('wooms_end_timestamp')) {
-            return true;
-        }
-
-        if (empty(get_option('woomss_walker_cron_enabled'))) {
-            return false;
-        }
-
-        if (empty(get_option('woomss_variations_sync_enabled'))) {
-            return false;
-        }
-
-        /**
-         * Если не завершен обмен по базовым товарам - то вариации не должны работать
-         */
-        if (empty(get_transient('wooms_end_timestamp'))) {
-            return false;
-        }
-
-        if ($end_stamp = get_transient('wooms_variant_end_timestamp')) {
-
-            $interval_hours = get_option('woomss_walker_cron_timer');
-            $interval_hours = (int)$interval_hours;
-            if (empty($interval_hours)) {
-                return false;
-            }
-            $now        = new \DateTime();
-            $end_stamp  = new \DateTime($end_stamp);
-            $end_stamp  = $now->diff($end_stamp);
-            $diff_hours = $end_stamp->format('%h');
-            if ($diff_hours > $interval_hours) {
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            return true;
-        }
-    }
-
-    /**
-     * Checking for variable product
-     *
-     * @return bool
-     */
-    public static function check_availability_of_variations()
-    {
-
-        $variants = get_posts(array(
-            'post_type'   => 'product',
-            'numberposts' => 10,
-            'fields'      => 'ids',
-            'tax_query'   => array(
-                'relation' => 'AND',
-                array(
-                    'taxonomy' => 'product_type',
-                    'terms'    => 'variable',
-                    'field'    => 'slug',
-                ),
-            ),
-            'meta_query'  => array(
-                array(
-                    'key'     => 'wooms_id',
-                    'compare' => 'EXISTS',
-                ),
-            ),
-        ));
-
-        $timestamp = get_transient('wooms_end_timestamp');
-        if (empty($variants) && (empty($timestamp) || ! isset($timestamp))) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    /**
-     * Stopping the import of variational goods during verification
-     */
-    public static function stop_manually_to_check()
-    {
-        set_transient('wooms_variant_walker_stop', 1, 60 * 60);
-        delete_transient('wooms_variant_start_timestamp');
-        delete_transient('wooms_variant_end_timestamp');
-        delete_transient('wooms_variant_manual_sync');
-    }
-
-
-    /**
-     * Manual start variations
-     */
-    public static function render_ui()
-    {
-        if ( ! self::is_enable() ) {
+        if (!self::is_enable()) {
             return;
         }
 
         echo '<h2>Вариации (Модификации)</h2>';
 
         echo "<p>Нажмите на кнопку ниже, чтобы запустить синхронизацию данных о вариативных товарах вручную</p>";
-        if (as_next_scheduled_action(self::$walker_hook_name) ) {
-            printf('<a href="%s" class="button button-secondary">Остановить синхронизацию вариативных продуктов</a>',
-            add_query_arg('a', 'wooms_import_variations_manual_stop', admin_url('admin.php?page=moysklad')));
+
+        if (as_next_scheduled_action(self::$walker_hook_name)) {
+            printf(
+                '<a href="%s" class="button button-secondary">Остановить синхронизацию вариативных продуктов</a>',
+                add_query_arg('a', 'wooms_import_variations_manual_stop', admin_url('admin.php?page=moysklad'))
+            );
         } else {
-            printf('<a href="%s" class="button button-primary">Запустить синхронизацию вариативных продуктов</a>',
-                add_query_arg('a', 'wooms_import_variations_manual_start', admin_url('admin.php?page=moysklad')));
+            printf(
+                '<a href="%s" class="button button-primary">Запустить синхронизацию вариативных продуктов</a>',
+                add_query_arg('a', 'wooms_import_variations_manual_start', admin_url('admin.php?page=moysklad'))
+            );
         }
-
-        self::display_state();
-
-    }
-
-
-    /**
-     * display_state
-     */
-    public static function display_state()
-    {
 
         $strings = [];
 
-        if (as_next_scheduled_action(self::$walker_hook_name) ) {
-          $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
-        }
-    
-        if (self::is_wait()) {
-          $strings[] = sprintf('<strong>Статус:</strong> %s', 'в ожидании');
-        }
-    
-        if($end_timestamp = self::get_state('end_timestamp')){
-          $end_timestamp = date('Y-m-d H:i:s', $end_timestamp);
-          $strings[] = sprintf('Последняя успешная синхронизация (отметка времени UTC): %s', $end_timestamp);
-        }
-    
-        $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_variables_walker_batch&orderby=schedule&order=desc'));
-        
-        
-        if(defined('WC_LOG_HANDLER') && 'WC_Log_Handler_DB' == WC_LOG_HANDLER){
-          $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs&source=WooMS-ProductVariable'));
+        if (as_next_scheduled_action(self::$walker_hook_name)) {
+            $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
         } else {
-          $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
+            $strings[] = sprintf('<strong>Статус:</strong> %s', 'в ожидании задач');
         }
 
-        $strings[] = sprintf('Количество обработанных записей: %s', empty(self::get_state('count')) ? 0 : self::get_state('count') );
+        if ($end_timestamp = self::get_state('end_timestamp')) {
+            $end_timestamp = date('Y-m-d H:i:s', $end_timestamp);
+            $strings[] = sprintf('Последняя успешная синхронизация (отметка времени UTC): %s', $end_timestamp);
+        }
 
-        ?>
+        $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_variables_walker_batch&orderby=schedule&order=desc'));
+
+
+        if (defined('WC_LOG_HANDLER') && 'WC_Log_Handler_DB' == WC_LOG_HANDLER) {
+            $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs&source=WooMS-ProductVariable'));
+        } else {
+            $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
+        }
+
+        $strings[] = sprintf('Количество обработанных записей: %s', empty(self::get_state('count')) ? 0 : self::get_state('count'));
+
+?>
         <div class="wrap">
             <div id="message" class="notice notice-warning">
                 <?php
-                foreach($strings as $string){
+                foreach ($strings as $string) {
                     printf('<p>%s</p>', $string);
-                } 
+                }
                 ?>
             </div>
         </div>
-        <?php
+<?php
     }
 
 
@@ -846,8 +752,7 @@ class ProductVariable
         add_settings_field(
             $id = $option_name,
             $title = 'Включить синхронизацию вариаций',
-            $callback = function($args)
-            {
+            $callback = function ($args) {
                 printf('<input type="checkbox" name="%s" value="1" %s />', $args['name'], checked(1, $args['value'], false));
                 printf('<p><strong>%s</strong></p>', 'Тестовый режим. Не включайте эту функцию на реальном сайте, пока не проверите ее на тестовой копии сайта.');
             },
@@ -890,13 +795,15 @@ class ProductVariable
     /**
      * checking is enable
      */
-    public static function is_enable(){
+    public static function is_enable()
+    {
         if (empty(get_option('woomss_variations_sync_enabled'))) {
             return false;
         }
 
         return true;
     }
+
 
     /**
      * Update product from source data
@@ -905,7 +812,7 @@ class ProductVariable
     {
         $item = $data_api;
 
-        if ( ! self::is_enable() ) {
+        if (!self::is_enable()) {
             if ($product->is_type('variable')) {
                 $product = new \WC_Product_Simple($product);
             }
@@ -913,7 +820,7 @@ class ProductVariable
             return $product;
         }
 
-        if (empty($item['modificationsCount'])) {
+        if (empty($item['variantsCount'])) {
             if ($product->is_type('variable')) {
                 $product = new \WC_Product_Simple($product);
             }
@@ -923,10 +830,11 @@ class ProductVariable
 
         $product_id = $product->get_id();
 
-        if ( ! $product->is_type('variable')) {
+        if (!$product->is_type('variable')) {
             $product = new \WC_Product_Variable($product);
 
-            do_action('wooms_logger',
+            do_action(
+                'wooms_logger',
                 __CLASS__,
                 sprintf('Продукт изменен как вариативный %s', $product_id)
             );
@@ -942,37 +850,37 @@ class ProductVariable
      */
     public static function get_state($key = '')
     {
-        if( ! $state = get_transient(self::$state_transient_key)){
-        $state = [];
-        set_transient(self::$state_transient_key, $state);
+        if (!$state = get_transient(self::$state_transient_key)) {
+            $state = [];
+            set_transient(self::$state_transient_key, $state);
         }
 
-        if(empty($key)){
-        return $state;
+        if (empty($key)) {
+            return $state;
         }
 
-        if(empty($state[$key])){
-        return null;
+        if (empty($state[$key])) {
+            return null;
         }
 
         return $state[$key];
-        
     }
 
     /**
      * set state data
      */
-    public static function set_state($key, $value){
+    public static function set_state($key, $value)
+    {
 
-        if( ! $state = get_transient(self::$state_transient_key)){
-        $state = [];
+        if (!$state = get_transient(self::$state_transient_key)) {
+            $state = [];
         }
 
-        if(is_array($state)){
-        $state[$key] = $value;
+        if (is_array($state)) {
+            $state[$key] = $value;
         } else {
-        $state = [];
-        $state[$key] = $value;
+            $state = [];
+            $state[$key] = $value;
         }
 
         set_transient(self::$state_transient_key, $state);

@@ -105,7 +105,7 @@ class ProductVariableImage
         }
 
         $img_metadata = $img_metadata['rows'][0];
-        $img_metadata = json_encode($img_metadata, JSON_PRETTY_PRINT);
+        $img_metadata = json_encode($img_metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $variation->update_meta_data(self::$image_meta_key, $img_metadata);
 

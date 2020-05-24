@@ -34,7 +34,7 @@ final class SendWarehouse {
     }
 
     $data['store']['meta'] = array(
-      'href' => 'https://online.moysklad.ru/api/remap/1.1/entity/store/' . $warehouse_id,
+      'href' => 'https://online.moysklad.ru/api/remap/1.2/entity/store/' . $warehouse_id,
       "type" => "store",
     );
 

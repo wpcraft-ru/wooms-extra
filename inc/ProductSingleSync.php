@@ -213,14 +213,12 @@ class ProductSingleSync
       return false;
     }
 
-    $url = 'https://online.moysklad.ru/api/remap/1.1/entity/product/' . $uuid;
+    $url = 'https://online.moysklad.ru/api/remap/1.2/entity/product/' . $uuid;
 
     $data = wooms_request($url);
 
 
     do_action('wooms_product_data_item', $data);
-
-    do_action('wooms_product_import_row', $data, '', '');
 
     if (!empty($data['modificationsCount'])) {
       $product->update_meta_data('wooms_need_update_variations', 1);

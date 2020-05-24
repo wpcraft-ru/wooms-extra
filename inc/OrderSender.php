@@ -205,7 +205,7 @@ class OrderSender
 
             $order = apply_filters('wooms_order_send_save', $order, $data);
 
-            $data_json = json_encode($data, JSON_PRETTY_PRINT);
+            $data_json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             $order->update_meta_data('wooms_data', $data_json);
 
             $order->save();

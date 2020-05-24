@@ -53,5 +53,6 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/SendWarehouse.php';
         require_once __DIR__ . '/inc/SiteHealthXT.php';
         require_once __DIR__ . '/inc/SiteHealthWebHooks.php';
+        // require_once __DIR__ . '/inc/AssortmentSync.php';
     }
 });

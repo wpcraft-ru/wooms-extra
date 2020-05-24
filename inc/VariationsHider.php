@@ -47,18 +47,19 @@ class VariationsHider {
       return;
     }
 
-    if (!as_next_scheduled_action('wooms_cron_variations_hiding', [], 'ProductWalker')) {
+    if (!as_next_scheduled_action('wooms_cron_variations_hiding')) {
       // Adding schedule hook
       as_schedule_single_action(
         time() + 60,
         'wooms_cron_variations_hiding',
         [],
-        'ProductWalker'
+        'WooMS'
       );
     }
     
   }
 
+  
   /**
    * reset_after_finish_parent_walker
    */

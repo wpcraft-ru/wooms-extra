@@ -18,7 +18,7 @@ final class TaxSupport
 
             // echo '<pre>';
 
-            // // $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/1080a7da-edfb-11e9-0a80-03c4001121bb';
+            // // $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/1080a7da-edfb-11e9-0a80-03c4001121bb';
             // // $d = wooms_request($url);
             // // var_dump($d['positions']);
 

@@ -22,11 +22,12 @@ class CategoriesFilter
 
     if (!empty(get_option('woomss_include_categories_sync'))) {
 
-      add_filter('wooms_url_get_products', array(__CLASS__, 'add_filter_by_folder'), 10);
 
-      add_action('wooms_main_walker_started', array(__CLASS__, 'delete_parent_category'));
+      // add_action('wooms_main_walker_started', array(__CLASS__, 'delete_parent_category'));
 
-      add_action('wooms_update_category', array(__CLASS__, 'update_meta_session_term'));
+      // add_action('wooms_update_category', array(__CLASS__, 'update_meta_session_term'));
+
+      add_filter('wooms_url_get_products_filters', array(__CLASS__, 'product_add_filter_by_folder'), 10);
 
       // add_filter('wooms_url_get_variants_filter', array(__CLASS__, 'variation_add_filter_by_folder'), 10);
 
@@ -59,19 +60,23 @@ class CategoriesFilter
    * Если выбрана группа для синка
    * Use $url_api = apply_filters('wooms_url_get_products', $url);
    */
-  public static function add_filter_by_folder($url)
+  public static function product_add_filter_by_folder($filters)
   {
-    if (empty(self::select_category())) {
-      return $url;
+    if ( ! $groups = get_option('wooms_set_folders')) {
+      return $filters;
     }
 
-    $arg = array(
-      'filter' => 'productFolder=' . self::select_category(),
-    );
+    $groups = explode(',', $groups);
 
-    $url = add_query_arg($arg, $url);
+    if(empty($groups)){
+      return $filters;
+    }
 
-    return $url;
+    foreach($groups as $group){
+      $filters[] = 'pathName~=' . trim($group);
+    }
+
+    return $filters;
   }
 
   /**
@@ -93,7 +98,7 @@ class CategoriesFilter
     $uuid = '';
     if ($url = get_option('woomss_include_categories_sync')) {
       $uuid = str_replace(
-        'https://online.moysklad.ru/api/remap/1.1/entity/productfolder/',
+        'https://online.moysklad.ru/api/remap/1.2/entity/productfolder/',
         '',
         $url
       );
@@ -276,7 +281,7 @@ class CategoriesFilter
       'offset' => $offset,
       'limit'  => $limit,
     ));
-    $url     = 'https://online.moysklad.ru/api/remap/1.1/entity/productfolder';
+    $url     = 'https://online.moysklad.ru/api/remap/1.2/entity/productfolder';
     $url     = add_query_arg($ms_api_args, $url);
 
     if ($path_filter = get_option('wooms_filter_for_select_group')) {
@@ -308,23 +313,46 @@ class CategoriesFilter
   public static function settings_init()
   {
 
-    register_setting('mss-settings', 'woomss_include_categories_sync');
+    register_setting('mss-settings', 'wooms_set_folders');
     add_settings_field(
-      'woomss_include_categories_sync',
-      'Ограничить группой товаров',
-      array(__CLASS__, 'display_woomss_include_categories_sync'),
-      'mss-settings',
-      'wooms_product_cat'
+      $name = 'wooms_set_folders',
+      $title = 'Группы товаров для фильтрации',
+      $render = function($args){
+        printf('<input type="text" name="%s" value="%s" size="50" />', $args['key'], $args['value']);
+        printf('<p><small>%s</small></p>', 
+          'Тут можно указать группы для фильтрации товаров через запятую. Например: "Мебель/Диваны,Пицца,Одежда/Обувь/Ботинки"'
+        );
+      },
+      $setings = 'mss-settings',
+      $group = 'wooms_product_cat',
+      $arts = [
+        'key' => 'wooms_set_folders',
+        'value' => get_option('wooms_set_folders'),
+      ],
     );
 
-    register_setting('mss-settings', 'wooms_filter_for_select_group');
-    add_settings_field(
-      $id = 'wooms_filter_for_select_group',
-      $title = 'Название группы для фильтрации дочерних групп',
-      $callback = array(__CLASS__, 'display_wooms_filter_for_select_group'),
-      $page = 'mss-settings',
-      $section = 'wooms_product_cat'
-    );
+
+
+
+
+    //XXX for delete
+    // register_setting('mss-settings', 'woomss_include_categories_sync');
+    // add_settings_field(
+    //   'woomss_include_categories_sync',
+    //   'Ограничить группой товаров',
+    //   array(__CLASS__, 'display_woomss_include_categories_sync'),
+    //   'mss-settings',
+    //   'wooms_product_cat'
+    // );
+
+    // register_setting('mss-settings', 'wooms_filter_for_select_group');
+    // add_settings_field(
+    //   $id = 'wooms_filter_for_select_group',
+    //   $title = 'Название группы для фильтрации дочерних групп',
+    //   $callback = array(__CLASS__, 'display_wooms_filter_for_select_group'),
+    //   $page = 'mss-settings',
+    //   $section = 'wooms_product_cat'
+    // );
   }
 
   /**
