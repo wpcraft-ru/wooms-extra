@@ -469,7 +469,7 @@ class ProductVariable
 
         $price = apply_filters('wooms_product_price', $price, $data_api, $variation_id);
 
-        $price = $price / 100;
+        $price = floatval($price) / 100;
         $variation->set_price($price);
         $variation->set_regular_price($price);
 
