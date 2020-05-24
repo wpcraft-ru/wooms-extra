@@ -44,8 +44,7 @@ class ProductStocks
     add_filter('wooms_save_variation', array(__CLASS__, 'update_variation'), 30, 3);
 
     add_action('wooms_assortment_sync', [__CLASS__, 'batch_handler']);
-    add_filter( 'wooms_assortment_sync_filters', array( __CLASS__, 'assortment_add_filter_by_warehouse_id' ), 10 );
-
+    add_filter('wooms_assortment_sync_filters', array(__CLASS__, 'assortment_add_filter_by_warehouse_id'), 10);
 
     add_action('wooms_variations_batch_end', [__CLASS__, 'restart_after_batch']);
     add_action('wooms_products_batch_end', [__CLASS__, 'restart_after_batch']);
@@ -58,7 +57,10 @@ class ProductStocks
 
     add_filter('wooms_stock_type', array(__CLASS__, 'select_type_stock'));
 
-  
+    //need for disable reset state for base plugin
+    add_filter('wooms_reset_state_products', function ($reset) {
+      return false;
+    });
   }
 
 
@@ -102,6 +104,12 @@ class ProductStocks
 
     $url = add_query_arg('filter', $filters, $url);
 
+    do_action(
+      'wooms_logger',
+      __CLASS__,
+      sprintf('Запрос на остатки %s', $url)
+    );
+
     $data_api = wooms_request($url);
 
     if (empty($data_api['rows'])) {
@@ -136,8 +144,6 @@ class ProductStocks
     self::set_state('count_save', self::get_state('count_save') + $counts['save']);
 
     self::add_schedule_hook(true);
-
-    // dd($url, $data_api, $products);
   }
 
 
@@ -216,7 +222,8 @@ class ProductStocks
   }
 
 
-  public static function restart_after_batch(){
+  public static function restart_after_batch()
+  {
     self::set_state('finish_timestamp', 0);
   }
 
@@ -287,9 +294,8 @@ class ProductStocks
   public static function add_schedule_hook($force = false)
   {
     if (!self::is_enable()) {
-        return;
+      return;
     }
-
 
     if (self::is_wait()) {
       return;
@@ -354,6 +360,10 @@ class ProductStocks
   public static function assortment_add_filter_by_warehouse_id($filter)
   {
 
+    if( ! get_option('woomss_warehouses_sync_enabled')){
+      return $filter;
+    }
+    
     if (!$warehouse_id = get_option('woomss_warehouse_id')) {
       return $filter;
     }
@@ -394,7 +404,6 @@ class ProductStocks
     $variation->update_meta_data(self::$walker_hook_name, 1);
 
     return $variation;
-
   }
 
   /**
@@ -414,7 +423,6 @@ class ProductStocks
     $product->update_meta_data(self::$walker_hook_name, 1);
 
     return $product;
-
   }
 
   /**
@@ -490,7 +498,7 @@ class ProductStocks
    */
   public static function display_woomss_section_warehouses()
   {
-  ?>
+?>
     <p>Данные опции позволяют настроить обмен данным по остаткам между складом и сайтом.</p>
     <ol>
       <li>Функционал обязательно нужно проверять на тестовом сайте. Он еще проходит обкатку. В случае проблем
@@ -581,7 +589,7 @@ class ProductStocks
       endforeach;
       ?>
     </select>
-<?php
+  <?php
   }
 
 
@@ -634,7 +642,7 @@ class ProductStocks
 
     $strings[] = sprintf('Количество обработанных записей: %s', empty(self::get_state('count_all')) ? 0 : self::get_state('count_all'));
     $strings[] = sprintf('Количество сохраненных записей: %s', empty(self::get_state('count_save')) ? 0 : self::get_state('count_save'));
-?>
+  ?>
     <h2>Остатки</h2>
     <div class="wrap">
       <div id="message" class="notice notice-warning">
@@ -646,10 +654,9 @@ class ProductStocks
       </div>
     </div>
 
-  <?php
+<?php
 
   }
-
 }
 
 ProductStocks::init();
