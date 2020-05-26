@@ -20,11 +20,23 @@ class ProductAttributes
 
     add_filter('wooms_attributes', array(__CLASS__, 'update_country'), 10, 3);
     add_filter('wooms_attributes', array(__CLASS__, 'save_other_attributes'), 10, 3);
+    add_filter('wooms_allow_data_types_for_attributes', array(__CLASS__, 'add_text'), 10, 1);
 
     add_action('admin_init', array(__CLASS__, 'add_settings'), 150);
   }
 
 
+  /**
+   * fix https://github.com/wpcraft-ru/wooms/issues/299
+   */
+  public static function add_text($atts){
+
+    $atts[] = 'text';
+
+    return $atts;
+  }
+
+  
   /**
    * Update product
    */
