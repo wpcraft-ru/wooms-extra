@@ -27,54 +27,72 @@ class ProductSingleSync
     add_action('init', [__CLASS__, 'add_schedule_hook']);
   }
 
+
+  public static function is_wait(){
+    if(self::get_state('end_timestamp')){
+      return true;
+    }
+
+    return false;
+  }
+
+
   /**
    * Cron task restart
    */
   public static function add_schedule_hook()
   {
-
-    if(!self::need_update_variations_product_id()){
+    if(self::is_wait()){
       return;
     }
 
-    if (!as_next_scheduled_action('wooms_product_single_update_schedule', [], 'ProductWalker')) {
-      // Adding schedule hook
-      as_schedule_single_action(
-        time() + 60,
-        'wooms_product_single_update_schedule',
-        [],
-        'ProductWalker'
-      );
+    if (as_next_scheduled_action('wooms_product_single_update_schedule')) {
+      return;
     }
 
+    $state = self::get_state();
+
+    // Adding schedule hook
+    as_schedule_single_action(
+      time() + 30,
+      'wooms_product_single_update_schedule',
+      $state,
+      'WooMS'
+    );
   }
 
 
   /**
    * get_state
    */
-  public static function get_state($key = ''){
-    $state = get_transient(self::$state_key);
-    if(empty($key)){
+  public static function get_state($key = '')
+  {
+    if(!$state = get_transient(self::$state_key)){
+      $state = [];
+    }
+
+    if (empty($key)) {
       return $state;
     }
 
-    if(isset($state[$key])){
+    if (isset($state[$key])) {
       return $state[$key];
+    } else {
+      return null;
     }
 
-    return null;
   }
 
 
   /**
    * set_state
    */
-  public static function set_state($key = '', $value = ''){
+  public static function set_state($key = '', $value = '')
+  {
 
     $state = get_transient(self::$state_key);
 
-    if( is_array($state) ){
+    if (is_array($state)) {
       $state[$key] = $value;
     } else {
       $state = [
@@ -93,12 +111,12 @@ class ProductSingleSync
    */
   public static function update_variations($product_id = 0)
   {
-    if(empty($product_id)){
+    if (empty($product_id)) {
       $product_id = self::get_state('product_id');
     }
 
     if (empty($product_id)) {
-      $product_id = self::need_update_variations_product_id();
+      $product_id = self::get_update_variations_product_id();
     }
 
     if (empty($product_id)) {
@@ -115,7 +133,7 @@ class ProductSingleSync
 
     if ($offset = self::get_state('offset')) {
       $url_args['offset'] = $offset;
-    } 
+    }
 
     $url = 'https://online.moysklad.ru/api/remap/1.2/entity/variant/?filter=productid=' . $wooms_id;
     $url = add_query_arg($url_args, $url);
@@ -150,12 +168,11 @@ class ProductSingleSync
     return true;
   }
 
+
   /**
    * Find the product that need to be updated
-   *
-   * @return void
    */
-  public static function need_update_variations_product_id()
+  public static function get_update_variations_product_id()
   {
 
     $args = [
@@ -173,6 +190,8 @@ class ProductSingleSync
     $posts = get_posts($args);
 
     if (empty($posts)) {
+      self::set_state('product_id', 0);
+      self::set_state('end_timestamp', time());
       return false;
     }
 
@@ -180,11 +199,10 @@ class ProductSingleSync
       $product_id = $posts[0]->ID;
       self::set_state('product_id', $product_id);
 
-      
       return $product_id;
     }
 
-      return false;
+    return false;
   }
 
 
@@ -195,6 +213,7 @@ class ProductSingleSync
   {
     if (!empty($_REQUEST['wooms_product_sinle_sync'])) {
       self::sync($post_id);
+      self::set_state('end_timestamp', 0);
     }
   }
 
@@ -217,13 +236,16 @@ class ProductSingleSync
 
     $data = wooms_request($url);
 
-
     do_action('wooms_product_data_item', $data);
 
-    if (!empty($data['modificationsCount'])) {
-      $product->update_meta_data('wooms_need_update_variations', 1);
-      $product->save();
+    if (empty($data['variantsCount'])) {
+      return false;
     }
+
+    $product->update_meta_data('wooms_need_update_variations', 1);
+    $product->save();
+
+    return true;
   }
 
 
@@ -236,7 +258,6 @@ class ProductSingleSync
     $product = wc_get_product($product_id);
     $need_update_variations = $product->get_meta('wooms_need_update_variations', true);
     echo '<hr/>';
-    printf('<p>%s</p>', 'Функция для тестирования');
     if (empty($need_update_variations)) {
       printf(
         '<input id="wooms-product-single-sync" type="checkbox" name="wooms_product_sinle_sync"> <label for="wooms-product-single-sync">%s</label>',
@@ -245,6 +266,12 @@ class ProductSingleSync
     } else {
       printf('<p>%s</p>', 'Вариации ждут очереди на обновление');
     }
+
+    printf(
+      '<p><a href="%s">%s</a></p>', 
+      admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_product_single_update_schedule&orderby=schedule&order=desc'), 
+      'Открыть очередь задач'
+    );
   }
 }
 

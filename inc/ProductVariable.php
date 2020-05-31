@@ -45,7 +45,7 @@ class ProductVariable
         //walker
         add_action('wooms_variables_walker_batch', array(__CLASS__, 'bath_handler'));
 
-        add_action('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
+        add_filter('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
         add_filter('wooms_save_variation', array(__CLASS__, 'save_attributes_for_variation'), 10, 3);
         add_action('wooms_products_variations_item', array(__CLASS__, 'load_data_variant'), 15);

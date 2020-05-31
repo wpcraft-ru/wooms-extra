@@ -15,7 +15,7 @@
  * WC tested up to: 4.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
- * Version: 7.3
+ * Version: 7.4
  */
 
 defined('ABSPATH') || exit;

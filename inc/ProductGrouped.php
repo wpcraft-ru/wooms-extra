@@ -11,7 +11,7 @@ class ProductGrouped
    */
   public static function init()
   {
-    add_action( 'wooms_product_save', array( __CLASS__, 'update_product' ), 20, 2 );
+    add_filter( 'wooms_product_save', array( __CLASS__, 'update_product' ), 20, 2 );
     add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
   }
 
