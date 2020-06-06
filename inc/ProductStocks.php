@@ -34,8 +34,10 @@ class ProductStocks
     //     return;
     //   }
 
-    //   self::add_schedule_hook();
+    //   // $p = wc_get_product();
+    //   // self::add_schedule_hook();
     //   // self::batch_handler();
+    //   // self::add_warehouse_name_to_log_data();
 
     //   dd(0);
     // });
@@ -45,6 +47,7 @@ class ProductStocks
 
     add_action('wooms_assortment_sync', [__CLASS__, 'batch_handler']);
     add_filter('wooms_assortment_sync_filters', array(__CLASS__, 'assortment_add_filter_by_warehouse_id'), 10);
+    add_filter('wooms_stock_log_data', array(__CLASS__, 'add_warehouse_name_to_log_data'), 10);
 
     add_action('wooms_variations_batch_end', [__CLASS__, 'restart_after_batch']);
     add_action('wooms_products_batch_end', [__CLASS__, 'restart_after_batch']);
@@ -133,11 +136,15 @@ class ProductStocks
       }
 
       $product = self::update_stock($product, $row);
+
+      $product->update_meta_data('wooms_assortment_data', self::get_stock_data_log($row, $product_id));
+
       if ($product) {
         $product->delete_meta_data(self::$walker_hook_name);
-        $product->save();
         $counts['save']++;
       }
+
+      $product->save();
     }
 
     self::set_state('count_all', self::get_state('count_all') + $counts['all']);
@@ -146,6 +153,25 @@ class ProductStocks
     self::add_schedule_hook(true);
   }
 
+  /**
+   * get_stock_data_log
+   * for save log data to product meta
+   */
+  public static function get_stock_data_log($row = [], $product_id = 0)
+  {
+    $data = [
+      "stock" => $row['stock'],
+      "reserve" => $row['reserve'],
+      "inTransit" => $row['inTransit'],
+      "quantity" => $row['quantity'],
+    ];
+
+    $data = apply_filters('wooms_stock_log_data', $data, $product_id, $row);
+
+    $data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    return $data;
+  }
 
   /**
    * update_stock
@@ -353,6 +379,32 @@ class ProductStocks
     return $posts[0]->ID;
   }
 
+  /**
+   * add_warehouse_name_to_log_data
+   */
+  public static function add_warehouse_name_to_log_data($data_log = [])
+  {
+    if (!get_option('woomss_warehouses_sync_enabled')) {
+      return $data_log;
+    }
+
+    if (!$warehouse_id = get_option('woomss_warehouse_id')) {
+      return $data_log;
+    }
+
+    if( ! $wh_name = get_transient('wooms_warehouse_name')){
+      $url = sprintf('https://online.moysklad.ru/api/remap/1.2/entity/store/%s', $warehouse_id);
+      $data = wooms_request($url);
+      if(isset($data["name"])){
+        $wh_name = $data["name"];
+        set_transient('wooms_warehouse_name', $wh_name, HOUR_IN_SECONDS);
+      }
+    }
+
+    $data_log['name_wh'] = $wh_name;
+
+    return $data_log;
+  }
 
   /**
    * add_filter_by_warehouse_id
@@ -360,7 +412,7 @@ class ProductStocks
   public static function assortment_add_filter_by_warehouse_id($filter)
   {
 
-    if( ! get_option('woomss_warehouses_sync_enabled')){
+    if (!get_option('woomss_warehouses_sync_enabled')) {
       return $filter;
     }
 
