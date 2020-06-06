@@ -22,7 +22,6 @@ class ProductStocks
    */
   public static $state_transient_key = 'wooms_assortmen_state';
 
-
   /**
    * The init
    */
@@ -178,8 +177,8 @@ class ProductStocks
    */
   public static function update_stock($product, $data_api)
   {
-
     $product = wc_get_product($product);
+
     $product_id = $product->get_id();
 
     /**
