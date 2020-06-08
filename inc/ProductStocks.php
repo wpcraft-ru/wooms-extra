@@ -54,7 +54,7 @@ class ProductStocks
 
     add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-    add_action('admin_init', array(__CLASS__, 'settings_init'), 30);
+    add_action('admin_init', array(__CLASS__, 'add_settings'), 30);
     add_action('woomss_tool_actions_btns', array(__CLASS__, 'display_state'), 17);
 
     add_filter('wooms_stock_type', array(__CLASS__, 'select_type_stock'));
@@ -383,18 +383,14 @@ class ProductStocks
    */
   public static function add_warehouse_name_to_log_data($data_log = [])
   {
-    if (!get_option('woomss_warehouses_sync_enabled')) {
-      return $data_log;
-    }
-
     if (!$warehouse_id = get_option('woomss_warehouse_id')) {
       return $data_log;
     }
 
-    if( ! $wh_name = get_transient('wooms_warehouse_name')){
+    if (!$wh_name = get_transient('wooms_warehouse_name')) {
       $url = sprintf('https://online.moysklad.ru/api/remap/1.2/entity/store/%s', $warehouse_id);
       $data = wooms_request($url);
-      if(isset($data["name"])){
+      if (isset($data["name"])) {
         $wh_name = $data["name"];
         set_transient('wooms_warehouse_name', $wh_name, HOUR_IN_SECONDS);
       }
@@ -410,11 +406,6 @@ class ProductStocks
    */
   public static function assortment_add_filter_by_warehouse_id($filter)
   {
-
-    if (!get_option('woomss_warehouses_sync_enabled')) {
-      return $filter;
-    }
-
     if (!$warehouse_id = get_option('woomss_warehouse_id')) {
       return $filter;
     }
@@ -478,7 +469,7 @@ class ProductStocks
   /**
    * Settings UI
    */
-  public static function settings_init()
+  public static function add_settings()
   {
 
     add_settings_section(
@@ -524,22 +515,46 @@ class ProductStocks
       $section = 'woomss_section_warehouses'
     );
 
-    register_setting('mss-settings', 'woomss_warehouses_sync_enabled');
-    add_settings_field(
-      $id = 'woomss_warehouses_sync_enabled',
-      $title = 'Учитывать остатки по складу',
-      $callback = array(__CLASS__, 'woomss_warehouses_sync_enabled_display'),
-      $page = 'mss-settings',
-      $section = 'woomss_section_warehouses'
-    );
+    self::add_setting_warehouse_id();
+  }
 
-    register_setting('mss-settings', 'woomss_warehouse_id');
+
+  /**
+   * Display field: select warehouse
+   */
+  public static function add_setting_warehouse_id()
+  {
+    $option = 'woomss_warehouse_id';
+    register_setting('mss-settings', $option);
     add_settings_field(
-      $id = 'woomss_warehouse_id',
-      $title = 'Выбрать склад для сайта',
-      $callback = array(__CLASS__, 'woomss_warehouse_id_display'),
+      $id = $option,
+      $title = 'Учитывать остатки по складу',
+      $callback = function ($args) {
+
+        $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/store';
+        $data = wooms_request($url);
+        if (empty($data['rows'])) {
+          echo 'Система не смогла получить список складов из МойСклад';
+          return;
+        }
+        $selected_wh = $args['value']; ?>
+
+      <select class="wooms_select_warehouse" name="woomss_warehouse_id">
+        <option value="">По всем складам</option>
+        <?php
+        foreach ($data['rows'] as $row) :
+          printf('<option value="%s" %s>%s</option>', $row['id'], selected($row['id'], $selected_wh, false), $row['name']);
+        endforeach;
+        ?>
+      </select>
+    <?php
+      },
       $page = 'mss-settings',
-      $section = 'woomss_section_warehouses'
+      $section = 'woomss_section_warehouses',
+      $args = [
+        'key' => $option,
+        'value' => get_option($option),
+      ]
     );
   }
 
@@ -548,7 +563,7 @@ class ProductStocks
    */
   public static function display_woomss_section_warehouses()
   {
-?>
+    ?>
     <p>Данные опции позволяют настроить обмен данным по остаткам между складом и сайтом.</p>
     <ol>
       <li>Функционал обязательно нужно проверять на тестовом сайте. Он еще проходит обкатку. В случае проблем
@@ -605,45 +620,6 @@ class ProductStocks
   }
 
   /**
-   * Display field
-   */
-  public static function woomss_warehouses_sync_enabled_display()
-  {
-    $option = 'woomss_warehouses_sync_enabled';
-    printf('<input type="checkbox" name="%s" value="1" %s />', $option, checked(1, get_option($option), false));
-  }
-
-  /**
-   * Display field: select warehouse
-   */
-  public static function woomss_warehouse_id_display()
-  {
-    $option = 'woomss_warehouse_id';
-    if (empty(get_option('woomss_warehouses_sync_enabled'))) {
-      echo '<p>Включите опцию "Учитывать остатки по складу" чтобы выбрать склад для синхронизации</p>';
-
-      return;
-    }
-    $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/store';
-    $data = wooms_request($url);
-    if (empty($data['rows'])) {
-      return;
-    }
-    $selected_wh = get_option('woomss_warehouse_id');
-  ?>
-    <select class="wooms_select_warehouse" name="woomss_warehouse_id">
-      <option value="">Выберите склад</option>
-      <?php
-      foreach ($data['rows'] as $value) :
-        printf('<option value="%s" %s>%s</option>', $value['id'], selected($value['id'], $selected_wh, false), $value['name']);
-      endforeach;
-      ?>
-    </select>
-  <?php
-  }
-
-
-  /**
    * is_enable
    */
   public static function is_enable()
@@ -654,9 +630,6 @@ class ProductStocks
 
     return false;
   }
-
-
-
 
   /**
    * display_state
