@@ -88,7 +88,7 @@ class OrderSender
      */
     public static function auto_add_order_for_send($order_id)
     {
-        if (get_option('wooms_orders_sender_enable')) {
+        if (self::is_enable()) {
             $order = wc_get_order($order_id);
             $order->add_meta_data('wooms_order_sync', 1);
             $order->save();
@@ -132,12 +132,17 @@ class OrderSender
             return;
         }
 
+        if (!self::is_enable()) {
+            return;
+        }
+
         if (wp_is_post_revision($post_id)) {
             return;
         }
 
         $order_id = $post_id;
         update_post_meta($order_id, 'wooms_order_sync', 1);
+
         self::update_order($order_id);
     }
 
@@ -1075,8 +1080,6 @@ class OrderSender
         echo $meta_data;
 
         do_action('wooms_order_metabox_controls');
-
- 
     }
 }
 
