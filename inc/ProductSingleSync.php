@@ -20,7 +20,7 @@ class ProductSingleSync
   public static function init()
   {
     add_action('wooms_display_product_metabox', array(__CLASS__, 'display_checkbox'));
-    add_action('save_post', array(__CLASS__, 'save'));
+    add_action('save_post_product', array(__CLASS__, 'product_save'));
 
     add_action('wooms_product_single_update_schedule', array(__CLASS__, 'update_variations'));
 
@@ -209,7 +209,7 @@ class ProductSingleSync
   /**
    * save
    */
-  public static function save($post_id)
+  public static function product_save($post_id)
   {
     if (!empty($_REQUEST['wooms_product_sinle_sync'])) {
       self::sync($post_id);
