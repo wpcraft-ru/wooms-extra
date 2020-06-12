@@ -4,6 +4,8 @@ namespace WooMS;
 
 /**
  * Products Bundle Managment
+ * 
+ * issue https://github.com/wpcraft-ru/wooms/issues/313
  */
 class ProductGrouped extends AbstractWalker
 {
@@ -39,13 +41,13 @@ class ProductGrouped extends AbstractWalker
     //   dd(0);
     // });
 
-
     add_action('wooms_bundle_walker_batch', [__CLASS__, 'batch_handler']);
 
     add_filter('wooms_product_save', array(__CLASS__, 'update_product'), 40, 2);
     add_action('admin_init', array(__CLASS__, 'add_settings'), 150);
 
     add_action('wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
+    add_action('wooms_wakler_variations_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
 
     add_action('init', array(__CLASS__, 'add_schedule_hook'));
     add_action('wooms_tools_sections', array(__CLASS__, 'display_state'));

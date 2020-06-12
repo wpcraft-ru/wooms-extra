@@ -37,13 +37,13 @@ class ProductVariable
         //   }
 
         //   self::set_state('timestamp', 0);
-        //   self::bath_handler();
+        //   self::batch_handler();
 
         //   dd(0);
         // });
 
         //walker
-        add_action('wooms_variables_walker_batch', array(__CLASS__, 'bath_handler'));
+        add_action('wooms_variables_walker_batch', array(__CLASS__, 'batch_handler'));
 
         add_filter('wooms_product_save', array(__CLASS__, 'update_product'), 20, 3);
 
@@ -66,7 +66,7 @@ class ProductVariable
     /**
      * Walker for data variant product from MoySklad
      */
-    public static function bath_handler($args = [])
+    public static function batch_handler($args = [])
     {
 
         $state = self::get_state();
