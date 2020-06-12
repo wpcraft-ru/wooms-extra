@@ -47,4 +47,4 @@ class AssortmentSync
   
 }
 
-AssortmentSync::init();
+// AssortmentSync::init();

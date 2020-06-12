@@ -51,7 +51,7 @@ class ProductVariable
         add_action('wooms_products_variations_item', array(__CLASS__, 'load_data_variant'), 15);
 
         //Other
-        add_action('admin_init', array(__CLASS__, 'settings_init'), 150);
+        add_action('admin_init', array(__CLASS__, 'add_settings'), 150);
         add_action('woomss_tool_actions_wooms_import_variations_manual_start', array(__CLASS__, 'start_manually'));
         add_action('woomss_tool_actions_wooms_import_variations_manual_stop', array(__CLASS__, 'stop_manually'));
         add_action('wooms_main_walker_finish', array(__CLASS__, 'reset_after_main_walker_finish'));
@@ -746,7 +746,7 @@ class ProductVariable
     /**
      * Settings import variations
      */
-    public static function settings_init()
+    public static function add_settings()
     {
         $option_name = 'woomss_variations_sync_enabled';
         register_setting('mss-settings', $option_name);
