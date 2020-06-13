@@ -13,12 +13,11 @@ class OrderShipment
     public static function init()
     {
         add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
+        
         add_filter('wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
 
-        /**
-         * fix https://github.com/wpcraft-ru/wooms/issues/186
-         */
         add_filter('wooms_order_update_data', array(__CLASS__, 'chg_order_data'), 10, 2);
+
         add_filter('wooms_skip_service', array(__CLASS__, 'skip_service_if_shipment'), 10, 2);
     }
 
@@ -42,6 +41,8 @@ class OrderShipment
 
     /**
      * chg_order_data
+     * 
+     * fix https://github.com/wpcraft-ru/wooms/issues/186
      */
     public static function chg_order_data($data, $order_id)
     {
