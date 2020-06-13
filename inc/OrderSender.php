@@ -9,17 +9,25 @@ defined('ABSPATH') || exit;
  */
 class OrderSender
 {
+
+    /**
+     * Hookd and key for ActionSheduler
+     *
+     * @var string
+     */
+    public static $walker_hook_name = 'wooms_schedule_order_sender';
+
+
     /**
      * The init
      */
     public static function init()
     {
-
-        add_action('wooms_schedule_order_sender', array(__CLASS__, 'walker'));
+        add_action('wooms_schedule_order_sender', array(__CLASS__, 'batch_hadler'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-        add_action('save_post', array(__CLASS__, 'save_data_form'));
+        add_action('save_post_shop_order', array(__CLASS__, 'order_update'));
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20);
 
@@ -33,10 +41,7 @@ class OrderSender
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
         });
 
-        // https://github.com/wpcraft-ru/wooms/issues/289
-        // add_action('wooms_order_metabox_controls', array(__CLASS__, 'add_controle_for_sync'));
-        // add_action('save_post', array(__CLASS__, 'check_order_autosync'), 20);
-
+        add_action('wooms_order_metabox_controls', array(__CLASS__, 'add_controle_for_sync'));
     }
 
     /**
@@ -97,21 +102,27 @@ class OrderSender
 
 
     /**
-     * check_order_autosync
-     *
-     * @param [type] $post_id
-     * @return void
+     * order - add task for sync if enable
      */
-    public static function check_order_autosync($post_id)
+    public static function order_update($post_id)
     {
-        if ("shop_order" != get_post_type($post_id)) {
-            return;
-        }
 
+        $order_id = $post_id;
         if (wp_is_post_revision($post_id)) {
             return;
         }
 
+        if (self::is_enable()) {
+            $order_id = $post_id;
+            update_post_meta($order_id, 'wooms_order_sync', 1);
+
+            // self::update_order($order_id); - send only by ActionSheduler
+            delete_transient('wooms_order_timestamp_end');
+
+            return;
+        }
+
+        //check for manual sync
         if (!isset($_POST['wooms_order_sync'])) {
             return;
         }
@@ -120,30 +131,11 @@ class OrderSender
             delete_post_meta($post_id, 'wooms_order_sync');
         } else {
             update_post_meta($post_id, 'wooms_order_sync', 1);
-        }
-    }
-
-    /**
-     * handler order save
-     */
-    public static function save_data_form($post_id)
-    {
-        if ("shop_order" != get_post_type($post_id)) {
-            return;
+            self::update_order($order_id);
         }
 
-        if (!self::is_enable()) {
-            return;
-        }
+        delete_transient('wooms_order_timestamp_end');
 
-        if (wp_is_post_revision($post_id)) {
-            return;
-        }
-
-        $order_id = $post_id;
-        update_post_meta($order_id, 'wooms_order_sync', 1);
-
-        self::update_order($order_id);
     }
 
     /**
@@ -225,19 +217,24 @@ class OrderSender
      *
      * @return mixed
      */
-    public static function add_schedule_hook()
+    public static function add_schedule_hook($force = false)
     {
-
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-        if (self::check_schedule_needed()) {
-            // Adding schedule hook
-            as_schedule_single_action(
-                time() + 60,
-                'wooms_schedule_order_sender',
-                [],
-                'WooMS'
-            );
+        if (self::is_wait()) {
+            return;
         }
+
+        if (as_next_scheduled_action(self::$walker_hook_name) && !$force) {
+            return;
+        }
+
+        // Adding schedule hook
+        as_schedule_single_action(
+            time() + 10,
+            self::$walker_hook_name,
+            [],
+            'WooMS'
+        );
     }
 
     /**
@@ -245,30 +242,10 @@ class OrderSender
      *
      * @return void
      */
-    public static function check_schedule_needed()
+    public static function is_wait()
     {
-
-        if (empty(get_option('wooms_orders_sender_enable'))) {
-            return false;
-        }
-
-        $args = array(
-            'numberposts'  => 1,
-            'post_type'    => 'shop_order',
-            'post_status'  => 'any',
-            'meta_key'     => 'wooms_order_sync',
-            'meta_compare' => 'EXISTS',
-        );
-
-        $orders = get_posts($args);
-
-        if (empty($orders)) {
-            return false;
-        }
-
-        // If next schedule is not this one and the sync is active
-        if (as_next_scheduled_action('wooms_schedule_order_sender')) {
-            return false;
+        if (get_transient('wooms_order_timestamp_end')) {
+            return true;
         }
 
         return true;
@@ -278,11 +255,8 @@ class OrderSender
     /**
      * Main walker for send orders
      */
-    public static function walker()
+    public static function batch_hadler()
     {
-        if (empty(get_option('wooms_orders_sender_enable'))) {
-            return;
-        }
 
         $args = array(
             'numberposts'  => apply_filters('wooms_orders_number', 5),
@@ -295,6 +269,7 @@ class OrderSender
         $orders = get_posts($args);
 
         if (empty($orders)) {
+            set_transient('wooms_order_timestamp_end', time());
             return false;
         }
 
@@ -318,6 +293,8 @@ class OrderSender
             $order->delete_meta_data('wooms_order_sync');
             $order->save();
         }
+
+        self::add_schedule_hook(true);
     }
 
     /**
@@ -917,13 +894,14 @@ class OrderSender
         register_setting('mss-settings', $orders_sender_enable_key);
         add_settings_field(
             $id = $orders_sender_enable_key,
-            $title = 'Включить автоматическую синхронизацию заказов в МойСклад',
+            $title = 'Автоматически передавать заказы в МойСклад',
             $callback = function ($args) {
                 printf(
                     '<input type="checkbox" name="%s" value="1" %s />',
                     $args['key'],
                     checked(1, $args['value'], $echo = false)
                 );
+                printf('<p>%s</p>', 'Если включена, то заказы будут передаваться автоматически по мере создания и обновления. Если отключена, то можно вручную отправить Заказ в МойСклад');
             },
             $page = 'mss-settings',
             $section = 'wooms_section_orders',
@@ -1041,12 +1019,17 @@ class OrderSender
         );
     }
 
-
     /**
      * add_controle_for_sync
+     * 
+     * issue https://github.com/wpcraft-ru/wooms/issues/316
      */
     public static function add_controle_for_sync()
     {
+        if (self::is_enable()) {
+            return;
+        }
+
         $post    = get_post();
 
         $need_update = get_post_meta($post->ID, 'wooms_order_sync', true);
