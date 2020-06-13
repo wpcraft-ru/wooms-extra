@@ -21,6 +21,7 @@ class CategoriesFilter
     add_action('admin_init', array(__CLASS__, 'settings_init'), 50);
     add_filter('wooms_url_get_products_filters', array(__CLASS__, 'product_add_filter_by_folder'), 10);
     add_filter('wooms_url_get_bundle_filter', array(__CLASS__, 'product_add_filter_by_folder'), 10);
+    add_filter('wooms_url_get_service_filter', array(__CLASS__, 'product_add_filter_by_folder'), 10);
 
   }
 
