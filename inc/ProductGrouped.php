@@ -35,7 +35,7 @@ class ProductGrouped extends AbstractWalker
     //     return;
     //   }
 
-    //   // self::set_state('timestamp', 0);
+    //   self::set_state('timestamp_start', 0);
     //   self::batch_handler();
 
     //   dd(0);
@@ -53,59 +53,11 @@ class ProductGrouped extends AbstractWalker
     add_action('admin_init', array(__CLASS__, 'add_settings'), 150);
   }
 
-
-  /**
-   * display_state
-   */
-  public static function display_state()
-  {
-    if( ! self::is_enable()){
-      return;
-    }
-
-    $strings = [];
-
-    if (as_next_scheduled_action(self::$walker_hook_name)) {
-      $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
-    } else {
-      $strings[] = sprintf('<strong>Статус:</strong> %s', 'Ждет задач в очереди');
-    }
-
-    if ($end_timestamp = self::get_state('end_timestamp')) {
-      $strings[] = sprintf('Последняя успешная синхронизация (отметка времени UTC): %s', $end_timestamp);
-    }
-
-    $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_bundle_walker_batch&orderby=schedule&order=desc'));
-
-    if (defined('WC_LOG_HANDLER') && 'WC_Log_Handler_DB' == WC_LOG_HANDLER) {
-      $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs&source=WooMS-ProductGrouped'));
-    } else {
-      $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
-    }
-
-?>
-    <h2>Сгруппированные продукты (бандлы, комплекты)</h2>
-
-    <div class="wrap">
-      <div id="message" class="notice notice-warning">
-        <?php
-
-        foreach ($strings as $string) {
-          printf('<p>%s</p>', $string);
-        }
-
-        ?>
-      </div>
-    </div>
-<?php
-  }
-
   /**
    * Walker for data variant product from MoySklad
    */
   public static function batch_handler($args = [])
   {
-
     $state = self::get_state();
 
     if (!empty($state['lock'])) {
@@ -159,7 +111,6 @@ class ProductGrouped extends AbstractWalker
       if (isset($data['errors'][0]["error"])) {
         throw new \Exception($data['errors'][0]["error"]);
       }
-      // dd($state, $data);
 
       //If no rows, that send 'end' and stop walker
       if (isset($data['rows']) && empty($data['rows'])) {
@@ -202,6 +153,52 @@ class ProductGrouped extends AbstractWalker
       );
       return false;
     }
+  }
+
+  /**
+   * display_state
+   */
+  public static function display_state()
+  {
+    if (!self::is_enable()) {
+      return;
+    }
+
+    $strings = [];
+
+    if (as_next_scheduled_action(self::$walker_hook_name)) {
+      $strings[] = sprintf('<strong>Статус:</strong> %s', 'Выполняется очередями в фоне');
+    } else {
+      $strings[] = sprintf('<strong>Статус:</strong> %s', 'Ждет задач в очереди');
+    }
+
+    if ($end_timestamp = self::get_state('end_timestamp')) {
+      $strings[] = sprintf('Последняя успешная синхронизация (отметка времени UTC): %s', $end_timestamp);
+    }
+
+    $strings[] = sprintf('Очередь задач: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_bundle_walker_batch&orderby=schedule&order=desc'));
+
+    if (defined('WC_LOG_HANDLER') && 'WC_Log_Handler_DB' == WC_LOG_HANDLER) {
+      $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs&source=WooMS-ProductGrouped'));
+    } else {
+      $strings[] = sprintf('Журнал обработки: <a href="%s">открыть</a>', admin_url('admin.php?page=wc-status&tab=logs'));
+    }
+
+?>
+    <h2>Сгруппированные продукты (бандлы, комплекты)</h2>
+
+    <div class="wrap">
+      <div id="message" class="notice notice-warning">
+        <?php
+
+        foreach ($strings as $string) {
+          printf('<p>%s</p>', $string);
+        }
+
+        ?>
+      </div>
+    </div>
+<?php
   }
 
   /**
@@ -285,25 +282,24 @@ class ProductGrouped extends AbstractWalker
       return $product;
     }
 
-    //If no components - skip
-    if (empty($value["components"])) {
-      return $product;
-    }
-
     if (empty($value["components"]["meta"]["href"])) {
       return $product;
     }
 
     $url_api = $value["components"]["meta"]["href"];
 
-
     $data_components = wooms_request($url_api);
+
+    // dd($data_components);
 
     if (empty($data_components["rows"])) {
       return $product;
     }
 
-    // $product = new \WC_Product_Grouped($product);
+    if('grouped' != $product->get_type()){
+      $product = new \WC_Product_Grouped($product);
+    }
+
     $product->delete_meta_data('wooms_assortment_sync');
 
     if (!$product->is_type('grouped')) {
