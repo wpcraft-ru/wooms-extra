@@ -41,10 +41,11 @@ class ProductStocks
     //   dd(0);
     // });
 
+    add_action('wooms_assortment_sync', [__CLASS__, 'batch_handler']);
+
     add_filter('wooms_product_save', array(__CLASS__, 'update_product'), 30, 3);
     add_filter('wooms_save_variation', array(__CLASS__, 'update_variation'), 30, 3);
 
-    add_action('wooms_assortment_sync', [__CLASS__, 'batch_handler']);
     add_filter('wooms_assortment_sync_filters', array(__CLASS__, 'assortment_add_filter_by_warehouse_id'), 10);
     add_filter('wooms_stock_log_data', array(__CLASS__, 'add_warehouse_name_to_log_data'), 10);
 
@@ -142,6 +143,13 @@ class ProductStocks
         $product->delete_meta_data(self::$walker_hook_name);
         $counts['save']++;
       }
+
+      /**
+       * manage stock save
+       * 
+       * issue https://github.com/wpcraft-ru/wooms/issues/287
+       */
+      $product = apply_filters('wooms_stock_product_save', $product, $row);
 
       $product->save();
     }
