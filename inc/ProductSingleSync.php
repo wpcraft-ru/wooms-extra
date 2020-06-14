@@ -20,7 +20,7 @@ class ProductSingleSync
   public static function init()
   {
     add_action('wooms_display_product_metabox', array(__CLASS__, 'display_checkbox'));
-    add_action('save_post_product', array(__CLASS__, 'product_save'));
+    add_action('save_post_product', array(__CLASS__, 'product_save'), 20);
 
     add_action('wooms_product_single_update_schedule', array(__CLASS__, 'update_variations'));
 

@@ -205,7 +205,7 @@ class OrderStatusesFromSite
             return false;
         }
 
-        $url = sprintf('https://online.moysklad.ru/api/remap/1.1/entity/customerorder/%s', $uuid);
+        $url = sprintf('https://online.moysklad.ru/api/remap/1.2/entity/customerorder/%s', $uuid);
         $result = wooms_request($url, $data, 'PUT');
 
         if (empty($result["id"])) {
@@ -235,7 +235,7 @@ class OrderStatusesFromSite
 
         $statuses = get_transient('wooms_order_statuses');
         if (empty($statuses)) {
-            $url_statuses = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/metadata';
+            $url_statuses = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/metadata';
             $statuses = wooms_request($url_statuses);
             $statuses = $statuses["states"];
             set_transient('wooms_order_statuses', $statuses, 600);

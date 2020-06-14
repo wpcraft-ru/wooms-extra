@@ -57,7 +57,7 @@ class OrderSender
             return $data_order;
         }
 
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/currency/';
+        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/currency/';
         if (!$data = get_transient('wooms_currency_api')) {
             $data = wooms_request($url);
             set_transient('wooms_currency_api', $data, DAY_IN_SECONDS);
@@ -135,7 +135,6 @@ class OrderSender
         }
 
         delete_transient('wooms_order_timestamp_end');
-
     }
 
     /**
@@ -187,7 +186,7 @@ class OrderSender
             );
         }
 
-        $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder/' . $wooms_id;
+        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/' . $wooms_id;
 
         $result = wooms_request($url, $data, 'PUT');
 
@@ -330,7 +329,7 @@ class OrderSender
         $data = apply_filters('wooms_order_send_data', $data, $order_id);
 
 
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/customerorder';
+        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder';
 
         $result = wooms_request($url, $data, 'POST');
 
@@ -390,7 +389,7 @@ class OrderSender
         $data              = array(
             "name" => self::get_data_name($order_id),
         );
-        $data['positions'] = self::get_data_positions($order_id);
+        // $data['positions'] = self::get_data_positions($order_id);
 
         if (empty($data['positions'])) {
             do_action(
@@ -458,6 +457,8 @@ class OrderSender
                 $product_type = 'product';
             }
 
+            $product_type = self::get_product_type($item);
+
             $uuid = get_post_meta($product_id, 'wooms_id', true);
 
             if (empty($uuid)) {
@@ -472,20 +473,24 @@ class OrderSender
                 $reserve_qty = 0;
             }
 
-            $data[] = array(
+            $position = [
                 'quantity'   => $quantity,
                 'price'      => ($price / $quantity) * 100,
                 'discount'   => 0,
                 'vat'        => 0,
                 'assortment' => array(
                     'meta' => array(
-                        "href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+                        "href"      => "https://online.moysklad.ru/api/remap/1.2/entity/{$product_type}/" . $uuid,
                         "type"      => "{$product_type}",
                         "mediaType" => "application/json",
                     ),
                 ),
                 'reserve'    => $reserve_qty,
-            );
+            ];
+
+            $position = apply_filters('wooms_order_sender_position', $position, $product_id);
+
+            $data[] = $position;
         }
 
         if (empty($data)) {
@@ -496,6 +501,25 @@ class OrderSender
 
         return $data_order;
     }
+
+    public static function get_product_type($item)
+    {
+        if ($item['variation_id'] != 0) {
+            $product_id   = $item['variation_id'];
+            $product_type = 'variant';
+        } else {
+            $product_id   = $item["product_id"];
+            $product_type = 'product';
+        }
+
+        $product = wc_get_product($product_id);
+        if($product->is_virtual()){
+            $product_type = 'service';
+        }
+
+        return $product_type;
+    }
+
 
     /**
      * Get data of positions the order
@@ -546,7 +570,7 @@ class OrderSender
                 'vat'        => 0,
                 'assortment' => array(
                     'meta' => array(
-                        "href"      => "https://online.moysklad.ru/api/remap/1.1/entity/{$product_type}/" . $uuid,
+                        "href"      => "https://online.moysklad.ru/api/remap/1.2/entity/{$product_type}/" . $uuid,
                         "type"      => "{$product_type}",
                         "mediaType" => "application/json",
                     ),
@@ -563,7 +587,7 @@ class OrderSender
      */
     public static function get_data_organization()
     {
-        $url  = 'https://online.moysklad.ru/api/remap/1.1/entity/organization';
+        $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/organization';
         $data = wooms_request($url);
 
         if (empty($data['rows'][0]['meta'])) {
@@ -648,7 +672,7 @@ class OrderSender
 
         if (empty($agent_uuid)) {
 
-            $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty';
+            $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
             $result = wooms_request($url, $data, 'POST');
 
             if (empty($result["meta"])) {
@@ -661,7 +685,7 @@ class OrderSender
 
             $meta = $result["meta"];
         } else {
-            $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty/' . $agent_uuid;
+            $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty/' . $agent_uuid;
             $result = wooms_request($url, $data, 'PUT');
             if (empty($result["meta"])) {
                 return false;
@@ -685,7 +709,7 @@ class OrderSender
             return false;
         }
 
-        $url    = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty/' . $agent_uuid;
+        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty/' . $agent_uuid;
         $result = wooms_request($url);
         if (empty($result['id'])) {
             return false;
@@ -811,7 +835,7 @@ class OrderSender
      */
     public static function get_agent_meta_by_email($email = '')
     {
-        $url_search_agent = 'https://online.moysklad.ru/api/remap/1.1/entity/counterparty?filter=email=' . $email;
+        $url_search_agent = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty?filter=email=' . $email;
         $data_agents      = wooms_request($url_search_agent);
         if (empty($data_agents['rows'][0]['meta'])) {
             return false;

@@ -12,13 +12,13 @@ class OrderShipment
 {
     public static function init()
     {
-        add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
-        
         add_filter('wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
 
         add_filter('wooms_order_update_data', array(__CLASS__, 'chg_order_data'), 10, 2);
 
         add_filter('wooms_skip_service', array(__CLASS__, 'skip_service_if_shipment'), 10, 2);
+
+        add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
     }
 
     /**
@@ -75,7 +75,7 @@ class OrderShipment
      */
     public static function get_meta_for_shipment_item($order_shipment_item_code)
     {
-        $url = 'https://online.moysklad.ru/api/remap/1.1/entity/service';
+        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/service';
         $url = add_query_arg('filter=code', $order_shipment_item_code, $url);
         $data = wooms_request($url);
 
