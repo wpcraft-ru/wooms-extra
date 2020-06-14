@@ -23,6 +23,21 @@ class OrderSender
      */
     public static function init()
     {
+
+
+        // add_action('init', function () {
+        //   if (!isset($_GET['dd'])) {
+        //     return;
+        //   }
+
+        //   // dd(get_transient('wooms_end_timestamp'));
+        //   $check = self::update_order(26218);
+
+        //   dd(0);
+        // });
+
+
+
         add_action('wooms_schedule_order_sender', array(__CLASS__, 'batch_hadler'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
@@ -53,6 +68,7 @@ class OrderSender
     {
         $order = wc_get_order($order_id);
         $currency_code = $order->get_currency();
+
         if ('RUB' == $currency_code) {
             return $data_order;
         }
@@ -60,7 +76,7 @@ class OrderSender
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/currency/';
         if (!$data = get_transient('wooms_currency_api')) {
             $data = wooms_request($url);
-            set_transient('wooms_currency_api', $data, DAY_IN_SECONDS);
+            set_transient('wooms_currency_api', $data, HOUR_IN_SECONDS);
         }
 
         if (empty($data['rows'])) {
@@ -82,7 +98,6 @@ class OrderSender
             'currency' => [
                 'meta' => $meta,
             ],
-            //            "value": 214
         ];
 
         return $data_order;
@@ -306,6 +321,7 @@ class OrderSender
 
         $data = self::prepare_data_order($order_id);
 
+
         if (empty($data)) {
             $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
 
@@ -332,6 +348,7 @@ class OrderSender
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder';
 
         $result = wooms_request($url, $data, 'POST');
+
 
         if (empty($result['id']) || !isset($result['id']) || isset($result['errors'])) {
             update_post_meta($order_id, 'wooms_send_timestamp', date("Y-m-d H:i:s"));
@@ -385,23 +402,9 @@ class OrderSender
      */
     public static function prepare_data_order($order_id)
     {
-
         $data              = array(
             "name" => self::get_data_name($order_id),
         );
-        // $data['positions'] = self::get_data_positions($order_id);
-
-        if (empty($data['positions'])) {
-            do_action(
-                'wooms_logger_error',
-                __CLASS__,
-                sprintf('Нет позиций для заказа %s', $order_id)
-            );
-
-            unset($data['positions']);
-
-            return false;
-        }
 
         if ($meta_organization = self::get_data_organization()) {
             $data["organization"] = $meta_organization;
@@ -513,73 +516,11 @@ class OrderSender
         }
 
         $product = wc_get_product($product_id);
-        if($product->is_virtual()){
+        if ($product->is_virtual()) {
             $product_type = 'service';
         }
 
         return $product_type;
-    }
-
-
-    /**
-     * Get data of positions the order
-     *
-     * @param $order_id
-     *
-     * @return array|bool
-     */
-    public static function get_data_positions($order_id)
-    {
-        $order = wc_get_order($order_id);
-        $items = $order->get_items();
-        if (empty($items)) {
-            return false;
-        }
-        $data = array();
-        foreach ($items as $key => $item) {
-            if ($item['variation_id'] != 0) {
-                $product_id   = $item['variation_id'];
-                $product_type = 'variant';
-            } else {
-                $product_id   = $item["product_id"];
-                $product_type = 'product';
-            }
-
-            $uuid = get_post_meta($product_id, 'wooms_id', true);
-
-            if (empty($uuid)) {
-                continue;
-            }
-
-            if (apply_filters('wooms_order_item_skip', false, $product_id, $item)) {
-                continue;
-            }
-
-            $price    = $item->get_total();
-            $quantity = $item->get_quantity();
-            if (empty(get_option('wooms_orders_send_reserved'))) {
-                $reserve_qty = $quantity;
-            } else {
-                $reserve_qty = 0;
-            }
-
-            $data[] = array(
-                'quantity'   => $quantity,
-                'price'      => ($price / $quantity) * 100,
-                'discount'   => 0,
-                'vat'        => 0,
-                'assortment' => array(
-                    'meta' => array(
-                        "href"      => "https://online.moysklad.ru/api/remap/1.2/entity/{$product_type}/" . $uuid,
-                        "type"      => "{$product_type}",
-                        "mediaType" => "application/json",
-                    ),
-                ),
-                'reserve'    => $reserve_qty,
-            );
-        }
-
-        return $data;
     }
 
     /**
