@@ -232,11 +232,17 @@ class ProductSingleSync
       return false;
     }
 
-    $url = 'https://online.moysklad.ru/api/remap/1.2/entity/product/' . $uuid;
+    $url = 'https://online.moysklad.ru/api/remap/1.2/entity/assortment?filter=id=' . $uuid;
 
     $data = wooms_request($url);
 
-    do_action('wooms_product_data_item', $data);
+    if(!isset($data['row'][0])){
+      return false;
+    }
+
+    $row = $data['row'][0];
+
+    do_action('wooms_product_data_item', $row);
 
     if (empty($data['variantsCount'])) {
       return false;
