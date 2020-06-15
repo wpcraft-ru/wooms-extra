@@ -20,7 +20,7 @@ class ProductSingleSync
   public static function init()
   {
     add_action('wooms_display_product_metabox', array(__CLASS__, 'display_checkbox'));
-    add_action('save_post_product', array(__CLASS__, 'product_save'), 20);
+    add_action('woocommerce_update_product', array(__CLASS__, 'product_save'), 100);
 
     add_action('wooms_product_single_update_schedule', array(__CLASS__, 'update_variations'));
 
@@ -28,8 +28,9 @@ class ProductSingleSync
   }
 
 
-  public static function is_wait(){
-    if(self::get_state('end_timestamp')){
+  public static function is_wait()
+  {
+    if (self::get_state('end_timestamp')) {
       return true;
     }
 
@@ -42,7 +43,7 @@ class ProductSingleSync
    */
   public static function add_schedule_hook()
   {
-    if(self::is_wait()){
+    if (self::is_wait()) {
       return;
     }
 
@@ -67,7 +68,7 @@ class ProductSingleSync
    */
   public static function get_state($key = '')
   {
-    if(!$state = get_transient(self::$state_key)){
+    if (!$state = get_transient(self::$state_key)) {
       $state = [];
     }
 
@@ -80,7 +81,6 @@ class ProductSingleSync
     } else {
       return null;
     }
-
   }
 
 
@@ -209,24 +209,34 @@ class ProductSingleSync
   /**
    * save
    */
-  public static function product_save($post_id)
+  public static function product_save($product_id)
   {
+    if (!isset($_REQUEST['wooms_product_sinle_sync'])) {
+      return;
+    }
+
+
     if (!empty($_REQUEST['wooms_product_sinle_sync'])) {
-      self::sync($post_id);
+
+      remove_action('woocommerce_update_product', array(__CLASS__, 'product_save'), 100);
+
+      self::sync($product_id);
       self::set_state('end_timestamp', 0);
+
+      add_action('woocommerce_update_product', array(__CLASS__, 'product_save'), 100);
     }
   }
 
   /**
    * sync
    */
-  public static function sync($post_id = '')
+  public static function sync($product_id = '')
   {
-    if (empty($post_id)) {
+    if (empty($product_id)) {
       return false;
     }
 
-    $product = wc_get_product($post_id);
+    $product = wc_get_product($product_id);
     $uuid = $product->get_meta('wooms_id', true);
     if (empty($uuid)) {
       return false;
@@ -236,7 +246,7 @@ class ProductSingleSync
 
     $data = wooms_request($url);
 
-    if(!isset($data['rows'][0])){
+    if (!isset($data['rows'][0])) {
       return false;
     }
 
@@ -249,6 +259,8 @@ class ProductSingleSync
     }
 
     $product->update_meta_data('wooms_need_update_variations', 1);
+
+
     $product->save();
 
     return true;
@@ -274,8 +286,8 @@ class ProductSingleSync
     }
 
     printf(
-      '<p><a href="%s">%s</a></p>', 
-      admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_product_single_update_schedule&orderby=schedule&order=desc'), 
+      '<p><a href="%s">%s</a></p>',
+      admin_url('admin.php?page=wc-status&tab=action-scheduler&s=wooms_product_single_update_schedule&orderby=schedule&order=desc'),
       'Открыть очередь задач'
     );
   }

@@ -12,7 +12,7 @@ class CurrencyConverter
     public static function init()
     {
         add_filter('wooms_product_price', [__CLASS__, 'chg_price'], 33, 4);
-        add_filter('wooms_sale_price', [__CLASS__, 'chg_price'], 33, 4);
+        add_filter('wooms_sale_price', [__CLASS__, 'chg_price'], 32, 4);
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
     }
@@ -36,12 +36,15 @@ class CurrencyConverter
         $woocommerce_currency = get_woocommerce_currency();
         $api_currency = self::get_currency_code_price_meta($price_meta);
 
+        if(empty($api_currency)){
+            return $price;
+        }
+
         if ($woocommerce_currency == $api_currency) {
             return $price;
         }
 
         $price_by_rate = self::update_price_by_rate($price, $api_currency);
-
 
         do_action(
             'wooms_logger',
@@ -85,7 +88,6 @@ class CurrencyConverter
 
     public static function get_currency_code_price_meta($price_meta = [])
     {
-
         if (empty($price_meta['currency']['meta']['href'])) {
             return false;
         }

@@ -53,13 +53,14 @@ class SalePrices
 
       if ($price['priceType']["name"] == $price_name && floatval($price['value']) > 0) {
         $sale_price = floatval($price['value'] / 100);
-        $price_meta = $price['value'];
+        $price_meta = $price;
       }
     }
 
     $sale_price = apply_filters('wooms_sale_price', $sale_price, $value, $product_id, $price_meta);
 
     if ($sale_price) {
+      $sale_price = round($sale_price, 2);
       $sale_price = (string) $sale_price;
       $product->set_sale_price($sale_price);
 
