@@ -73,8 +73,8 @@ class OrderSender
             return $data_order;
         }
 
-        $url = 'https://online.moysklad.ru/api/remap/1.2/entity/currency/';
         if (!$data = get_transient('wooms_currency_api')) {
+            $url = 'https://online.moysklad.ru/api/remap/1.2/entity/currency/';
             $data = wooms_request($url);
             set_transient('wooms_currency_api', $data, HOUR_IN_SECONDS);
         }

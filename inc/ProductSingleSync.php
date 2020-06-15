@@ -236,11 +236,11 @@ class ProductSingleSync
 
     $data = wooms_request($url);
 
-    if(!isset($data['row'][0])){
+    if(!isset($data['rows'][0])){
       return false;
     }
 
-    $row = $data['row'][0];
+    $row = $data['rows'][0];
 
     do_action('wooms_product_data_item', $row);
 

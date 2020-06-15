@@ -47,31 +47,35 @@ class SalePrices
       return $product;
     }
 
+    $sale_price = 0;
+    $price_meta = [];
     foreach ($value['salePrices'] as $price) {
 
       if ($price['priceType']["name"] == $price_name && floatval($price['value']) > 0) {
-        $sale_price = apply_filters('wooms_sale_price', floatval($price['value'] / 100));
-
-        $sale_price = (string)$sale_price;
-
-        $product->set_sale_price($sale_price);
-
-        do_action(
-          'wooms_logger',
-          __CLASS__,
-          sprintf(
-            'Цена распродажи %s сохранена для продукта %s (%s)',
-            $sale_price,
-            $product->get_name(),
-            $product_id
-          )
-        );
-      } elseif ($price['priceType']["name"] == $price_name && floatval($price['value']) == 0) {
-        $product->set_sale_price('');
+        $sale_price = floatval($price['value'] / 100);
+        $price_meta = $price['value'];
       }
     }
 
+    $sale_price = apply_filters('wooms_sale_price', $sale_price, $value, $product_id, $price_meta);
 
+    if ($sale_price) {
+      $sale_price = (string) $sale_price;
+      $product->set_sale_price($sale_price);
+
+      do_action(
+        'wooms_logger',
+        __CLASS__,
+        sprintf(
+          'Цена распродажи %s сохранена для продукта %s (%s)',
+          $sale_price,
+          $product->get_name(),
+          $product_id
+        )
+      );
+    } else {
+      $product->set_sale_price('');
+    }
 
     return $product;
   }
@@ -86,7 +90,7 @@ class SalePrices
     add_settings_field(
       $id = 'wooms_price_sale_name',
       $title = 'Тип Цены Распродажи',
-      $callback = function($args){
+      $callback = function ($args) {
         printf('<input type="text" name="%s" value="%s" />', $args['key'], $args['value']);
         echo '<p><small>Укажите наименование цены для Распродаж. Система будет проверять такой тип цены и если он указан то будет сохранять его в карточке Продукта.</small></p>';
         echo '<p><small>Если оставить поле пустым, то цена Распродажи у всех продуктов будут удалены после очередной синхронизации.</small></p>';
@@ -99,7 +103,6 @@ class SalePrices
       ]
     );
   }
-
 }
 
 SalePrices::init();
