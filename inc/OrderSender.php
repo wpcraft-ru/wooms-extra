@@ -219,6 +219,8 @@ class OrderSender
             $data_json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             $order->update_meta_data('wooms_data', $data_json);
 
+            $order = apply_filters('wooms_order_update', $order, $result);
+
             $order->save();
 
             return true;
@@ -368,6 +370,11 @@ class OrderSender
         $order->update_meta_data('wooms_id', $result['id']);
         $order->delete_meta_data('wooms_order_sync');
 
+        /**
+         * issue https://github.com/wpcraft-ru/wooms/issues/319
+         */
+        $order = apply_filters('wooms_order_update', $order, $result);
+        
         $order->save();
 
         if (empty($result['positions'])) {
@@ -437,7 +444,7 @@ class OrderSender
 
         return apply_filters('wooms_order_name', (string) $name_order);
     }
-
+    
     /**
      * add positions to order
      */
@@ -446,6 +453,7 @@ class OrderSender
         $order = wc_get_order($order_id);
 
         $items = $order->get_items();
+        
         if (empty($items)) {
             return $data_order;
         }
@@ -515,9 +523,10 @@ class OrderSender
             $product_type = 'product';
         }
 
-        $product = wc_get_product($product_id);
-        if ($product->is_virtual()) {
-            $product_type = 'service';
+        if($product = wc_get_product($product_id)){
+            if ($product->is_virtual()) {
+                $product_type = 'service';
+            }
         }
 
         return $product_type;

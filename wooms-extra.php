@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: WooMS XT (Extra)
  * Description: Расширение для синхронизации данных между приложениями МойСклад и WooCommerce - расширенная версия
@@ -54,15 +55,16 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/SiteHealthXT.php';
         require_once __DIR__ . '/inc/SiteHealthWebHooks.php';
         require_once __DIR__ . '/inc/CurrencyConverter.php';
+        require_once __DIR__ . '/inc/OrderNumber.php';
     }
 });
 
 /**
  * need for migrations and disable plugins
  */
-add_filter( 'wooms_xt_version', function($version){
+add_filter('wooms_xt_version', function ($version) {
 
-    if( ! is_admin()){
+    if (!is_admin()) {
         return $version;
     }
 
