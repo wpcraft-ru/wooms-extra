@@ -32,8 +32,6 @@ class OrderNumber
         }
 
         if(!empty($data_api['name'])){
-            $order = wc_get_order($order);
-
             $order->update_meta_data('_order_number', $data_api['name']);
         }
 
