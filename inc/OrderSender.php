@@ -46,17 +46,23 @@ class OrderSender
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20);
 
-        add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_agent_as_new'], 55, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'agent_update_data'], 55, 2);
+
 
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
         });
 
         add_action('wooms_order_metabox_controls', array(__CLASS__, 'add_controle_for_sync'));
+
+        add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
     }
 
     /**
@@ -374,7 +380,7 @@ class OrderSender
          * issue https://github.com/wpcraft-ru/wooms/issues/319
          */
         $order = apply_filters('wooms_order_update', $order, $result);
-        
+
         $order->save();
 
         if (empty($result['positions'])) {
@@ -419,8 +425,8 @@ class OrderSender
             return false;
         }
 
-        $data["agent"]       = self::get_data_agent($order_id);
-        $data["description"] = self::get_order_note($order_id);
+        // $data["agent"]       = self::get_data_agent($order_id); xxx for remove
+        $data["description"] = self::get_order_note($order_id); //xxx refactoring
 
         return $data;
     }
@@ -444,7 +450,7 @@ class OrderSender
 
         return apply_filters('wooms_order_name', (string) $name_order);
     }
-    
+
     /**
      * add positions to order
      */
@@ -453,7 +459,7 @@ class OrderSender
         $order = wc_get_order($order_id);
 
         $items = $order->get_items();
-        
+
         if (empty($items)) {
             return $data_order;
         }
@@ -523,7 +529,7 @@ class OrderSender
             $product_type = 'product';
         }
 
-        if($product = wc_get_product($product_id)){
+        if ($product = wc_get_product($product_id)) {
             if ($product->is_virtual()) {
                 $product_type = 'service';
             }
@@ -572,6 +578,146 @@ class OrderSender
         }
 
         return array('meta' => $meta);
+    }
+
+    /**
+     * agent_update_data
+     */
+    public static function agent_update_data($data_order, $order_id){
+
+        if (empty($data_order['agent']['meta']['href'])) {
+            return $data_order;
+        }
+
+        $order = wc_get_order($order_id);
+
+        $name = self::get_data_order_name($order_id);
+
+        if (empty($name)) {
+            $name = 'Клиент по заказу №' . $order->get_order_number();
+        }
+
+        $data = array(
+            "name"          => $name,
+            "companyType"   => self::get_data_order_company_type($order_id),
+            "legalAddress"  => self::get_data_order_address($order_id),
+            "actualAddress" => self::get_data_order_address($order_id),
+            "phone"         => self::get_data_order_phone($order_id),
+        );
+
+        $url    = $data_order['agent']['meta']['href'];
+        $result = wooms_request($url, $data, 'PUT');
+
+        return $data_order; 
+    }
+
+    /**
+     * add_agent_by_phone
+     */
+    public static function add_agent_by_phone($data_order, $order_id)
+    {
+        if (!empty($data_order['agent'])) {
+            return $data_order;
+        }
+
+        $order = wc_get_order($order_id);
+
+        if (!$phone = $order->get_billing_phone()) {
+            return $data_order;
+        }
+
+        if (!empty($phone)) {
+            $url_search_agent = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty?filter=phone=' . $phone;
+            $data_agents      = wooms_request($url_search_agent);
+            if (isset($data_agents['rows'][0]['phone'])) {
+                $agent_meta = $data_agents['rows'][0];
+            }
+        }
+
+        if (!empty($agent_meta)) {
+            $data_order['agent']['meta'] = $agent_meta['meta'];
+        }
+
+        return $data_order;
+    }
+
+    public static function add_agent_as_new($data_order, $order_id)
+    {
+
+        if (!empty($data_order['agent'])) {
+            return $data_order;
+        }
+
+        $name = self::get_data_order_name($order_id);
+
+        $order = wc_get_order($order_id);
+
+        if (empty($name)) {
+            $name = 'Клиент по заказу ID: ' . $order->get_order_number();
+        }
+
+        $data = array(
+            "name"          => $name,
+            "companyType"   => self::get_data_order_company_type($order_id),
+            "legalAddress"  => self::get_data_order_address($order_id),
+            "actualAddress" => self::get_data_order_address($order_id),
+            "phone"         => self::get_data_order_phone($order_id),
+        );
+
+        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
+        $result = wooms_request($url, $data, 'POST');
+
+        if (empty($result["meta"])) {
+            return $data_order;
+        }
+
+        if (isset($result['id'])) {
+            self::save_uuid_agent_to_order($result['id'], $order_id);
+        }
+
+        if (!empty($result['meta'])) {
+            $data_order['agent']['meta'] = $result['meta'];
+        }
+
+        do_action(
+            'wooms_logger',
+            __CLASS__,
+            sprintf('Добавлен новый клиент в МойСклад по заказу id %s', $order_id),
+            $data
+        );
+
+        return $data_order;
+    }
+
+    /**
+     * add_client_as_agent
+     */
+    public static function add_client_as_agent($data_order, $order_id)
+    {
+        $order = wc_get_order($order_id);
+        $user  = $order->get_user();
+        $email = '';
+
+        $data = [
+            'email' => $order->get_billing_email(),
+            'phone' => $order->get_billing_phone(),
+        ];
+
+        $agent_meta = [];
+
+        if (!empty($data['email'])) {
+            $url_search_agent = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty?filter=email=' . $data['email'];
+            $data_agents      = wooms_request($url_search_agent);
+            if (isset($data_agents['rows'][0]['email'])) {
+                $agent_meta = $data_agents['rows'][0];
+            }
+        }
+
+        if (!empty($agent_meta)) {
+            $data_order['agent']['meta'] = $agent_meta['meta'];
+        }
+
+        return $data_order;
     }
 
     /**
@@ -919,6 +1065,42 @@ class OrderSender
             $callback = array(__CLASS__, 'display_wooms_org_name'),
             $page = 'mss-settings',
             $section = 'wooms_section_orders'
+        );
+
+        self::setting_find_client_by_phone();
+    }
+
+    /**
+     * setting_find_client_by_phone
+     */
+    public static function setting_find_client_by_phone()
+    {
+        $option_name = 'wooms_orders_find_client_by_phone';
+        register_setting('mss-settings', $option_name);
+        add_settings_field(
+            $id = $option_name,
+            $title = 'Пытаться искать клиента по номеру телефона',
+            $callback = function ($args) {
+                printf(
+                    '<input type="checkbox" name="%s" value="1" %s />',
+                    $args['key'],
+                    checked(1, $args['value'], $echo = false)
+                );
+                printf(
+                    '<p>%s</p>',
+                    'Если включена, то плагин будет пытаться связать Заказ с Клиентом по номеру телефона, если по email не получилось'
+                );
+                printf(
+                    '<p>%s</p>',
+                    'Подробнее: <a href="https://github.com/wpcraft-ru/wooms/issues/146" target="_blank">https://github.com/wpcraft-ru/wooms/issues/146</a>'
+                );
+            },
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $option_name,
+                'value' => get_option($option_name),
+            ]
         );
     }
 
