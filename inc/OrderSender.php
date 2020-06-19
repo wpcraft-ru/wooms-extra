@@ -583,8 +583,8 @@ class OrderSender
     /**
      * agent_update_data
      */
-    public static function agent_update_data($data_order, $order_id){
-
+    public static function agent_update_data($data_order, $order_id)
+    {
         if (empty($data_order['agent']['meta']['href'])) {
             return $data_order;
         }
@@ -594,7 +594,7 @@ class OrderSender
         $name = self::get_data_order_name($order_id);
 
         if (empty($name)) {
-            $name = 'Клиент по заказу №' . $order->get_order_number();
+            $name = 'Клиент по заказу ID' . $order->get_order_number();
         }
 
         $data = array(
@@ -608,7 +608,7 @@ class OrderSender
         $url    = $data_order['agent']['meta']['href'];
         $result = wooms_request($url, $data, 'PUT');
 
-        return $data_order; 
+        return $data_order;
     }
 
     /**
@@ -627,7 +627,10 @@ class OrderSender
         }
 
         if (!empty($phone)) {
-            $url_search_agent = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty?filter=phone=' . $phone;
+
+            $phone = self::phone_prepare($phone);
+            $url_search_agent = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty?search=' . $phone;
+
             $data_agents      = wooms_request($url_search_agent);
             if (isset($data_agents['rows'][0]['phone'])) {
                 $agent_meta = $data_agents['rows'][0];
@@ -639,6 +642,13 @@ class OrderSender
         }
 
         return $data_order;
+    }
+
+    public static function phone_prepare($phone)
+    {
+        $phone = preg_replace('![^0-9]+!', '', $phone);
+
+        return $phone;
     }
 
     public static function add_agent_as_new($data_order, $order_id)
@@ -838,13 +848,15 @@ class OrderSender
     public static function get_data_order_name($order_id)
     {
         $order = wc_get_order($order_id);
-        $name  = $order->get_billing_company();
 
-        if (empty($name)) {
-            $name = $order->get_billing_last_name();
-            if (!empty($order->get_billing_first_name())) {
-                $name .= ' ' . $order->get_billing_first_name();
-            }
+        $name = 'Клиент по заказу №' . $order->get_order_number();
+
+        if ($formatted_billing_full_name = $order->get_formatted_billing_full_name()) {
+            $name = $formatted_billing_full_name;
+        }
+
+        if ($billing_company  = $order->get_billing_company()) {
+            $name = $name . sprintf(' (%s)', $billing_company);
         }
 
         return $name;
