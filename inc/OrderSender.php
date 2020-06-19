@@ -30,10 +30,14 @@ class OrderSender
         //     return;
         //   }
 
-        //   // dd(get_transient('wooms_end_timestamp'));
-        //   $check = self::update_order(26218);
+        //   echo '<pre>';
 
-        //   dd(0);
+        //   // dd(get_transient('wooms_end_timestamp'));
+        //   $check = self::update_order(693178);
+
+        //   var_dump($check);
+
+        //   die(0);
         // });
 
 
@@ -357,7 +361,6 @@ class OrderSender
 
         $result = wooms_request($url, $data, 'POST');
 
-
         if (empty($result['id']) || !isset($result['id']) || isset($result['errors'])) {
             update_post_meta($order_id, 'wooms_send_timestamp', date("Y-m-d H:i:s"));
             $errors = "\n\r" . 'Код ошибки:' . $result['errors'][0]['code'] . "\n\r";
@@ -653,7 +656,6 @@ class OrderSender
 
     public static function add_agent_as_new($data_order, $order_id)
     {
-
         if (!empty($data_order['agent'])) {
             return $data_order;
         }
@@ -673,6 +675,7 @@ class OrderSender
             "actualAddress" => self::get_data_order_address($order_id),
             "phone"         => self::get_data_order_phone($order_id),
         );
+
 
         $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
         $result = wooms_request($url, $data, 'POST');
@@ -851,11 +854,24 @@ class OrderSender
 
         $name = 'Клиент по заказу №' . $order->get_order_number();
 
-        if ($formatted_billing_full_name = $order->get_formatted_billing_full_name()) {
-            $name = $formatted_billing_full_name;
+        $data = [
+            'billing_first_name' => $order->get_billing_first_name(),
+            'billing_last_name' => $order->get_billing_last_name(),
+        ];
+
+        if($data['billing_first_name']){
+            $name = $data['billing_first_name'];
         }
 
-        if ($billing_company  = $order->get_billing_company()) {
+        if($data['billing_last_name']){
+            if($data['billing_first_name']){
+                $name = $name . ' ' . $data['billing_last_name'];
+            } else {
+                $name = $data['billing_last_name'];
+            }
+        }
+
+        if ($billing_company = $order->get_billing_company()) {
             $name = $name . sprintf(' (%s)', $billing_company);
         }
 
