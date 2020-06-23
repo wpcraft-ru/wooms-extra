@@ -123,6 +123,11 @@ class OrderSender
             $order->add_meta_data('wooms_order_sync', 1);
             $order->save();
         }
+
+        //issue https://github.com/wpcraft-ru/wooms/issues/330
+        if(!get_option('wooms_get_number_async_enable')){
+            self::update_order($order_id);
+        }
     }
 
 

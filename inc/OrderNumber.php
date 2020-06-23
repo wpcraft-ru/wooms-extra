@@ -31,7 +31,7 @@ class OrderNumber
             return $order;
         }
 
-        if(!empty($data_api['name'])){
+        if (!empty($data_api['name'])) {
             $order->update_meta_data('_order_number', $data_api['name']);
         }
 
@@ -83,7 +83,40 @@ class OrderNumber
      */
     public static function add_settings()
     {
+        self::setting_wooms_order_number_from_moysklad();
+        self::setting_wooms_get_number_async_enable();
+    }
 
+    public static function setting_wooms_get_number_async_enable()
+    {
+
+        if (!get_option('wooms_order_number_from_moysklad')) {
+            return;
+        }
+
+        $option_name = 'wooms_get_number_async_enable';
+        register_setting('mss-settings', $option_name);
+        add_settings_field(
+            $id = $option_name,
+            $title = 'Включить асинхронный механизм получения номера',
+            $callback = function ($args) {
+                printf('<input type="checkbox" name="%s" value="1" %s />', $args['key'], checked(1, $args['value'], false));
+                printf(
+                    '<p><small>%s</small></p>',
+                    'Может быть полезно включить если тормозит API МойСклад и оформление Заказов в магазине ломается'
+                );
+            },
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $option_name,
+                'value' => get_option($option_name)
+            ]
+        );
+    }
+
+    public static function setting_wooms_order_number_from_moysklad()
+    {
         $option_name = 'wooms_order_number_from_moysklad';
         register_setting('mss-settings', $option_name);
         add_settings_field(
