@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace WooMS;
 
 class SiteHealthWebHooks
@@ -8,24 +9,22 @@ class SiteHealthWebHooks
 
         //load class only if webhook is active
         // https://github.com/wpcraft-ru/wooms/issues/271
-        if ( ! get_option('wooms_enable_webhooks')) {
+        if (!get_option('wooms_enable_webhooks')) {
             return;
         }
 
-        add_filter('site_status_tests', function($tests){
+        add_filter('site_status_tests', function ($tests) {
 
             $tests['async']['wooms_check_webhooks'] = [
                 'test'  => 'check_webhooks',
             ];
-    
+
             return $tests;
         });
 
         add_action('wp_ajax_health-check-check-webhooks', [__CLASS__, 'check_webhooks']);
 
         add_filter('add_wooms_plugin_debug', [__CLASS__, 'wooms_check_moy_sklad_user_tarrif']);
-
-
     }
 
 
@@ -71,6 +70,10 @@ class SiteHealthWebHooks
         );
         $api_result = wooms_request($url, $data);
 
+        error_log(print_r($api_result, true));
+
+
+
         $result = [
             'label' => "Проверка подписки МойСклад",
             'status'      => 'good',
@@ -82,12 +85,15 @@ class SiteHealthWebHooks
             'test' => 'wooms_check_weebhooks' // this is only for class in html block
         ];
 
+        if (empty($api_result['errors'][0]['code'])) {
+            wp_send_json_success($result);
+        }
 
-        if (!empty($api_result['errors'])) {
-
+        if (30006 == $api_result['errors'][0]['code']) {
             $result['status'] = 'critical';
             $result['badge']['color'] = 'red';
             $result['description'] = sprintf("%s %s", $api_result['errors'][0]['error'], '❌');
+            set_transient('wooms_check_moysklad_tariff', $result['description'], 60 * 60);
         }
 
         // Checking permissions too
