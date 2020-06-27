@@ -70,10 +70,6 @@ class SiteHealthWebHooks
         );
         $api_result = wooms_request($url, $data);
 
-        error_log(print_r($api_result, true));
-
-
-
         $result = [
             'label' => "Проверка подписки МойСклад",
             'status'      => 'good',
