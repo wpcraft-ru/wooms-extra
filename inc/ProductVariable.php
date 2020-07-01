@@ -314,7 +314,7 @@ class ProductVariable
                 $product->get_name(),
                 $product_id
             ),
-            wc_print_r($attributes, true)
+            $attributes
         );
     }
 
