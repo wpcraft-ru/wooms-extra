@@ -15,6 +15,21 @@ class OrderStatusesFromMoySklad
      */
     public static function init()
     {
+        // add_action('init', function () {
+        //   if (!isset($_GET['dd'])) {
+        //     return;
+        //   }
+
+        //   echo '<pre>';
+
+        //   // dd(get_transient('wooms_end_timestamp'));
+        //   $statuses_match = get_option('wooms_order_statuses_from_moysklad', $statuses_match_default);
+
+        //   var_dump($statuses_match);
+
+        //   die(0);
+        // });
+
         add_action('rest_api_init', array(__CLASS__, 'rest_api_init_callback_endpoint'));
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
@@ -347,7 +362,7 @@ class OrderStatusesFromMoySklad
             'wc-failed' => 'Не удался',
         );
 
-        $statuses_match = get_option('wooms_order_statuses_match', $statuses_match_default);
+        $statuses_match = get_option('wooms_order_statuses_from_moysklad', $statuses_match_default);
 
         $args   = array(
             'numberposts' => 1,
@@ -362,31 +377,16 @@ class OrderStatusesFromMoySklad
         }
         $order_id = $orders[0]->ID;
         $order    = wc_get_order($order_id);
-        switch ($state_name) {
-            case $statuses_match['wc-pending']:
-                $check = $order->update_status('pending', 'Выбран статус "Новый" через МойСклад');
-                break;
-            case $statuses_match['wc-processing']:
-                $check = $order->update_status('processing', 'Выбран статус "Подтвержден" через МойСклад');
-                break;
-            case $statuses_match['wc-on-hold']:
-                $check = $order->update_status('on-hold', 'Выбран статус "На удержании" через МойСклад');
-                break;
-            case $statuses_match['wc-cancelled']:
-                $check = $order->update_status('cancelled', 'Отменен через МойСклад');
-                break;
-            case $statuses_match['wc-failed']:
-                $check = $order->update_status('failed', 'Выбран статус "Не удался" через МойСклад');
-                break;
-            case $statuses_match['wc-refunded']:
-                $check = $order->update_status('refunded', 'Статус "Возврат" через МойСклад');
-                break;
-            case $statuses_match['wc-completed']:
-                $check = $order->update_status('completed', 'Выбран статус "Отгружен" через МойСклад');
-                break;
-            default:
-                $check = false;
+
+        $check = false;
+
+        foreach($statuses_match as $status_key => $status_name){
+
+            if($status_name == $state_name){
+                $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
+            }
         }
+
         $check = apply_filters('wooms_order_status_chg', $check, $order, $state_name);
         if ($check) {
             return true;
