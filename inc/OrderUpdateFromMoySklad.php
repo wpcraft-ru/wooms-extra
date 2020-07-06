@@ -7,7 +7,7 @@ use Exception;
 /**
  * Send statuses from moysklad.ru to WooCommerce
  */
-class OrderStatusesFromMoySklad
+class OrderUpdateFromMoySklad
 {
 
     /**
@@ -33,34 +33,11 @@ class OrderStatusesFromMoySklad
         add_action('rest_api_init', array(__CLASS__, 'rest_api_init_callback_endpoint'));
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
+        add_filter('wooms_order_update_from_moysklad_action', array(__CLASS__, 'update_order_status'), 10, 3);
+        add_filter('wooms_order_update_from_moysklad_filter', array(__CLASS__, 'update_order_data'), 10, 2);
     }
 
-    /**
-     * Setting
-     */
-    public static function add_settings()
-    {
 
-        register_setting('mss-settings', 'wooms_enable_webhooks');
-        add_settings_field(
-            $id = 'wooms_enable_webhooks',
-            $title = 'Передатчик Статуса:<br/> МойСклад > Сайт',
-            $callback = array(__CLASS__, 'display_wooms_enable_webhooks'),
-            $page = 'mss-settings',
-            $section = 'wooms_section_orders'
-        );
-
-        if (get_option('wooms_enable_webhooks')) {
-            register_setting('mss-settings', 'wooms_order_statuses_from_moysklad');
-            add_settings_field(
-                $id = 'wooms_order_statuses_from_moysklad',
-                $title = 'Связь статусов:<br/> от МойСклад на Сайт',
-                $callback = array(__CLASS__, 'display_wooms_order_statuses_from_moysklad',),
-                $page = 'mss-settings',
-                $section = 'wooms_section_orders'
-            );
-        }
-    }
 
     /**
      * Enable webhooks from MoySklad
@@ -320,13 +297,34 @@ class OrderStatusesFromMoySklad
                 return;
             }
             $order_uuid = $data_order['id'];
-            $state_url  = $data_order["state"]["meta"]["href"];
-            $state_data = wooms_request($state_url);
-            if (empty($state_data['name'])) {
-                return;
+
+            $args   = array(
+                'numberposts' => 1,
+                'post_type'   => 'shop_order',
+                'post_status' => 'any',
+                'meta_key'    => 'wooms_id',
+                'meta_value'  => $order_uuid,
+            );
+            $orders = get_posts($args);
+            if (empty($orders[0]->ID)) {
+                return false;
             }
-            $state_name = $state_data['name'];
-            $result     = self::check_and_update_order_status($order_uuid, $state_name);
+            $order_id = $orders[0]->ID;
+
+            do_action('wooms_order_update_from_moysklad_action', $order_id, $data_order, $order_uuid);
+
+            $order    = wc_get_order($order_id);
+            $order = apply_filters('wooms_order_update_from_moysklad_filter', $order, $data_order, $order_uuid);
+            $order->save();
+
+            // $state_url  = $data_order["state"]["meta"]["href"];
+            // $state_data = wooms_request($state_url);
+            // if (empty($state_data['name'])) {
+            //     return;
+            // }
+            // $state_name = $state_data['name'];
+            // $result     = self::check_and_update_order_status($order_uuid, $state_name);
+            $result     = true;
             if ($result) {
                 $response = new \WP_REST_Response(array('success', 'Data received successfully'));
                 $response->set_status(200);
@@ -341,16 +339,39 @@ class OrderStatusesFromMoySklad
         }
     }
 
+
     /**
-     * Update order by data from MoySklad
-     *
-     * @param $order_uuid
-     * @param $state_name
-     *
-     * @return bool
+     * update_order_data
+     * 
+     * use hook apply_filters('wooms_order_update_from_moysklad', $order, $data_order );
      */
-    public static function check_and_update_order_status($order_uuid, $state_name)
+    public static function update_order_data($order, $data_order)
     {
+        $order = wc_get_order($order->get_id());
+
+        $data_json = json_encode($data_order, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $order->update_meta_data('wooms_data', $data_json);
+        //XXX
+        return $order;
+    }
+
+    /**
+     * update_order_status
+     * 
+     * use hook do_action('wooms_order_update_from_moysklad_action', $order, $data_order );
+     */
+    public static function update_order_status($order_id, $data_order, $order_uuid)
+    {
+        if (!self::is_enable()) {
+            return false;
+        }
+
+        $state_url  = $data_order["state"]["meta"]["href"];
+        $state_data = wooms_request($state_url);
+        if (empty($state_data['name'])) {
+            return false;
+        }
+        $state_name = $state_data['name'];
 
         $statuses_match_default = array(
             'wc-pending' => 'Новый',
@@ -364,25 +385,25 @@ class OrderStatusesFromMoySklad
 
         $statuses_match = get_option('wooms_order_statuses_from_moysklad', $statuses_match_default);
 
-        $args   = array(
-            'numberposts' => 1,
-            'post_type'   => 'shop_order',
-            'post_status' => 'any',
-            'meta_key'    => 'wooms_id',
-            'meta_value'  => $order_uuid,
-        );
-        $orders = get_posts($args);
-        if (empty($orders[0]->ID)) {
-            return false;
-        }
-        $order_id = $orders[0]->ID;
+        // $args   = array(
+        //     'numberposts' => 1,
+        //     'post_type'   => 'shop_order',
+        //     'post_status' => 'any',
+        //     'meta_key'    => 'wooms_id',
+        //     'meta_value'  => $order_uuid,
+        // );
+        // $orders = get_posts($args);
+        // if (empty($orders[0]->ID)) {
+        //     return false;
+        // }
+        // $order_id = $orders[0]->ID;
         $order    = wc_get_order($order_id);
 
         $check = false;
 
-        foreach($statuses_match as $status_key => $status_name){
+        foreach ($statuses_match as $status_key => $status_name) {
 
-            if($status_name == $state_name){
+            if ($status_name == $state_name) {
                 $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
             }
         }
@@ -399,7 +420,64 @@ class OrderStatusesFromMoySklad
 
             return false;
         }
+
+        // $result     = self::check_and_update_order_status($order_id, $state_name);
+
+        //XXX
+        return true;
+    }
+
+    /**
+     * Update order by data from MoySklad
+     *
+     * @param $order_uuid
+     * @param $state_name
+     *
+     * @return bool
+     */
+    public static function check_and_update_order_status($order_id, $state_name)
+    {
+//XXX delete
+    }
+
+    /**
+     * is_enable
+     */
+    public static function is_enable()
+    {
+        if (get_option('wooms_enable_webhooks')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Setting
+     */
+    public static function add_settings()
+    {
+
+        register_setting('mss-settings', 'wooms_enable_webhooks');
+        add_settings_field(
+            $id = 'wooms_enable_webhooks',
+            $title = 'Передатчик Статуса и данных по Заказу:<br/> МойСклад > Сайт',
+            $callback = array(__CLASS__, 'display_wooms_enable_webhooks'),
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders'
+        );
+
+        if (get_option('wooms_enable_webhooks')) {
+            register_setting('mss-settings', 'wooms_order_statuses_from_moysklad');
+            add_settings_field(
+                $id = 'wooms_order_statuses_from_moysklad',
+                $title = 'Связь статусов:<br/> от МойСклад на Сайт',
+                $callback = array(__CLASS__, 'display_wooms_order_statuses_from_moysklad',),
+                $page = 'mss-settings',
+                $section = 'wooms_section_orders'
+            );
+        }
     }
 }
 
-OrderStatusesFromMoySklad::init();
+OrderUpdateFromMoySklad::init();
