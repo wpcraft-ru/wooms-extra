@@ -490,6 +490,9 @@ class OrderSender
                 continue;
             }
 
+            $item->update_meta_data('wooms_id', $uuid);
+            $item->save();
+
             $price    = $item->get_total();
             $quantity = $item->get_quantity();
             if (empty(get_option('wooms_orders_send_reserved'))) {
