@@ -52,7 +52,7 @@ class OrderSender
 
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
+        add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 2);
