@@ -17,13 +17,14 @@ class OrderSender
      */
     public static $walker_hook_name = 'wooms_schedule_order_sender';
 
+    public static $is_new_order = false;
+
 
     /**
      * The init
      */
     public static function init()
     {
-
 
         // add_action('init', function () {
         //   if (!isset($_GET['dd'])) {
@@ -41,23 +42,25 @@ class OrderSender
         // });
 
 
-
         add_action('wooms_schedule_order_sender', array(__CLASS__, 'batch_hadler'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-        add_action('save_post_shop_order', array(__CLASS__, 'order_update'));
+        add_action('woocommerce_update_order', array(__CLASS__, 'order_update'));
 
-        add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20);
+        add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20, 2);
 
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
-        add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 11, 2);
+        // add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
+        add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 10, 3);
         add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_agent_as_new'], 55, 2);
         add_filter('wooms_order_data', [__CLASS__, 'agent_update_data'], 55, 2);
+
+
 
 
         add_action('add_meta_boxes', function () {
@@ -116,17 +119,19 @@ class OrderSender
     /**
      * Auto add meta for send order by schedule
      */
-    public static function auto_add_order_for_send($order_id)
+    public static function auto_add_order_for_send($order_id, $order)
     {
-        if (self::is_enable()) {
-            $order = wc_get_order($order_id);
-            $order->add_meta_data('wooms_order_sync', 1);
-            $order->save();
+        self::$is_new_order = true;
+
+        if (!self::is_enable()) {
+            return;
         }
 
+        update_post_meta($order_id, 'wooms_order_sync', 1);
+
         //issue https://github.com/wpcraft-ru/wooms/issues/330
-        if(!get_option('wooms_get_number_async_enable')){
-            self::update_order($order_id);
+        if (!get_option('wooms_get_number_async_enable')) {
+            self::update_order($order_id, $order);
         }
     }
 
@@ -137,16 +142,16 @@ class OrderSender
     public static function order_update($post_id)
     {
 
+        remove_action('woocommerce_update_order', [__CLASS__, 'order_update']);
         $order_id = $post_id;
         if (wp_is_post_revision($post_id)) {
             return;
         }
 
         if (self::is_enable()) {
-            $order_id = $post_id;
             update_post_meta($order_id, 'wooms_order_sync', 1);
 
-            // self::update_order($order_id); - send only by ActionSheduler
+            self::update_order($order_id);
             delete_transient('wooms_order_timestamp_end');
 
             return;
@@ -165,21 +170,27 @@ class OrderSender
         }
 
         delete_transient('wooms_order_timestamp_end');
+
+        add_action('woocommerce_update_order', [__CLASS__, 'order_update']);
     }
 
     /**
      * update_order
      */
-    public static function update_order($order_id)
+    public static function update_order($order_id, $order = [])
     {
-        $order    = wc_get_order($order_id);
+        if(empty($order)){
+            $order    = wc_get_order($order_id);
+        }
+        
         $wooms_id = $order->get_meta('wooms_id', true);
 
         /**
          * Send order if no wooms_id
          */
         if (empty($wooms_id)) {
-            $check = self::send_order($order_id);
+
+            $check = self::send_order($order_id, $order);
             if ($check) {
                 $order = wc_get_order($order_id);
                 $order->delete_meta_data('wooms_order_sync');
@@ -224,7 +235,8 @@ class OrderSender
             do_action(
                 'wooms_logger_error',
                 __CLASS__,
-                sprintf('При передаче Заказа %s - данные не переданы', $order_id)
+                sprintf('При передаче Заказа %s - данные не переданы', $order_id),
+                $result
             );
         } else {
             $order->delete_meta_data('wooms_order_sync');
@@ -237,6 +249,13 @@ class OrderSender
             $order = apply_filters('wooms_order_update', $order, $result);
 
             $order->save();
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                sprintf('Заказ %s - обновлен', $order_id),
+                $data
+            );
 
             return true;
         }
@@ -331,13 +350,24 @@ class OrderSender
     /**
      * Send order to moysklad.ru and mark the order as sended
      */
-    public static function send_order($order_id)
+    public static function send_order($order_id, $order = [])
     {
 
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
-        $data = self::prepare_data_order($order_id);
+        $data              = array(
+            "name" => self::get_data_name($order_id),
+        );
 
+        if ($meta_organization = self::get_data_organization()) {
+            $data["organization"] = $meta_organization;
+        } else {
+            return false;
+        }
+
+        $data["description"] = self::get_order_note($order_id);
 
         if (empty($data)) {
             $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
@@ -352,15 +382,14 @@ class OrderSender
         }
 
         /**
+         * only for send order first time
+         */
+        $data = apply_filters('wooms_order_send_data', $data, $order_id, $order);
+
+        /**
          * for send and update
          */
         $data = apply_filters('wooms_order_data', $data, $order_id);
-
-        /**
-         * only for send order first time
-         */
-        $data = apply_filters('wooms_order_send_data', $data, $order_id);
-
 
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder';
 
@@ -409,36 +438,13 @@ class OrderSender
         do_action(
             'wooms_logger',
             __CLASS__,
-            sprintf('Заказ %s - отправлен (позиций: %s)', $order_id, $positions_count)
+            sprintf('Заказ %s - отправлен (позиций: %s)', $order_id, $positions_count),
+            $data
         );
 
         return true;
     }
 
-    /**
-     * Prepare data before send
-     *
-     * @param $order_id
-     *
-     * @return array|bool
-     */
-    public static function prepare_data_order($order_id)
-    {
-        $data              = array(
-            "name" => self::get_data_name($order_id),
-        );
-
-        if ($meta_organization = self::get_data_organization()) {
-            $data["organization"] = $meta_organization;
-        } else {
-            return false;
-        }
-
-        // $data["agent"]       = self::get_data_agent($order_id); xxx for remove
-        $data["description"] = self::get_order_note($order_id); //xxx refactoring
-
-        return $data;
-    }
 
     /**
      * Get data name for send MoySklad
@@ -463,9 +469,11 @@ class OrderSender
     /**
      * add positions to order
      */
-    public static function add_positions($data_order, $order_id)
+    public static function add_positions($data_order, $order_id, $order = [] )
     {
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
         $items = $order->get_items();
 
@@ -475,6 +483,7 @@ class OrderSender
 
         $data = array();
         foreach ($items as $key => $item) {
+
             if ($item['variation_id'] != 0) {
                 $product_id   = $item['variation_id'];
                 $product_type = 'variant';
@@ -486,10 +495,6 @@ class OrderSender
             $product_type = self::get_product_type($item);
 
             $uuid = get_post_meta($product_id, 'wooms_id', true);
-
-            if (empty($uuid)) {
-                continue;
-            }
 
             $item->update_meta_data('wooms_id', $uuid);
             $item->save();
@@ -742,78 +747,6 @@ class OrderSender
         return $data_order;
     }
 
-    /**
-     * Get data counterparty for send MoySklad
-     *
-     * @param $order_id
-     *
-     * @return array|bool
-     */
-    public static function get_data_agent($order_id)
-    {
-        $order = wc_get_order($order_id);
-        $user  = $order->get_user();
-        $email = '';
-        if (empty($user)) {
-            if (!empty($order->get_billing_email())) {
-                $email = $order->get_billing_email();
-            }
-        } else {
-            $email = $user->user_email;
-        }
-
-        $name = self::get_data_order_name($order_id);
-
-        if (empty($name)) {
-            $name = 'Клиент по заказу №' . $order->get_order_number();
-        }
-
-        $data = array(
-            "name"          => $name,
-            "companyType"   => self::get_data_order_company_type($order_id),
-            "legalAddress"  => self::get_data_order_address($order_id),
-            "actualAddress" => self::get_data_order_address($order_id),
-            "phone"         => self::get_data_order_phone($order_id),
-        );
-
-        if (empty($email)) {
-            $agent_uuid = '';
-        } else {
-            $agent_uuid = self::get_agent_meta_by_email($email);
-            $data["email"] = $email;
-        }
-
-        if (empty($agent_uuid)) {
-            $agent_uuid = $order->get_meta('agent_uuid', true);
-            $agent_uuid = self::check_agent_uuid($agent_uuid);
-        }
-
-        if (empty($agent_uuid)) {
-
-            $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
-            $result = wooms_request($url, $data, 'POST');
-
-            if (empty($result["meta"])) {
-                return false;
-            }
-
-            if (isset($result['id'])) {
-                self::save_uuid_agent_to_order($result['id'], $order_id);
-            }
-
-            $meta = $result["meta"];
-        } else {
-            $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty/' . $agent_uuid;
-            $result = wooms_request($url, $data, 'PUT');
-            if (empty($result["meta"])) {
-                return false;
-            }
-
-            $meta = $result["meta"];
-        }
-
-        return array('meta' => $meta);
-    }
 
     /**
      * check_agent_uuid
@@ -868,12 +801,12 @@ class OrderSender
             'billing_last_name' => $order->get_billing_last_name(),
         ];
 
-        if($data['billing_first_name']){
+        if ($data['billing_first_name']) {
             $name = $data['billing_first_name'];
         }
 
-        if($data['billing_last_name']){
-            if($data['billing_first_name']){
+        if ($data['billing_last_name']) {
+            if ($data['billing_first_name']) {
                 $name = $name . ' ' . $data['billing_last_name'];
             } else {
                 $name = $data['billing_last_name'];

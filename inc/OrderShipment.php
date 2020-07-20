@@ -12,9 +12,7 @@ class OrderShipment
 {
     public static function init()
     {
-        add_filter('wooms_order_send_data', array(__CLASS__, 'chg_order_data'), 10, 2);
-
-        add_filter('wooms_order_update_data', array(__CLASS__, 'chg_order_data'), 10, 2);
+        add_filter('wooms_order_data', array(__CLASS__, 'chg_order_data'), 30, 2);
 
         add_filter('wooms_skip_service', array(__CLASS__, 'skip_service_if_shipment'), 10, 2);
 
@@ -47,6 +45,10 @@ class OrderShipment
     public static function chg_order_data($data, $order_id)
     {
         if (!$order_shipment_item_code = get_option('wooms_order_shipment_item_code')) {
+            return $data;
+        }
+
+        if(empty($data['positions'])){
             return $data;
         }
 

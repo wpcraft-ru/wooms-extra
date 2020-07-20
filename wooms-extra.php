@@ -21,6 +21,9 @@
 
 defined('ABSPATH') || exit;
 
+
+require_once __DIR__ . '/inc/OrderSender.php';
+
 /**
  * load files
  */
@@ -42,7 +45,6 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/ProductVariableImage.php';
         require_once __DIR__ . '/inc/VariationsHider.php';
 
-        require_once __DIR__ . '/inc/OrderSender.php';
         require_once __DIR__ . '/inc/OrderUpdateFromMoySklad.php';
         
         require_once __DIR__ . '/inc/OrderShipment.php';
