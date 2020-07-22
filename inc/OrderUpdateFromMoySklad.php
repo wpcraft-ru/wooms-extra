@@ -218,6 +218,13 @@ class OrderUpdateFromMoySklad
 
         $order->save();
 
+        do_action(
+            'wooms_logger',
+            __CLASS__,
+            sprintf('Заказ обновился данными из МойСклад (id %s, номер %ы)', $order->get_id, $order->get_order_number()),
+            $data
+        );
+
         return $order_id;
     }
 
