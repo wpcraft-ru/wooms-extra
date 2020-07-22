@@ -171,6 +171,11 @@ class OrderUpdateFromMoySklad
 
         $posts = get_posts($args);
 
+        if(empty($posts)){
+            self::set_state('is_wait', 1);
+            return;
+        }
+
         foreach ($posts as $post) {
 
             if (self::update_order_from_moysklad($post->ID)) {
@@ -549,6 +554,15 @@ class OrderUpdateFromMoySklad
         try {
             $body = $data_request->get_body();
             $data = json_decode($body, true);
+
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                'Прилетел веб-хук',
+                $data
+            );
+
             if (empty($data["events"][0]["meta"]["href"])) {
                 return;
             }
