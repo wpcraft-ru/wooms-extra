@@ -16,6 +16,7 @@ class OrderNumber
         add_filter('wooms_order_data', [__CLASS__, 'disable_order_number'], 50, 2);
         add_filter('woocommerce_order_number', array(__CLASS__, 'get_order_number'), 10, 2);
         add_filter('wooms_order_update', array(__CLASS__, 'set_order_number'), 10, 2);
+        add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'set_order_number'), 10, 2);
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
     }
