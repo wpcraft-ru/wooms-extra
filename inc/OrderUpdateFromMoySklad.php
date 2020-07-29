@@ -28,7 +28,7 @@ class OrderUpdateFromMoySklad
 
         //     echo '<pre>';
 
-        //     $d = self::update_order_from_moysklad(26424);
+        //     self::add_schedule_hook();
 
         //     die(0);
         // });
@@ -65,7 +65,7 @@ class OrderUpdateFromMoySklad
 
         $shipment_product_href = self::get_shipment_product_href();
 
-        $order_items = $order->get_items();
+        // $order_items = $order->get_items();
 
         // remove shipment if exist
         foreach($data['rows'] as $key => $row){
@@ -78,9 +78,6 @@ class OrderUpdateFromMoySklad
         foreach($data['rows'] as $row){
             self::add_order_item($order, $row);
         }
-
-
-        dd($order->get_items(), $data, $shipment_product_href);
 
         return $order;
     }
@@ -171,6 +168,7 @@ class OrderUpdateFromMoySklad
 
         $posts = get_posts($args);
 
+
         if(empty($posts)){
             self::set_state('is_wait', 1);
             return;
@@ -182,6 +180,8 @@ class OrderUpdateFromMoySklad
                 delete_post_meta($post->ID, self::$hook_order_update_from_moysklad);
             }
         }
+
+        return;
     }
 
     /**
@@ -555,13 +555,11 @@ class OrderUpdateFromMoySklad
      */
     public static function get_data_order_from_moysklad($data_request)
     {
-
         self::set_state('is_wait', 0);
 
         try {
             $body = $data_request->get_body();
             $data = json_decode($body, true);
-
 
             do_action(
                 'wooms_logger',
@@ -573,7 +571,9 @@ class OrderUpdateFromMoySklad
             if (empty($data["events"][0]["meta"]["href"])) {
                 return;
             }
+
             $url        = $data["events"][0]["meta"]["href"];
+
             $data_order = wooms_request($url);
             if (empty($data_order['id'])) {
                 return;
@@ -588,6 +588,8 @@ class OrderUpdateFromMoySklad
                 'meta_value'  => $order_uuid,
             );
             $orders = get_posts($args);
+
+
             if (empty($orders[0]->ID)) {
                 return false;
             }
@@ -602,13 +604,6 @@ class OrderUpdateFromMoySklad
             $order = apply_filters('wooms_order_update_from_moysklad_filter', $order, $data_order, $order_uuid);
             $order->save();
 
-            // $state_url  = $data_order["state"]["meta"]["href"];
-            // $state_data = wooms_request($state_url);
-            // if (empty($state_data['name'])) {
-            //     return;
-            // }
-            // $state_name = $state_data['name'];
-            // $result     = self::check_and_update_order_status($order_uuid, $state_name);
             $result     = true;
             if ($result) {
                 $response = new \WP_REST_Response(array('success', 'Data received successfully'));
@@ -632,8 +627,6 @@ class OrderUpdateFromMoySklad
      */
     public static function update_order_data($order, $data_order)
     {
-        $order = wc_get_order($order->get_id());
-
         $data_json = json_encode($data_order, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         $order->update_meta_data('wooms_data', $data_json);
         //XXX
