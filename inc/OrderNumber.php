@@ -19,6 +19,7 @@ class OrderNumber
         add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'set_order_number'), 10, 2);
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 50);
+        add_action('pre_get_posts', array(__CLASS__, 'search_by_number_from_moysklad'));
     }
 
     /**
@@ -142,6 +143,37 @@ class OrderNumber
             ]
         );
     }
+
+    /**
+     *  Если используются номера заказов из Мой Склад, чиним поиску по номеру заказа
+     * 
+     *  issue https://github.com/wpcraft-ru/wooms/issues/331
+     */
+    public static function search_by_number_from_moysklad($query)
+    {
+        if (!self::is_enable()){
+            return;
+        }
+        if(!is_admin()){
+			return;
+		}
+		if(!isset($query->query)){
+			return;
+		}
+		if(!isset($query->query['s'])){
+			return;
+		}
+		if(is_numeric($query->query['s']) === false){
+			return;
+        }
+        
+		$custom_order_id = $query->query['s'];
+		$query->query_vars['post__in']=array();
+		$query->query['s']='';
+		$query->set('meta_key','_order_number');
+		$query->set('meta_value',$custom_order_id);
+	}
+
 }
 
 OrderNumber::init();
