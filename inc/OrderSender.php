@@ -34,7 +34,7 @@ class OrderSender
         //   echo '<pre>';
 
         //   // dd(get_transient('wooms_end_timestamp'));
-        //   $check = self::update_order(693178);
+        //   $check = self::order_update_to_moysklad(693178);
 
         //   var_dump($check);
 
@@ -46,7 +46,7 @@ class OrderSender
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-        add_action('woocommerce_update_order', array(__CLASS__, 'order_update'));
+        add_action('woocommerce_update_order', array(__CLASS__, 'order_update_by_hook'));
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20, 2);
 
@@ -131,7 +131,7 @@ class OrderSender
 
         //issue https://github.com/wpcraft-ru/wooms/issues/330
         if (!get_option('wooms_get_number_async_enable')) {
-            self::update_order($order_id, $order);
+            self::order_update_to_moysklad($order_id, $order);
         }
     }
 
@@ -139,10 +139,10 @@ class OrderSender
     /**
      * order - add task for sync if enable
      */
-    public static function order_update($post_id)
+    public static function order_update_by_hook($post_id)
     {
 
-        remove_action('woocommerce_update_order', [__CLASS__, 'order_update']);
+        remove_action('woocommerce_update_order', [__CLASS__, 'order_update_by_hook']);
         $order_id = $post_id;
         if (wp_is_post_revision($post_id)) {
             return;
@@ -151,7 +151,7 @@ class OrderSender
         if (self::is_enable()) {
             update_post_meta($order_id, 'wooms_order_sync', 1);
 
-            self::update_order($order_id);
+            self::order_update_to_moysklad($order_id);
             delete_transient('wooms_order_timestamp_end');
 
             return;
@@ -166,18 +166,18 @@ class OrderSender
             delete_post_meta($post_id, 'wooms_order_sync');
         } else {
             update_post_meta($post_id, 'wooms_order_sync', 1);
-            self::update_order($order_id);
+            self::order_update_to_moysklad($order_id);
         }
 
         delete_transient('wooms_order_timestamp_end');
 
-        add_action('woocommerce_update_order', [__CLASS__, 'order_update']);
+        add_action('woocommerce_update_order', [__CLASS__, 'order_update_by_hook']);
     }
 
     /**
-     * update_order
+     * order_update_to_moysklad
      */
-    public static function update_order($order_id, $order = [])
+    public static function order_update_to_moysklad($order_id, $order = [])
     {
         if(empty($order)){
             $order    = wc_get_order($order_id);
@@ -334,7 +334,7 @@ class OrderSender
             // $order = wc_get_order($order->ID);
             $order = new \WC_Order($order->ID);
 
-            $check = self::update_order($order->get_id());
+            $check = self::order_update_to_moysklad($order->get_id());
             if (false != $check) {
                 // update_post_meta($order->get_id(), 'wooms_send_timestamp', date("Y-m-d H:i:s"));
                 $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
@@ -1110,8 +1110,8 @@ class OrderSender
     {
         $selected_prefix_postfix = get_option('wooms_orders_send_check_prefix_postfix');
 ?>
-        <select class="check_prefix_postfix" name="wooms_orders_send_check_prefix_postfix">
-            <?php
+<select class="check_prefix_postfix" name="wooms_orders_send_check_prefix_postfix">
+    <?php
             printf(
                 '<option value="%s" %s>%s</option>',
                 'prefix',
@@ -1125,7 +1125,7 @@ class OrderSender
                 'после номера заказа'
             );
             ?>
-        </select>
+</select>
 <?php
         echo '<p><small>Выберите как выводить уникальную приставку: перед номером заказа (префикс) или после номера заказа (постфикс)</small></p>';
     }
