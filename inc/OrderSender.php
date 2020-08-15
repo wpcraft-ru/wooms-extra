@@ -52,8 +52,8 @@ class OrderSender
 
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
-        // add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
-        add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 10, 3);
+        add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
+        // add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 10, 3);
         add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 2);
@@ -473,6 +473,11 @@ class OrderSender
     {
         if(empty($order)){
             $order = wc_get_order($order_id);
+        }
+
+        //issue https://github.com/wpcraft-ru/wooms/issues/344
+        if($order->meta_exists('wooms_order_task_update')){
+            return $data_order;
         }
 
         $items = $order->get_items();

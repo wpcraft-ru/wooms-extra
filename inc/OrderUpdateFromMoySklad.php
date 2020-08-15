@@ -33,7 +33,7 @@ class OrderUpdateFromMoySklad
         //     die(0);
         // });
 
-        add_action('rest_api_init', array(__CLASS__, 'rest_api_init_callback_endpoint'));
+        add_action('rest_api_init', array(__CLASS__, 'add_route'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
         add_action('wooms_order_task_update', array(__CLASS__, 'batch_handler'));
@@ -537,7 +537,7 @@ class OrderUpdateFromMoySklad
     /**
      * Add endpoint /wp-json/wooms/v1/order-update/
      */
-    public static function rest_api_init_callback_endpoint()
+    public static function add_route()
     {
         register_rest_route('wooms/v1', '/order-update/', array(
             'methods'  => \WP_REST_Server::EDITABLE,
@@ -595,14 +595,9 @@ class OrderUpdateFromMoySklad
             }
             $order_id = $orders[0]->ID;
 
+            update_post_meta($order_id, self::$hook_order_update_from_moysklad, 1);
+
             do_action('wooms_order_update_from_moysklad_action', $order_id, $data_order, $order_uuid);
-
-            $order    = wc_get_order($order_id);
-
-            $order->update_meta_data(self::$hook_order_update_from_moysklad, 1);
-
-            $order = apply_filters('wooms_order_update_from_moysklad_filter', $order, $data_order, $order_uuid);
-            $order->save();
 
             $result     = true;
             if ($result) {
@@ -627,8 +622,7 @@ class OrderUpdateFromMoySklad
      */
     public static function update_order_data($order, $data_order)
     {
-        $data_json = json_encode($data_order, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        $order->update_meta_data('wooms_data', $data_json);
+     
         //XXX
         return $order;
     }
