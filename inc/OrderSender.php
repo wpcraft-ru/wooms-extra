@@ -17,8 +17,6 @@ class OrderSender
      */
     public static $walker_hook_name = 'wooms_schedule_order_sender';
 
-    public static $is_new_order = false;
-
 
     /**
      * The init
@@ -52,7 +50,7 @@ class OrderSender
 
 
         add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 3);
         // add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 10, 3);
         add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
         add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
@@ -121,7 +119,6 @@ class OrderSender
      */
     public static function auto_add_order_for_send($order_id, $order)
     {
-        self::$is_new_order = true;
 
         if (!self::is_enable()) {
             return;
@@ -179,11 +176,16 @@ class OrderSender
      */
     public static function update_order($order_id, $order = [])
     {
+
         if(empty($order)){
             $order    = wc_get_order($order_id);
         }
         
         $wooms_id = $order->get_meta('wooms_id', true);
+
+        if( ! $order->get_items()){
+            return false;
+        }
 
         /**
          * Send order if no wooms_id
@@ -389,7 +391,9 @@ class OrderSender
         /**
          * for send and update
          */
-        $data = apply_filters('wooms_order_data', $data, $order_id);
+        $data = apply_filters('wooms_order_data', $data, $order_id, $order);
+
+  
 
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder';
 
@@ -471,8 +475,10 @@ class OrderSender
      */
     public static function add_positions($data_order, $order_id, $order = [] )
     {
+
         if(empty($order)){
             $order = wc_get_order($order_id);
+
         }
 
         //issue https://github.com/wpcraft-ru/wooms/issues/344
@@ -481,6 +487,13 @@ class OrderSender
         }
 
         $items = $order->get_items();
+
+        do_action(
+            'wooms_logger',
+            __CLASS__,
+            sprintf('Заказ %s - $items', $order_id),
+            $items
+        );
 
         if (empty($items)) {
             return $data_order;
@@ -921,8 +934,6 @@ class OrderSender
      * @param $order_id
      *
      * @return string
-     * 
-     * XXX tt
      */
     public static function add_moment($data_order, $order_id)
     {
