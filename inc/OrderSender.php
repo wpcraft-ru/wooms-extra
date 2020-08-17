@@ -16,6 +16,8 @@ class OrderSender
      * @var string
      */
     public static $walker_hook_name = 'wooms_schedule_order_sender';
+    
+    public static $is_new_order_process = false;
 
 
     /**
@@ -44,19 +46,19 @@ class OrderSender
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-        add_action('woocommerce_update_order', array(__CLASS__, 'order_update'));
+        add_action('save_post_shop_order', array(__CLASS__, 'order_update'));
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20, 2);
 
 
-        add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_currency'], 11, 3);
         add_filter('wooms_order_data', [__CLASS__, 'add_positions'], 11, 3);
         // add_filter('wooms_order_send_data', [__CLASS__, 'add_positions'], 10, 3);
-        add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'add_agent_as_new'], 55, 2);
-        add_filter('wooms_order_data', [__CLASS__, 'agent_update_data'], 55, 2);
+        add_filter('wooms_order_data', [__CLASS__, 'add_moment'], 11, 3);
+        add_filter('wooms_order_data', [__CLASS__, 'add_client_as_agent'], 22, 3);
+        add_filter('wooms_order_data', [__CLASS__, 'add_agent_by_phone'], 22, 3);
+        add_filter('wooms_order_data', [__CLASS__, 'add_agent_as_new'], 55, 3);
+        add_filter('wooms_order_data', [__CLASS__, 'agent_update_data'], 55, 3);
 
 
 
@@ -75,9 +77,12 @@ class OrderSender
      *
      * @issue https://github.com/wpcraft-ru/wooms/issues/189
      */
-    public static function add_currency($data_order, $order_id)
+    public static function add_currency($data_order, $order_id, $order = [])
     {
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
+
         $currency_code = $order->get_currency();
 
         if ('RUB' == $currency_code) {
@@ -124,12 +129,16 @@ class OrderSender
             return;
         }
 
+        self::$is_new_order_process = true;
+
         update_post_meta($order_id, 'wooms_order_sync', 1);
 
         //issue https://github.com/wpcraft-ru/wooms/issues/330
         if (!get_option('wooms_get_number_async_enable')) {
             self::update_order($order_id, $order);
         }
+
+        self::$is_new_order_process = false;
     }
 
 
@@ -139,9 +148,14 @@ class OrderSender
     public static function order_update($post_id)
     {
 
-        remove_action('woocommerce_update_order', [__CLASS__, 'order_update']);
+        // remove_action('woocommerce_update_order', [__CLASS__, 'order_update']);
         $order_id = $post_id;
         if (wp_is_post_revision($post_id)) {
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if( ! $order->get_items()){
             return;
         }
 
@@ -168,7 +182,7 @@ class OrderSender
 
         delete_transient('wooms_order_timestamp_end');
 
-        add_action('woocommerce_update_order', [__CLASS__, 'order_update']);
+        // add_action('woocommerce_update_order', [__CLASS__, 'order_update']);
     }
 
     /**
@@ -184,6 +198,11 @@ class OrderSender
         $wooms_id = $order->get_meta('wooms_id', true);
 
         if( ! $order->get_items()){
+            return false;
+        }
+
+        $skip = apply_filters( 'wooms_skip_order_update', false, $order );
+        if($skip){
             return false;
         }
 
@@ -392,8 +411,6 @@ class OrderSender
          * for send and update
          */
         $data = apply_filters('wooms_order_data', $data, $order_id, $order);
-
-  
 
         $url = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder';
 
@@ -618,13 +635,15 @@ class OrderSender
     /**
      * agent_update_data
      */
-    public static function agent_update_data($data_order, $order_id)
+    public static function agent_update_data($data_order, $order_id, $order = false)
     {
         if (empty($data_order['agent']['meta']['href'])) {
             return $data_order;
         }
 
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
         $name = self::get_data_order_name($order_id);
 
@@ -637,7 +656,7 @@ class OrderSender
             "companyType"   => self::get_data_order_company_type($order_id),
             "legalAddress"  => self::get_data_order_address($order_id),
             "actualAddress" => self::get_data_order_address($order_id),
-            "phone"         => self::get_data_order_phone($order_id),
+            "phone"         => self::get_data_order_phone($order_id, $order),
         );
 
         $url    = $data_order['agent']['meta']['href'];
@@ -649,13 +668,15 @@ class OrderSender
     /**
      * add_agent_by_phone
      */
-    public static function add_agent_by_phone($data_order, $order_id)
+    public static function add_agent_by_phone($data_order, $order_id, $order = false)
     {
         if (!empty($data_order['agent'])) {
             return $data_order;
         }
 
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
         if (!$phone = $order->get_billing_phone()) {
             return $data_order;
@@ -686,15 +707,17 @@ class OrderSender
         return $phone;
     }
 
-    public static function add_agent_as_new($data_order, $order_id)
+    public static function add_agent_as_new($data_order, $order_id, $order = false)
     {
         if (!empty($data_order['agent'])) {
             return $data_order;
         }
 
-        $name = self::get_data_order_name($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
-        $order = wc_get_order($order_id);
+        $name = self::get_data_order_name($order_id);
 
         if (empty($name)) {
             $name = 'Клиент по заказу ID: ' . $order->get_order_number();
@@ -705,9 +728,8 @@ class OrderSender
             "companyType"   => self::get_data_order_company_type($order_id),
             "legalAddress"  => self::get_data_order_address($order_id),
             "actualAddress" => self::get_data_order_address($order_id),
-            "phone"         => self::get_data_order_phone($order_id),
+            "phone"         => self::get_data_order_phone($order_id, $order),
         );
-
 
         $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
         $result = wooms_request($url, $data, 'POST');
@@ -737,9 +759,12 @@ class OrderSender
     /**
      * add_client_as_agent
      */
-    public static function add_client_as_agent($data_order, $order_id)
+    public static function add_client_as_agent($data_order, $order_id, $order = false)
     {
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
+
         $user  = $order->get_user();
         $email = '';
 
@@ -898,9 +923,12 @@ class OrderSender
      *
      * @return string
      */
-    public static function get_data_order_phone($order_id)
+    public static function get_data_order_phone($order_id, $order = false)
     {
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
+
         if ($order->get_billing_phone()) {
             $phone = preg_replace("/[^0-9]/", '', $order->get_billing_phone());
         } else {
@@ -935,9 +963,11 @@ class OrderSender
      *
      * @return string
      */
-    public static function add_moment($data_order, $order_id)
+    public static function add_moment($data_order, $order_id, $order = [])
     {
-        $order = wc_get_order($order_id);
+        if(empty($order)){
+            $order = wc_get_order($order_id);
+        }
 
         $timezone = new \DateTimeZone("Europe/Moscow");
         $date = $order->get_date_created();
