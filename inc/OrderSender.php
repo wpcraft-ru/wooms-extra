@@ -46,7 +46,7 @@ class OrderSender
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
-        add_action('save_post_shop_order', array(__CLASS__, 'order_update'));
+        add_action('save_post_shop_order', array(__CLASS__, 'order_update_by_hook'));
 
         add_action('woocommerce_new_order', array(__CLASS__, 'auto_add_order_for_send'), 20, 2);
 
@@ -135,7 +135,7 @@ class OrderSender
 
         //issue https://github.com/wpcraft-ru/wooms/issues/330
         if (!get_option('wooms_get_number_async_enable')) {
-            self::update_order($order_id, $order);
+            self::order_update_to_moysklad($order_id, $order);
         }
 
         self::$is_new_order_process = false;
@@ -145,7 +145,7 @@ class OrderSender
     /**
      * order - add task for sync if enable
      */
-    public static function order_update($post_id)
+    public static function order_update_by_hook($post_id)
     {
 
         // remove_action('woocommerce_update_order', [__CLASS__, 'order_update']);
@@ -162,7 +162,7 @@ class OrderSender
         if (self::is_enable()) {
             update_post_meta($order_id, 'wooms_order_sync', 1);
 
-            self::update_order($order_id);
+            self::order_update_to_moysklad($order_id);
             delete_transient('wooms_order_timestamp_end');
 
             return;
@@ -177,7 +177,7 @@ class OrderSender
             delete_post_meta($post_id, 'wooms_order_sync');
         } else {
             update_post_meta($post_id, 'wooms_order_sync', 1);
-            self::update_order($order_id);
+            self::order_update_to_moysklad($order_id);
         }
 
         delete_transient('wooms_order_timestamp_end');
@@ -186,9 +186,9 @@ class OrderSender
     }
 
     /**
-     * update_order
+     * order_update_to_moysklad
      */
-    public static function update_order($order_id, $order = [])
+    public static function order_update_to_moysklad($order_id, $order = [])
     {
 
         if(empty($order)){
@@ -355,7 +355,7 @@ class OrderSender
             // $order = wc_get_order($order->ID);
             $order = new \WC_Order($order->ID);
 
-            $check = self::update_order($order->get_id());
+            $check = self::order_update_to_moysklad($order->get_id());
             if (false != $check) {
                 // update_post_meta($order->get_id(), 'wooms_send_timestamp', date("Y-m-d H:i:s"));
                 $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
