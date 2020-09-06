@@ -14,13 +14,16 @@ class OrderNotes
         add_action( 'admin_init', array( __CLASS__, 'add_settings' ), 50 );
     }
 
-    public static function add_order_notes($notes, $order_id)
+    /**
+     * add_order_notes
+     * 
+     * @param \WC_Order $order
+     */
+    public static function add_order_notes($notes, $order)
     {
         if(!get_option('wooms_order_additional_notes_enable')){
             return $notes;
         }
-
-        $order = wc_get_order($order_id);
 
         if ($shipment_method = $order->get_shipping_method()) {
             $notes['shipment_method'] = sprintf("Метод доставки: %s", $shipment_method);

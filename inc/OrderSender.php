@@ -388,7 +388,7 @@ class OrderSender
             return false;
         }
 
-        $data["description"] = self::get_order_note($order_id);
+        $data["description"] = self::get_order_note($order);
 
         if (empty($data)) {
             $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
@@ -982,13 +982,13 @@ class OrderSender
     /**
      * Get data customerorder description created for send MoySklad
      *
-     * @param $order_id
+     * @param \WC_Order $order
      *
      * @return string
      */
-    public static function get_order_note($order_id)
+    public static function get_order_note($order)
     {
-        $order         = wc_get_order($order_id);
+        // $order         = wc_get_order($order_id);
 
         $customer_notes = [];
         $customer_notes['order_url'] = sprintf('Посмотреть заказ на сайте: %s', $order->get_edit_order_url());
@@ -997,7 +997,7 @@ class OrderSender
             $customer_notes['comment'] = 'Примечание Клиента к Заказу:' . PHP_EOL . $order_comment;
         }
 
-        $customer_notes = apply_filters('wooms_order_sender_notes', $customer_notes, $order_id);
+        $customer_notes = apply_filters('wooms_order_sender_notes', $customer_notes, $order);
         $customer_notes = implode(PHP_EOL . '---' . PHP_EOL, $customer_notes);
 
         return $customer_notes;
