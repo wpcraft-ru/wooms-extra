@@ -16,7 +16,7 @@ class OrderSender
      * @var string
      */
     public static $walker_hook_name = 'wooms_schedule_order_sender';
-    
+
     public static $is_new_order_process = false;
 
 
@@ -79,7 +79,7 @@ class OrderSender
      */
     public static function add_currency($data_order, $order_id, $order = [])
     {
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -155,7 +155,7 @@ class OrderSender
         }
 
         $order = wc_get_order($order_id);
-        if( ! $order->get_items()){
+        if (!$order->get_items()) {
             return;
         }
 
@@ -191,18 +191,18 @@ class OrderSender
     public static function order_update_to_moysklad($order_id, $order = [])
     {
 
-        if(empty($order)){
+        if (empty($order)) {
             $order    = wc_get_order($order_id);
         }
-        
+
         $wooms_id = $order->get_meta('wooms_id', true);
 
-        if( ! $order->get_items()){
+        if (!$order->get_items()) {
             return false;
         }
 
-        $skip = apply_filters( 'wooms_skip_order_update', false, $order );
-        if($skip){
+        $skip = apply_filters('wooms_skip_order_update', false, $order);
+        if ($skip) {
             return false;
         }
 
@@ -374,7 +374,7 @@ class OrderSender
     public static function send_order($order_id, $order = [])
     {
 
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -490,16 +490,15 @@ class OrderSender
     /**
      * add positions to order
      */
-    public static function add_positions($data_order, $order_id, $order = [] )
+    public static function add_positions($data_order, $order_id, $order = [])
     {
 
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
-
         }
 
         //issue https://github.com/wpcraft-ru/wooms/issues/344
-        if($order->meta_exists('wooms_order_task_update')){
+        if ($order->meta_exists('wooms_order_task_update')) {
             return $data_order;
         }
 
@@ -641,7 +640,11 @@ class OrderSender
             return $data_order;
         }
 
-        if(empty($order)){
+        if(empty(get_option('wooms_clients_update_enable'))){
+            return $data_order;
+        }
+
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -674,7 +677,7 @@ class OrderSender
             return $data_order;
         }
 
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -713,7 +716,7 @@ class OrderSender
             return $data_order;
         }
 
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -761,7 +764,7 @@ class OrderSender
      */
     public static function add_client_as_agent($data_order, $order_id, $order = false)
     {
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -925,7 +928,7 @@ class OrderSender
      */
     public static function get_data_order_phone($order_id, $order = false)
     {
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -965,7 +968,7 @@ class OrderSender
      */
     public static function add_moment($data_order, $order_id, $order = [])
     {
-        if(empty($order)){
+        if (empty($order)) {
             $order = wc_get_order($order_id);
         }
 
@@ -1065,31 +1068,98 @@ class OrderSender
             $section = 'wooms_section_orders'
         );
 
-        register_setting('mss-settings', 'wooms_orders_send_reserved');
-        add_settings_field(
-            $id = 'wooms_orders_send_reserved',
-            $title = 'Выключить резервирование товаров',
-            $callback = array(__CLASS__, 'display_wooms_orders_send_reserved'),
-            $page = 'mss-settings',
-            $section = 'wooms_section_orders'
-        );
-
-        register_setting('mss-settings', 'wooms_org_name');
-        add_settings_field(
-            $id = 'wooms_org_name',
-            $title = 'Наименование юр лица для Заказов',
-            $callback = array(__CLASS__, 'display_wooms_org_name'),
-            $page = 'mss-settings',
-            $section = 'wooms_section_orders'
-        );
-
-        self::setting_find_client_by_phone();
+        self::register_setting_orders_send_reserved();
+        self::register_setting_find_client_by_phone();
+        self::register_setting_select_org_name();
+        self::register_setting_clients_update_enable();
     }
 
     /**
-     * setting_find_client_by_phone
+     * register_setting_clients_update_enable
      */
-    public static function setting_find_client_by_phone()
+    public static function register_setting_clients_update_enable()
+    {
+        $option_name = 'wooms_clients_update_enable';
+        register_setting('mss-settings', $option_name);
+        add_settings_field(
+            $id = $option_name,
+            $title = 'Обновление клиентов',
+            $callback = function ($args) {
+                printf(
+                    '<input type="checkbox" name="%s" value="1" %s /> %s',
+                    $args['key'],
+                    checked(1, $args['value'], false),
+                    '<small>При включении данной опции, при обновлении заказов - будут обновляться клиенты в МойСклад</small>'
+                );
+            },
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $option_name,
+                'value' => get_option($option_name),
+            ]
+        );
+    }
+
+
+    /**
+     * register_setting_orders_send_reserved
+     */
+    public static function register_setting_orders_send_reserved()
+    {
+        $option_name = 'wooms_orders_send_reserved';
+        register_setting('mss-settings', $option_name);
+        add_settings_field(
+            $id = $option_name,
+            $title = 'Выключить резервирование товаров',
+            $callback = function ($args) {
+                printf(
+                    '<input type="checkbox" name="%s" value="1" %s /> %s',
+                    $args['key'],
+                    checked(1, $args['value'], false),
+                    '<small>При включении данной настройки, резеревирование товаров на складе будет отключено</small>'
+                );
+            },
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $option_name,
+                'value' => get_option($option_name),
+            ]
+        );
+    }
+
+
+    /**
+     * register_setting_select_org_name
+     */
+    public static function register_setting_select_org_name()
+    {
+        $option_name = 'wooms_org_name';
+        register_setting('mss-settings', $option_name);
+        add_settings_field(
+            $id = $option_name,
+            $title = 'Наименование юр лица для Заказов',
+            $callback = function ($args) {
+                printf('<input type="text" name="%s" value="%s" />', $args['key'], $args['value']);
+                printf(
+                    '<p><small>%s</small></p>',
+                    'Тут можно указать краткое наименование юр лица из МойСклад. Если пусто, то берется первое из списка. Иначе будет выбор указанного юр лица.'
+                );
+            },
+            $page = 'mss-settings',
+            $section = 'wooms_section_orders',
+            $args = [
+                'key' => $option_name,
+                'value' => get_option($option_name),
+            ]
+        );
+    }
+
+    /**
+     * register_setting_find_client_by_phone
+     */
+    public static function register_setting_find_client_by_phone()
     {
         $option_name = 'wooms_orders_find_client_by_phone';
         register_setting('mss-settings', $option_name);
@@ -1120,18 +1190,6 @@ class OrderSender
         );
     }
 
-    /**
-     * display_wooms_org_name
-     */
-    public static function display_wooms_org_name()
-    {
-        $option_key = 'wooms_org_name';
-        printf('<input type="text" name="%s" value="%s" />', $option_key, get_option($option_key));
-        printf(
-            '<p><small>%s</small></p>',
-            'Тут можно указать краткое наименование юр лица из МойСклад. Если пусто, то берется первое из списка. Иначе будет выбор указанного юр лица.'
-        );
-    }
 
     /**
      * display_wooms_orders_send_prefix_postfix
