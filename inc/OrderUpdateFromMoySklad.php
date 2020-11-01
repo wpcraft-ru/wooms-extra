@@ -21,29 +21,34 @@ class OrderUpdateFromMoySklad
      */
     public static function init()
     {
-        // add_action('init', function () {
-        //     if (!isset($_GET['dd'])) {
-        //         return;
-        //     }
+        add_action('init', function () {
+            if (!isset($_GET['dd'])) {
+                return;
+            }
 
-        //     echo '<pre>';
+            echo '<pre>';
 
-        //     self::add_schedule_hook();
+            self::update_order_from_moysklad(26441);
 
-        //     die(0);
-        // });
+            die(0);
+        });
 
         add_action('rest_api_init', array(__CLASS__, 'add_route'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
         add_action('wooms_order_task_update', array(__CLASS__, 'batch_handler'));
 
-        add_action('wooms_update_order_items_from_moysklad', array(__CLASS__, 'update_order_items'), 11, 2);
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
-        add_filter('wooms_order_update_from_moysklad_action', array(__CLASS__, 'update_order_status'), 10, 3);
-        add_filter('wooms_order_update_from_moysklad_filter', array(__CLASS__, 'update_order_data'), 10, 2);
+
+        //XXX - refactoring
+        add_action('wooms_order_update_from_moysklad_action', array(__CLASS__, 'update_order_status'), 10, 3);
+
+        add_filter('wooms_skip_order_update', array(__CLASS__, 'skip_order_update_from_site'), 10, 2);
+
+        add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_items'), 11, 2);
     }
+
 
     /**
      * update_order_items
@@ -63,63 +68,203 @@ class OrderUpdateFromMoySklad
 
         $data = wooms_request($url_api);
 
+
         $shipment_product_href = self::get_shipment_product_href();
+
 
         // $order_items = $order->get_items();
 
-        // remove shipment if exist
-        foreach($data['rows'] as $key => $row){
-            if($shipment_product_href == $row['assortment']['meta']['href']){
+        // remove shipment if exist from data api
+        foreach ($data['rows'] as $key => $row) {
+            if ($shipment_product_href == $row['assortment']['meta']['href']) {
                 unset($data['rows'][$key]);
             }
         }
 
-        $order_items_update = [];
-        foreach($data['rows'] as $row){
-            self::add_order_item($order, $row);
+        $data_api_wooms_id_array = [];
+
+        foreach ($data['rows'] as $row) {
+
+            $product_href = $row['assortment']['meta']['href'];
+            $product_uuid = wooms_get_wooms_id_from_href($product_href);
+            $data_api_wooms_id_array[] = $product_uuid;
+            $product_id = wooms_get_product_id_by_uuid($product_uuid);
+
+            $product = wc_get_product($product_id);
+
+            if($item_id = self::get_order_item_id_by_wooms_id($product_uuid, $order)){
+                $line_item = new \WC_Order_Item_Product($item_id);
+            } else {
+                $line_item = new \WC_Order_Item_Product();
+            }
+
+            $line_item->set_product($product);
+            $line_item->set_order_id( $order->get_id() );
+            $line_item->set_quantity( $row['quantity'] );
+            
+            $total = floatval( $row['quantity'] * $row['price']/100 );
+
+            $discount = $row['discount']; //XXX wtf? %
+            
+            if(empty($discount)){
+                $line_item->set_total( $total );
+            } else {
+                $total_with_discont = $total - ($total * $discount/100);
+                $line_item->set_total( $total_with_discont );
+            }
+
+            $line_item->set_subtotal( $total ) ;
+
+            $line_item->update_meta_data('wooms_id', $product_uuid);
+
+            // $line_item->set
+			// $line_item->set_total_tax( floatval( $row['price']/100 ) );
+
+
+            //XXX todo
+            // if ( $variation_id ) {
+            //     $line_item->set_variation_id( $variation_id );
+            //     $line_item->set_variation( $item['variations'] );
+            // }
+
+			$item_id = $line_item->save();
+
+            $items = $order->get_items();
+
         }
+
+        
+        //delete old line items
+        foreach($order->get_items('line_item') as $line_item){
+
+            if($wooms_id = self::get_wooms_id_from_line_item($line_item)){
+
+                if( ! in_array($wooms_id, $data_api_wooms_id_array)){
+                    $order->remove_item($line_item->get_id());
+                }
+            }
+        }
+
+
+        $order->calculate_totals();
+        $order->save();
 
         return $order;
     }
 
+    /**
+     * get item_id from order and wooms_id
+     * 
+     * @param string $wooms_uuid
+     * @param \WC_Order $order
+     */
+    public static function get_order_item_id_by_wooms_id($wooms_uuid, $order)
+    {
+        if(empty($wooms_uuid)){
+            return false;
+        }
 
-     /**
+        $line_items = $order->get_items('line_item');
+
+        foreach($line_items as $line_item){
+
+            $wooms_id = self::get_wooms_id_from_line_item($line_item);
+
+            if($wooms_id == $wooms_uuid){
+                return $line_item->get_id();
+            }
+        }
+
+        return false;
+    }
+
+
+    /**
+     * Get wooms id from line item
+     * 
+     * @param \WC_Order_Item_Product $line_item
+     */
+    public static function get_wooms_id_from_line_item($line_item)
+    {
+        $wooms_id = $line_item->get_meta('wooms_id', true);
+        if(empty($wooms_id)){
+
+            $product_id = $line_item->get_variation_id();
+            if(empty($product_id)){
+                $product_id = $line_item->get_product_id();
+            }
+            $wooms_id = get_post_meta($product_id, 'wooms_id', true);
+        }
+
+        if(empty($wooms_id)){
+            return false;
+        }
+
+        return $wooms_id;
+    }
+
+
+    /**
+     * Skip order update from site, if exist task to update from MoySklad
+     * 
+     * @param bool $skip
+     * @param \WC_Order $order
+     * 
+     * @return bool - skip or no
+     */
+    public static function skip_order_update_from_site($skip, $order)
+    {
+        $task_exist = $order->get_meta(self::$hook_order_update_from_moysklad, true);
+
+        if ($task_exist) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+
+
+    /**
      * add_order_item
+     * 
+     * XXX to remove?
      * 
      * @param \WC_Order $order
      * 
      * @return \WC_Order - order object
      */
-    public static function add_order_item($order, $row){
+    public static function add_order_item($order, $row)
+    {
 
         $href = $row['assortment']['meta']['href'];
         $uuid = wooms_get_wooms_id_from_href($href);
 
         $update_item = false;
-        foreach($order->get_items() as $item){
-            if($wooms_id = $item->get_meta('wooms_id', true)){
+        foreach ($order->get_items() as $item) {
+            if ($wooms_id = $item->get_meta('wooms_id', true)) {
 
-                if($wooms_id == wooms_get_wooms_id_from_href($href)){
+                if ($wooms_id == wooms_get_wooms_id_from_href($href)) {
                     $update_item = $item;
                 }
             }
         }
 
-        if(empty($update_item)){
+        if (empty($update_item)) {
             return false;
-        } 
-        
-        $line_item = new \WC_Order_Item_Product( $update_item );
+        }
+
+        $line_item = new \WC_Order_Item_Product($update_item);
         $line_item->set_quantity($row['quantity']);
 
-        $total = floatval( $row['quantity'] * $row['price']/100 );
-        $line_item->set_total( $total );
-        $line_item->set_subtotal( $total );
-        
+        $total = floatval($row['quantity'] * $row['price'] / 100);
+        $line_item->set_total($total);
+        $line_item->set_subtotal($total);
+
         $line_item->save();
 
         return true;
-
     }
 
 
@@ -169,7 +314,7 @@ class OrderUpdateFromMoySklad
         $posts = get_posts($args);
 
 
-        if(empty($posts)){
+        if (empty($posts)) {
             self::set_state('is_wait', 1);
             return;
         }
@@ -211,7 +356,7 @@ class OrderUpdateFromMoySklad
 
         $order = apply_filters('wooms_update_order_from_moysklad', $order, $data);
         $order->save();
-        
+
         do_action('wooms_update_order_items_from_moysklad', $order, $data);
 
         $order = wc_get_order($order_id);
@@ -615,18 +760,6 @@ class OrderUpdateFromMoySklad
         }
     }
 
-
-    /**
-     * update_order_data
-     * 
-     * use hook apply_filters('wooms_order_update_from_moysklad', $order, $data_order );
-     */
-    public static function update_order_data($order, $data_order)
-    {
-     
-        //XXX
-        return $order;
-    }
 
     /**
      * update_order_status
