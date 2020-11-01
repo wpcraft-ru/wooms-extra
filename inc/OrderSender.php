@@ -504,13 +504,6 @@ class OrderSender
 
         $items = $order->get_items();
 
-        do_action(
-            'wooms_logger',
-            __CLASS__,
-            sprintf('Заказ %s - $items', $order_id),
-            $items
-        );
-
         if (empty($items)) {
             return $data_order;
         }

@@ -92,33 +92,33 @@ class OrderUpdateFromMoySklad
 
             $product = wc_get_product($product_id);
 
-            if($item_id = self::get_order_item_id_by_wooms_id($product_uuid, $order)){
+            if ($item_id = self::get_order_item_id_by_wooms_id($product_uuid, $order)) {
                 $line_item = new \WC_Order_Item_Product($item_id);
             } else {
                 $line_item = new \WC_Order_Item_Product();
             }
 
             $line_item->set_product($product);
-            $line_item->set_order_id( $order->get_id() );
-            $line_item->set_quantity( $row['quantity'] );
-            
-            $total = floatval( $row['quantity'] * $row['price']/100 );
+            $line_item->set_order_id($order->get_id());
+            $line_item->set_quantity($row['quantity']);
+
+            $total = floatval($row['quantity'] * $row['price'] / 100);
 
             $discount = $row['discount']; //XXX wtf? %
-            
-            if(empty($discount)){
-                $line_item->set_total( $total );
+
+            if (empty($discount)) {
+                $line_item->set_total($total);
             } else {
-                $total_with_discont = $total - ($total * $discount/100);
-                $line_item->set_total( $total_with_discont );
+                $total_with_discont = $total - ($total * $discount / 100);
+                $line_item->set_total($total_with_discont);
             }
 
-            $line_item->set_subtotal( $total ) ;
+            $line_item->set_subtotal($total);
 
             $line_item->update_meta_data('wooms_id', $product_uuid);
 
             // $line_item->set
-			// $line_item->set_total_tax( floatval( $row['price']/100 ) );
+            // $line_item->set_total_tax( floatval( $row['price']/100 ) );
 
 
             //XXX todo
@@ -127,19 +127,18 @@ class OrderUpdateFromMoySklad
             //     $line_item->set_variation( $item['variations'] );
             // }
 
-			$item_id = $line_item->save();
+            $item_id = $line_item->save();
 
             $items = $order->get_items();
-
         }
 
-        
+
         //delete old line items
-        foreach($order->get_items('line_item') as $line_item){
+        foreach ($order->get_items('line_item') as $line_item) {
 
-            if($wooms_id = self::get_wooms_id_from_line_item($line_item)){
+            if ($wooms_id = self::get_wooms_id_from_line_item($line_item)) {
 
-                if( ! in_array($wooms_id, $data_api_wooms_id_array)){
+                if (!in_array($wooms_id, $data_api_wooms_id_array)) {
                     $order->remove_item($line_item->get_id());
                 }
             }
@@ -160,17 +159,17 @@ class OrderUpdateFromMoySklad
      */
     public static function get_order_item_id_by_wooms_id($wooms_uuid, $order)
     {
-        if(empty($wooms_uuid)){
+        if (empty($wooms_uuid)) {
             return false;
         }
 
         $line_items = $order->get_items('line_item');
 
-        foreach($line_items as $line_item){
+        foreach ($line_items as $line_item) {
 
             $wooms_id = self::get_wooms_id_from_line_item($line_item);
 
-            if($wooms_id == $wooms_uuid){
+            if ($wooms_id == $wooms_uuid) {
                 return $line_item->get_id();
             }
         }
@@ -187,16 +186,16 @@ class OrderUpdateFromMoySklad
     public static function get_wooms_id_from_line_item($line_item)
     {
         $wooms_id = $line_item->get_meta('wooms_id', true);
-        if(empty($wooms_id)){
+        if (empty($wooms_id)) {
 
             $product_id = $line_item->get_variation_id();
-            if(empty($product_id)){
+            if (empty($product_id)) {
                 $product_id = $line_item->get_product_id();
             }
             $wooms_id = get_post_meta($product_id, 'wooms_id', true);
         }
 
-        if(empty($wooms_id)){
+        if (empty($wooms_id)) {
             return false;
         }
 
@@ -540,6 +539,7 @@ class OrderUpdateFromMoySklad
      */
     public static function check_webhooks_and_try_fix()
     {
+
         $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/webhook';
         $data = wooms_request($url);
 
@@ -742,6 +742,12 @@ class OrderUpdateFromMoySklad
             $order_id = $orders[0]->ID;
 
             update_post_meta($order_id, self::$hook_order_update_from_moysklad, 1);
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                sprintf('Заказ %s поставлен в очередь на обновление из МойСклад', $order_id)
+            );
 
             do_action('wooms_order_update_from_moysklad_action', $order_id, $data_order, $order_uuid);
 
