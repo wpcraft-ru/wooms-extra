@@ -71,9 +71,6 @@ class OrderUpdateFromMoySklad
 
         $shipment_product_href = self::get_shipment_product_href();
 
-
-        // $order_items = $order->get_items();
-
         // remove shipment if exist from data api
         foreach ($data['rows'] as $key => $row) {
             if ($shipment_product_href == $row['assortment']['meta']['href']) {
@@ -104,7 +101,7 @@ class OrderUpdateFromMoySklad
 
             $total = floatval($row['quantity'] * $row['price'] / 100);
 
-            $discount = $row['discount']; //XXX wtf? %
+            $discount = $row['discount'];
 
             if (empty($discount)) {
                 $line_item->set_total($total);
@@ -117,15 +114,19 @@ class OrderUpdateFromMoySklad
 
             $line_item->update_meta_data('wooms_id', $product_uuid);
 
-            // $line_item->set
-            // $line_item->set_total_tax( floatval( $row['price']/100 ) );
+            if(!empty($row['vat'])){
 
+                $tax = $row['vat'];
 
-            //XXX todo
-            // if ( $variation_id ) {
-            //     $line_item->set_variation_id( $variation_id );
-            //     $line_item->set_variation( $item['variations'] );
-            // }
+                if(empty($total_with_discont)){
+                    $tax_total = $tax * $total;
+                } else {
+                    $tax_total = $tax * $total_with_discont;
+                }
+                
+                $line_item->set_tax_class(strval($tax));
+                $line_item->set_total_tax($tax_total);
+            }
 
             $item_id = $line_item->save();
 
@@ -348,8 +349,7 @@ class OrderUpdateFromMoySklad
             return false;
         }
 
-        $url_api = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/';
-        $url_api .= $wooms_id;
+        $url_api = sprintf('https://online.moysklad.ru/api/remap/1.2/entity/customerorder/%s', $wooms_id);
 
         $data = wooms_request($url_api);
 
