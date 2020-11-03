@@ -679,7 +679,9 @@ class OrderUpdateFromMoySklad
         register_rest_route('wooms/v1', '/order-update/', array(
             'methods'  => \WP_REST_Server::EDITABLE,
             'callback' => array(__CLASS__, 'get_data_order_from_moysklad'),
-            // 'permission_callback' => __return_true(),
+            'args' => [
+                'permission_callback' => __return_true(),
+            ]
         ));
     }
 
