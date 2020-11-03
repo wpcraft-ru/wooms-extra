@@ -160,24 +160,25 @@ class OrderUpdateFromMoySklad
             $line_item->set_subtotal($total);
 
             $line_item->update_meta_data('wooms_id', $product_uuid);
+            $line_item->set_total_tax(0);
 
-            if(!empty($row['vat'])){
+            // if(!empty($row['vat'])){
 
-                $tax = $row['vat'];
+            //     $tax = $row['vat'];
 
-                if(empty($total_with_discont)){
-                    $tax_total = $tax * $total;
-                } else {
-                    $tax_total = $tax * $total_with_discont;
-                }
+            //     if(empty($total_with_discont)){
+            //         $tax_total = $tax * $total;
+            //     } else {
+            //         $tax_total = $tax * $total_with_discont;
+            //     }
                 
-                $line_item->set_tax_class(strval($tax));
-                $line_item->set_total_tax($tax_total);
-            }
+            //     $line_item->set_tax_class(strval($tax));
+            //     $line_item->set_total_tax($tax_total);
+            // }
 
             $item_id = $line_item->save();
 
-            $items = $order->get_items();
+            // $items = $order->get_items();
         }
 
 
@@ -194,7 +195,7 @@ class OrderUpdateFromMoySklad
 
 
         $order->calculate_totals();
-        $order->save();
+        // $order->save();
 
         return $order;
     }
@@ -676,7 +677,7 @@ class OrderUpdateFromMoySklad
         register_rest_route('wooms/v1', '/order-update/', array(
             'methods'  => \WP_REST_Server::EDITABLE,
             'callback' => array(__CLASS__, 'get_data_order_from_moysklad'),
-            'permission_callback' => __return_true(),
+            // 'permission_callback' => __return_true(),
         ));
     }
 
@@ -691,6 +692,13 @@ class OrderUpdateFromMoySklad
     public static function get_data_order_from_moysklad($data_request)
     {
         self::set_state('is_wait', 0);
+
+        do_action(
+            'wooms_logger',
+            __CLASS__,
+            'Прилетел веб хук на изменение заказа',
+            $data_request
+        );
 
         try {
             $body = $data_request->get_body();
