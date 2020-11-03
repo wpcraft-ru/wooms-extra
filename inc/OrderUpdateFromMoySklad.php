@@ -41,14 +41,61 @@ class OrderUpdateFromMoySklad
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
 
-        //XXX - refactoring
-        add_action('wooms_order_update_from_moysklad_action', array(__CLASS__, 'update_order_status'), 10, 3);
+        add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_status'), 11, 2);
+        add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_items'), 15, 2);
 
         add_filter('wooms_skip_order_update', array(__CLASS__, 'skip_order_update_from_site'), 10, 2);
 
-        add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_items'), 11, 2);
     }
 
+
+
+    /**
+     * update_order_status
+     * 
+     * use hook wooms_update_order_from_moysklad
+     * 
+     * @param \WC_Order $order
+     * 
+     * @return \WC_Order - order object
+     */
+    public static function update_order_status($order, $data_api)
+    {
+        if (!self::is_enable()) {
+            return $order;
+        }
+
+        $state_url  = $data_api["state"]["meta"]["href"];
+        $state_data = wooms_request($state_url);
+        if (empty($state_data['name'])) {
+            return $order;
+        }
+
+        $state_name = $state_data['name'];
+
+        $statuses_match_default = array(
+            'wc-pending' => 'Новый',
+            'wc-processing' => 'Подтвержден',
+            'wc-on-hold' => 'Новый',
+            'wc-completed' => 'Отгружен',
+            'wc-cancelled' => 'Отменен',
+            'wc-refunded' => 'Возврат',
+            'wc-failed' => 'Не удался',
+        );
+
+        $statuses_match = get_option('wooms_order_statuses_from_moysklad', $statuses_match_default);
+
+        foreach ($statuses_match as $status_key => $status_name) {
+
+            if ($status_name == $state_name) {
+                // $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
+                $order->set_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
+            }
+        }
+
+        return $order;
+
+    }
 
     /**
      * update_order_items
@@ -221,50 +268,6 @@ class OrderUpdateFromMoySklad
         }
 
         return false;
-    }
-
-
-
-
-    /**
-     * add_order_item
-     * 
-     * XXX to remove?
-     * 
-     * @param \WC_Order $order
-     * 
-     * @return \WC_Order - order object
-     */
-    public static function add_order_item($order, $row)
-    {
-
-        $href = $row['assortment']['meta']['href'];
-        $uuid = wooms_get_wooms_id_from_href($href);
-
-        $update_item = false;
-        foreach ($order->get_items() as $item) {
-            if ($wooms_id = $item->get_meta('wooms_id', true)) {
-
-                if ($wooms_id == wooms_get_wooms_id_from_href($href)) {
-                    $update_item = $item;
-                }
-            }
-        }
-
-        if (empty($update_item)) {
-            return false;
-        }
-
-        $line_item = new \WC_Order_Item_Product($update_item);
-        $line_item->set_quantity($row['quantity']);
-
-        $total = floatval($row['quantity'] * $row['price'] / 100);
-        $line_item->set_total($total);
-        $line_item->set_subtotal($total);
-
-        $line_item->save();
-
-        return true;
     }
 
 
@@ -468,21 +471,7 @@ class OrderUpdateFromMoySklad
         );
 
         self::get_status_order_webhook();
-        /*
-      if ( get_option( 'wooms_enable_webhooks' ) ) {
-          ?>
-          <div>
-              <hr>
-              <div><?php self::get_status_order_webhook() ?></div>
-          </div>
-          <?php
-      } else {
-          ?>
-
-
-          <div><?php self::get_status_order_webhook() ?></div>
-          <?php
-      }*/
+   
     }
 
     /**
@@ -764,92 +753,6 @@ class OrderUpdateFromMoySklad
             $response->set_status(500);
             return $response;
         }
-    }
-
-
-    /**
-     * update_order_status
-     * 
-     * use hook do_action('wooms_order_update_from_moysklad_action', $order, $data_order );
-     */
-    public static function update_order_status($order_id, $data_order, $order_uuid)
-    {
-        if (!self::is_enable()) {
-            return false;
-        }
-
-        $state_url  = $data_order["state"]["meta"]["href"];
-        $state_data = wooms_request($state_url);
-        if (empty($state_data['name'])) {
-            return false;
-        }
-        $state_name = $state_data['name'];
-
-        $statuses_match_default = array(
-            'wc-pending' => 'Новый',
-            'wc-processing' => 'Подтвержден',
-            'wc-on-hold' => 'Новый',
-            'wc-completed' => 'Отгружен',
-            'wc-cancelled' => 'Отменен',
-            'wc-refunded' => 'Возврат',
-            'wc-failed' => 'Не удался',
-        );
-
-        $statuses_match = get_option('wooms_order_statuses_from_moysklad', $statuses_match_default);
-
-        // $args   = array(
-        //     'numberposts' => 1,
-        //     'post_type'   => 'shop_order',
-        //     'post_status' => 'any',
-        //     'meta_key'    => 'wooms_id',
-        //     'meta_value'  => $order_uuid,
-        // );
-        // $orders = get_posts($args);
-        // if (empty($orders[0]->ID)) {
-        //     return false;
-        // }
-        // $order_id = $orders[0]->ID;
-        $order    = wc_get_order($order_id);
-
-        $check = false;
-
-        foreach ($statuses_match as $status_key => $status_name) {
-
-            if ($status_name == $state_name) {
-                $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
-            }
-        }
-
-        $check = apply_filters('wooms_order_status_chg', $check, $order, $state_name);
-        if ($check) {
-            return true;
-        } else {
-            do_action(
-                'wooms_logger_error',
-                __CLASS__,
-                sprintf('Ошибка обновления статуса "%s", для заказа "%s"', $state_name, $order_id)
-            );
-
-            return false;
-        }
-
-        // $result     = self::check_and_update_order_status($order_id, $state_name);
-
-        //XXX
-        return true;
-    }
-
-    /**
-     * Update order by data from MoySklad
-     *
-     * @param $order_uuid
-     * @param $state_name
-     *
-     * @return bool
-     */
-    public static function check_and_update_order_status($order_id, $state_name)
-    {
-        //XXX delete
     }
 
     /**
