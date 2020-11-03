@@ -28,7 +28,7 @@ class OrderUpdateFromMoySklad
 
             echo '<pre>';
 
-            self::update_order_from_moysklad(26441);
+            self::update_order_from_moysklad(26447);
 
             die(0);
         });
@@ -194,7 +194,7 @@ class OrderUpdateFromMoySklad
         }
 
 
-        $order->calculate_totals();
+        // $order->calculate_totals();
         // $order->save();
 
         return $order;
@@ -338,7 +338,6 @@ class OrderUpdateFromMoySklad
      */
     public static function update_order_from_moysklad($order_id = 0)
     {
-
         if (empty($order_id)) {
             return false;
         }
@@ -358,15 +357,16 @@ class OrderUpdateFromMoySklad
         $data = wooms_request($url_api);
 
         $order = apply_filters('wooms_update_order_from_moysklad', $order, $data);
-        $order->calculate_totals();
         
         $order->save();
+        $order = wc_get_order($order_id);
+        $order->save();
+
+        $order->calculate_totals();
+
 
         do_action('wooms_update_order_from_moysklad_after_save', $order, $data);
 
-        $order = wc_get_order($order_id);
-
-        $order->save();
 
         do_action(
             'wooms_logger',
