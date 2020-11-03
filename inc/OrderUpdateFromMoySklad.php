@@ -358,9 +358,11 @@ class OrderUpdateFromMoySklad
         $data = wooms_request($url_api);
 
         $order = apply_filters('wooms_update_order_from_moysklad', $order, $data);
+        $order->calculate_totals();
+        
         $order->save();
 
-        do_action('wooms_update_order_items_from_moysklad', $order, $data);
+        do_action('wooms_update_order_from_moysklad_after_save', $order, $data);
 
         $order = wc_get_order($order_id);
 
