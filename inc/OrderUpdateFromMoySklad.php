@@ -87,7 +87,7 @@ class OrderUpdateFromMoySklad
 
         foreach ($statuses_match as $status_key => $status_name) {
 
-            if ($status_name == $state_name) {
+            if ($status_name == $state_name && $order->get_status() != $status_key) {
                 // $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
                 $order->set_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
             }
