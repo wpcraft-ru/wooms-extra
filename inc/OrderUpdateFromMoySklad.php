@@ -344,7 +344,6 @@ class OrderUpdateFromMoySklad
 
 
         if (empty($posts)) {
-            as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
             self::set_state('is_wait', 1);
             return;
         }
@@ -427,6 +426,7 @@ class OrderUpdateFromMoySklad
     {
 
          if (self::is_wait()) {
+            as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
             return;
         }
 
