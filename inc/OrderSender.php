@@ -17,6 +17,7 @@ class OrderSender
      */
     public static $walker_hook_name = 'wooms_schedule_order_sender';
 
+    //deprecated
     public static $is_new_order_process = false;
 
 
@@ -42,7 +43,21 @@ class OrderSender
         // });
 
 
-        add_action('wooms_schedule_order_sender', array(__CLASS__, 'batch_hadler'));
+        add_action('wooms_schedule_order_sender', function($args){
+
+            if(empty($args['post_id'])){
+                return;
+            }
+
+            if( ! $order = wc_get_order($args['post_id'])){
+                return;
+            }
+
+            self::order_update_to_moysklad($order->get_id());
+
+        });
+
+        add_action('wooms_check_orders_for_update_to_moysklad', array(__CLASS__, 'batch_hadler'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
@@ -188,7 +203,7 @@ class OrderSender
     /**
      * order_update_to_moysklad
      */
-    public static function order_update_to_moysklad($order_id, $order = [])
+    public static function order_update_to_moysklad($order_id, $order = false)
     {
 
         if (empty($order)) {
@@ -203,6 +218,15 @@ class OrderSender
 
         $skip = apply_filters('wooms_skip_order_update', false, $order);
         if ($skip) {
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                sprintf('Пропуск Заказ %s - обновлен', $order_id)
+            );
+
+            delete_post_meta($order_id, 'wooms_order_sync');
+
             return false;
         }
 
@@ -213,6 +237,7 @@ class OrderSender
 
             $check = self::send_order($order_id, $order);
             if ($check) {
+
                 $order = wc_get_order($order_id);
                 $order->delete_meta_data('wooms_order_sync');
                 $order->save();
@@ -260,7 +285,6 @@ class OrderSender
                 $result
             );
         } else {
-            $order->delete_meta_data('wooms_order_sync');
 
             $order = apply_filters('wooms_order_send_save', $order, $data);
 
@@ -268,6 +292,9 @@ class OrderSender
             $order->update_meta_data('wooms_data', $data_json);
 
             $order = apply_filters('wooms_order_update', $order, $result);
+
+            $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
+            $order->delete_meta_data('wooms_order_sync');
 
             $order->save();
 
@@ -290,22 +317,28 @@ class OrderSender
      */
     public static function add_schedule_hook($force = false)
     {
-        // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-        if (self::is_wait()) {
-            return;
+
+
+        if ( false === as_next_scheduled_action( 'wooms_check_orders_for_update_to_moysklad' ) ) {
+            as_schedule_recurring_action( time (), MINUTE_IN_SECONDS, 'wooms_check_orders_for_update_to_moysklad', [], 'WooMS' );
         }
 
-        if (as_next_scheduled_action(self::$walker_hook_name) && !$force) {
-            return;
-        }
+        // // If next schedule is not this one and the sync is active and the all gallery images is downloaded
+        // if (self::is_wait()) {
+        //     return;
+        // }
 
-        // Adding schedule hook
-        as_schedule_single_action(
-            time() + 10,
-            self::$walker_hook_name,
-            [],
-            'WooMS'
-        );
+        // if (as_next_scheduled_action(self::$walker_hook_name) && !$force) {
+        //     return;
+        // }
+
+        // // Adding schedule hook
+        // as_schedule_single_action(
+        //     time() + 10,
+        //     self::$walker_hook_name,
+        //     [],
+        //     'WooMS'
+        // );
     }
 
     /**
@@ -315,11 +348,14 @@ class OrderSender
      */
     public static function is_wait()
     {
+        $is_wait = true;
         if (get_transient('wooms_order_timestamp_end')) {
-            return true;
+            $is_wait = true;
+        } else {
+            $is_wait = false;
         }
 
-        return false;
+        return apply_filters('wooms_order_sender_is_wait', $is_wait);
     }
 
 
@@ -352,21 +388,25 @@ class OrderSender
 
         $result_list = [];
         foreach ($orders as $order) {
-            // $order = wc_get_order($order->ID);
-            $order = new \WC_Order($order->ID);
 
-            $check = self::order_update_to_moysklad($order->get_id());
-            if (false != $check) {
-                // update_post_meta($order->get_id(), 'wooms_send_timestamp', date("Y-m-d H:i:s"));
-                $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
-                $result_list[] = $order->get_id();
-            }
-            $order->delete_meta_data('wooms_order_sync');
-            $order->save();
+            self::add_task_order_update($order->ID);
+          
         }
 
         self::add_schedule_hook(true);
     }
+
+    public static function add_task_order_update($order_id){
+        $args = [
+            'data' => [
+                'post_id' => $order_id,
+                'time' => time(),
+            ]
+        ];
+
+        as_enqueue_async_action( self::$walker_hook_name, $args, 'WooMS' );
+    }
+
 
     /**
      * Send order to moysklad.ru and mark the order as sended
@@ -498,9 +538,9 @@ class OrderSender
         }
 
         //issue https://github.com/wpcraft-ru/wooms/issues/344
-        if ($order->meta_exists('wooms_order_task_update')) {
-            return $data_order;
-        }
+        // if ($order->meta_exists('wooms_order_task_update')) {
+        //     return $data_order;
+        // }
 
         $items = $order->get_items();
 

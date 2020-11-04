@@ -22,21 +22,35 @@ class OrderUpdateFromMoySklad
     public static function init()
     {
         add_action('init', function () {
-            if (!isset($_GET['dd'])) {
+            if (!isset($_GET['ddd'])) {
                 return;
             }
 
             echo '<pre>';
 
-            self::update_order_from_moysklad(26447);
+            // dd(as_next_scheduled_action( 'wooms_check_orders_for_sync_from_moysklad' ));
+            self::add_schedule_hook();
+            // self::update_order_from_moysklad(26447);
 
             die(0);
+        });
+
+        add_action('wooms_order_task_update', function($args){
+            if(empty($args['post_id'])){
+                return;
+            }
+            self::update_order_from_moysklad($args['post_id']);
+            delete_post_meta($args['post_id'], self::$hook_order_update_from_moysklad);
+
         });
 
         add_action('rest_api_init', array(__CLASS__, 'add_route'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
-        add_action('wooms_order_task_update', array(__CLASS__, 'batch_handler'));
+        // add_action('wooms_order_task_update', array(__CLASS__, 'batch_handler'));
+
+      
+        add_action('wooms_check_orders_for_sync_from_moysklad', array(__CLASS__, 'batch_handler'));
 
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 100);
@@ -45,9 +59,21 @@ class OrderUpdateFromMoySklad
         add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_items'), 15, 2);
 
         add_filter('wooms_skip_order_update', array(__CLASS__, 'skip_order_update_from_site'), 10, 2);
+        
+        add_action('save_post_shop_order', array(__CLASS__, 'lock_callback_update'));
 
     }
 
+
+    public static function lock_callback_update($order_id){
+
+        //если стоит задача на апдейт из МойСклад, то пропускаем
+        if(get_post_meta($order_id, self::$hook_order_update_from_moysklad, true)){
+            return;
+        }
+
+        update_post_meta($order_id, 'lock_callback_update', 1);
+    }
 
 
     /**
@@ -94,7 +120,6 @@ class OrderUpdateFromMoySklad
         }
 
         return $order;
-
     }
 
     /**
@@ -171,7 +196,7 @@ class OrderUpdateFromMoySklad
             //     } else {
             //         $tax_total = $tax * $total_with_discont;
             //     }
-                
+
             //     $line_item->set_tax_class(strval($tax));
             //     $line_item->set_total_tax($tax_total);
             // }
@@ -268,7 +293,7 @@ class OrderUpdateFromMoySklad
             return true;
         }
 
-        return false;
+        return $skip;
     }
 
 
@@ -319,15 +344,21 @@ class OrderUpdateFromMoySklad
 
 
         if (empty($posts)) {
+            as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
             self::set_state('is_wait', 1);
             return;
         }
 
         foreach ($posts as $post) {
 
-            if (self::update_order_from_moysklad($post->ID)) {
-                delete_post_meta($post->ID, self::$hook_order_update_from_moysklad);
-            }
+            $args = [
+                'data' => [
+                    'post_id' => $post->ID,
+                    'time' => time(),
+                ]
+            ];
+
+            as_enqueue_async_action( self::$hook_order_update_from_moysklad, $args, 'WooMS' );
         }
 
         return;
@@ -357,22 +388,30 @@ class OrderUpdateFromMoySklad
         $data = wooms_request($url_api);
 
         $order = apply_filters('wooms_update_order_from_moysklad', $order, $data);
-        
+
         $order->save();
         $order = wc_get_order($order_id);
+        
+        
         $order->save();
 
         $order->calculate_totals();
 
+        $sum = number_format($data['sum'] / 100, 2, '.', '');
+        if ($sum != $order->get_total()) {
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
+                sprintf('Ошибка в сумме Заказа после обновления данных из МойСклад (сумма МС %s, сумма на сайте %s)', $sum, $order->get_total())
+            );
+        }
 
         do_action('wooms_update_order_from_moysklad_after_save', $order, $data);
-
 
         do_action(
             'wooms_logger',
             __CLASS__,
-            sprintf('Заказ обновился данными из МойСклад (id %s, номер %ы)', $order->get_id, $order->get_order_number()),
-            $data
+            sprintf('Заказ обновился данными из МойСклад (id %s, номер %s)', $order->get_id, $order->get_order_number())
         );
 
         return $order_id;
@@ -384,24 +423,31 @@ class OrderUpdateFromMoySklad
      *
      * @return mixed
      */
-    public static function add_schedule_hook($force = false)
+    public static function add_schedule_hook()
     {
+
+         if (self::is_wait()) {
+            return;
+        }
+
+        if ( false == as_next_scheduled_action( 'wooms_check_orders_for_sync_from_moysklad' ) ) {
+            as_schedule_recurring_action( time (), MINUTE_IN_SECONDS, 'wooms_check_orders_for_sync_from_moysklad', [], 'WooMS' );
+        }
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-        if (self::is_wait()) {
-            return;
-        }
+       
 
-        if (as_next_scheduled_action(self::$hook_order_update_from_moysklad) && !$force) {
-            return;
-        }
+        // if (as_next_scheduled_action(self::$hook_order_update_from_moysklad)) {
+        //     return;
+        // }
 
-        // Adding schedule hook
-        as_schedule_single_action(
-            time() + 10,
-            self::$hook_order_update_from_moysklad,
-            [],
-            'WooMS'
-        );
+        // as_unschedule_action(self::$hook_order_update_from_moysklad);
+        // // Adding schedule hook
+        // as_schedule_single_action(
+        //     time() + 10,
+        //     self::$hook_order_update_from_moysklad,
+        //     [],
+        //     'WooMS'
+        // );
     }
 
     /**
@@ -474,7 +520,6 @@ class OrderUpdateFromMoySklad
         );
 
         self::get_status_order_webhook();
-   
     }
 
     /**
@@ -679,9 +724,7 @@ class OrderUpdateFromMoySklad
         register_rest_route('wooms/v1', '/order-update/', array(
             'methods'  => \WP_REST_Server::EDITABLE,
             'callback' => array(__CLASS__, 'get_data_order_from_moysklad'),
-            'args' => [
-                'permission_callback' => __return_true(),
-            ]
+            'permission_callback' => '__return_true',
         ));
     }
 
@@ -719,12 +762,13 @@ class OrderUpdateFromMoySklad
                 return;
             }
 
-            $url        = $data["events"][0]["meta"]["href"];
+            $url = $data["events"][0]["meta"]["href"];
 
             $data_order = wooms_request($url);
             if (empty($data_order['id'])) {
                 return;
             }
+
             $order_uuid = $data_order['id'];
 
             $args   = array(
@@ -741,6 +785,12 @@ class OrderUpdateFromMoySklad
                 return false;
             }
             $order_id = $orders[0]->ID;
+
+            //Если стоит блокировка обновления Заказа, то выходим (защита от состояния гонки)
+            if(get_post_meta($order_id, 'lock_callback_update', true)){
+                delete_post_meta($order_id, 'lock_callback_update');
+                return;
+            }
 
             update_post_meta($order_id, self::$hook_order_update_from_moysklad, 1);
 
