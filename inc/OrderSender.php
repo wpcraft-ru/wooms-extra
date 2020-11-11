@@ -17,10 +17,6 @@ class OrderSender
      */
     public static $walker_hook_name = 'wooms_send_order_in_moysklad';
 
-    //deprecated
-    public static $is_new_order_process = false;
-
-
     /**
      * The init
      */
@@ -144,7 +140,6 @@ class OrderSender
             return;
         }
 
-        self::$is_new_order_process = true;
 
         update_post_meta($order_id, 'wooms_order_sync', 1);
 
@@ -153,7 +148,6 @@ class OrderSender
             self::order_update_to_moysklad($order_id, $order);
         }
 
-        self::$is_new_order_process = false;
     }
 
 
