@@ -15,7 +15,7 @@ class OrderSender
      *
      * @var string
      */
-    public static $walker_hook_name = 'wooms_schedule_order_sender';
+    public static $walker_hook_name = 'wooms_send_order_in_moysklad';
 
     //deprecated
     public static $is_new_order_process = false;
@@ -43,7 +43,7 @@ class OrderSender
         // });
 
 
-        add_action('wooms_schedule_order_sender', function($args){
+        add_action('wooms_send_order_in_moysklad', function($args){
 
             if(empty($args['post_id'])){
                 return;
@@ -317,7 +317,6 @@ class OrderSender
      */
     public static function add_schedule_hook($force = false)
     {
-
         if (self::is_wait()) {
             as_unschedule_all_actions('wooms_check_orders_for_update_to_moysklad');
             return;
@@ -326,21 +325,6 @@ class OrderSender
         if ( false === as_next_scheduled_action( 'wooms_check_orders_for_update_to_moysklad' ) ) {
             as_schedule_recurring_action( time (), MINUTE_IN_SECONDS, 'wooms_check_orders_for_update_to_moysklad', [], 'WooMS' );
         }
-
-        // // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-     
-
-        // if (as_next_scheduled_action(self::$walker_hook_name) && !$force) {
-        //     return;
-        // }
-
-        // // Adding schedule hook
-        // as_schedule_single_action(
-        //     time() + 10,
-        //     self::$walker_hook_name,
-        //     [],
-        //     'WooMS'
-        // );
     }
 
     /**

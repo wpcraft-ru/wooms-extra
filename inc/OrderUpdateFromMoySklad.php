@@ -22,34 +22,27 @@ class OrderUpdateFromMoySklad
     public static function init()
     {
         add_action('init', function () {
-            if (!isset($_GET['ddd'])) {
+            if (!isset($_GET['dd'])) {
                 return;
             }
 
-            echo '<pre>';
+            self::update_order_from_moysklad(23690);
 
-            // dd(as_next_scheduled_action( 'wooms_check_orders_for_sync_from_moysklad' ));
-            self::add_schedule_hook();
-            // self::update_order_from_moysklad(26447);
-
-            die(0);
+            die("ddd");
         });
 
-        add_action('wooms_order_task_update', function($args){
-            if(empty($args['post_id'])){
+        add_action('wooms_order_task_update', function ($args) {
+            if (empty($args['post_id'])) {
                 return;
             }
             self::update_order_from_moysklad($args['post_id']);
             delete_post_meta($args['post_id'], self::$hook_order_update_from_moysklad);
-
         });
 
         add_action('rest_api_init', array(__CLASS__, 'add_route'));
 
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
-        // add_action('wooms_order_task_update', array(__CLASS__, 'batch_handler'));
 
-      
         add_action('wooms_check_orders_for_sync_from_moysklad', array(__CLASS__, 'batch_handler'));
 
 
@@ -59,16 +52,16 @@ class OrderUpdateFromMoySklad
         add_filter('wooms_update_order_from_moysklad', array(__CLASS__, 'update_order_items'), 15, 2);
 
         add_filter('wooms_skip_order_update', array(__CLASS__, 'skip_order_update_from_site'), 10, 2);
-        
-        add_action('save_post_shop_order', array(__CLASS__, 'lock_callback_update'));
 
+        add_action('save_post_shop_order', array(__CLASS__, 'lock_callback_update'));
     }
 
 
-    public static function lock_callback_update($order_id){
+    public static function lock_callback_update($order_id)
+    {
 
         //если стоит задача на апдейт из МойСклад, то пропускаем
-        if(get_post_meta($order_id, self::$hook_order_update_from_moysklad, true)){
+        if (get_post_meta($order_id, self::$hook_order_update_from_moysklad, true)) {
             return;
         }
 
@@ -287,6 +280,10 @@ class OrderUpdateFromMoySklad
      */
     public static function skip_order_update_from_site($skip, $order)
     {
+        if (!self::is_enable()) {
+            return $skip;
+        }
+        
         $task_exist = $order->get_meta(self::$hook_order_update_from_moysklad, true);
 
         if ($task_exist) {
@@ -325,6 +322,10 @@ class OrderUpdateFromMoySklad
     public static function batch_handler()
     {
 
+        if (!self::is_enable()) {
+            return;
+        }
+
         $args = [
             'post_type'   => 'shop_order',
             'post_status' => 'any',
@@ -357,7 +358,8 @@ class OrderUpdateFromMoySklad
                 ]
             ];
 
-            as_enqueue_async_action( self::$hook_order_update_from_moysklad, $args, 'WooMS' );
+            // as_enqueue_async_action( self::$hook_order_update_from_moysklad, $args, 'WooMS' );
+            as_schedule_single_action(time(), self::$hook_order_update_from_moysklad, $args, 'WooMS');
         }
 
         return;
@@ -390,8 +392,8 @@ class OrderUpdateFromMoySklad
 
         $order->save();
         $order = wc_get_order($order_id);
-        
-        
+
+
         $order->save();
 
         $order->calculate_totals();
@@ -425,16 +427,21 @@ class OrderUpdateFromMoySklad
     public static function add_schedule_hook()
     {
 
-         if (self::is_wait()) {
+        if (self::is_wait()) {
             as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
             return;
         }
 
-        if ( false == as_next_scheduled_action( 'wooms_check_orders_for_sync_from_moysklad' ) ) {
-            as_schedule_recurring_action( time (), MINUTE_IN_SECONDS, 'wooms_check_orders_for_sync_from_moysklad', [], 'WooMS' );
+        if (!self::is_enable()) {
+            as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
+            return;
+        }
+
+        if (false == as_next_scheduled_action('wooms_check_orders_for_sync_from_moysklad')) {
+            as_schedule_recurring_action(time(), MINUTE_IN_SECONDS, 'wooms_check_orders_for_sync_from_moysklad', [], 'WooMS');
         }
         // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-       
+
 
         // if (as_next_scheduled_action(self::$hook_order_update_from_moysklad)) {
         //     return;
@@ -740,13 +747,6 @@ class OrderUpdateFromMoySklad
     {
         self::set_state('is_wait', 0);
 
-        do_action(
-            'wooms_logger',
-            __CLASS__,
-            'Прилетел веб хук на изменение заказа',
-            $data_request
-        );
-
         try {
             $body = $data_request->get_body();
             $data = json_decode($body, true);
@@ -757,6 +757,10 @@ class OrderUpdateFromMoySklad
                 'Прилетел веб-хук',
                 $data
             );
+
+            if (!self::is_enable()) {
+                return;
+            }
 
             if (empty($data["events"][0]["meta"]["href"])) {
                 return;
@@ -787,7 +791,7 @@ class OrderUpdateFromMoySklad
             $order_id = $orders[0]->ID;
 
             //Если стоит блокировка обновления Заказа, то выходим (защита от состояния гонки)
-            if(get_post_meta($order_id, 'lock_callback_update', true)){
+            if (get_post_meta($order_id, 'lock_callback_update', true)) {
                 delete_post_meta($order_id, 'lock_callback_update');
                 return;
             }
