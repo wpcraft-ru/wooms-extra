@@ -107,8 +107,7 @@ class OrderUpdateFromMoySklad
         foreach ($statuses_match as $status_key => $status_name) {
 
             if ($status_name == $state_name && $order->get_status() != $status_key) {
-                // $check = $order->update_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
-                $order->set_status($status_key, sprintf('Выбран статус "%s" через МойСклад', $status_name));
+                $order->set_status($status_key, sprintf('Выбран статус через МойСклад: "%s"', $status_name));
             }
         }
 
@@ -283,7 +282,7 @@ class OrderUpdateFromMoySklad
         if (!self::is_enable()) {
             return $skip;
         }
-        
+
         $task_exist = $order->get_meta(self::$hook_order_update_from_moysklad, true);
 
         if ($task_exist) {
@@ -426,7 +425,6 @@ class OrderUpdateFromMoySklad
      */
     public static function add_schedule_hook()
     {
-
         if (self::is_wait()) {
             as_unschedule_all_actions('wooms_check_orders_for_sync_from_moysklad');
             return;
@@ -440,22 +438,8 @@ class OrderUpdateFromMoySklad
         if (false == as_next_scheduled_action('wooms_check_orders_for_sync_from_moysklad')) {
             as_schedule_recurring_action(time(), MINUTE_IN_SECONDS, 'wooms_check_orders_for_sync_from_moysklad', [], 'WooMS');
         }
-        // If next schedule is not this one and the sync is active and the all gallery images is downloaded
-
-
-        // if (as_next_scheduled_action(self::$hook_order_update_from_moysklad)) {
-        //     return;
-        // }
-
-        // as_unschedule_action(self::$hook_order_update_from_moysklad);
-        // // Adding schedule hook
-        // as_schedule_single_action(
-        //     time() + 10,
-        //     self::$hook_order_update_from_moysklad,
-        //     [],
-        //     'WooMS'
-        // );
     }
+
 
     /**
      * check wait state
