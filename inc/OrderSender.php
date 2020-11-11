@@ -50,7 +50,6 @@ class OrderSender
             }
 
             self::order_update_to_moysklad($order->get_id());
-
         });
 
         add_action('wooms_check_orders_for_update_to_moysklad', array(__CLASS__, 'batch_hadler'));
@@ -71,9 +70,6 @@ class OrderSender
         add_filter('wooms_order_data', [__CLASS__, 'add_agent_as_new'], 55, 3);
         add_filter('wooms_order_data', [__CLASS__, 'agent_update_data'], 55, 3);
 
-
-
-
         add_action('add_meta_boxes', function () {
             add_meta_box('metabox_order', 'МойСклад', array(__CLASS__, 'display_metabox'), 'shop_order', 'side', 'low');
         });
@@ -82,6 +78,117 @@ class OrderSender
 
         add_action('admin_init', array(__CLASS__, 'add_settings'), 40);
     }
+
+
+    /**
+     * order_update_to_moysklad
+     */
+    public static function order_update_to_moysklad($order_id, $order = false)
+    {
+
+        if (empty($order)) {
+            $order    = wc_get_order($order_id);
+        }
+
+        $wooms_id = $order->get_meta('wooms_id', true);
+
+        if (!$order->get_items()) {
+            return false;
+        }
+
+        $skip = apply_filters('wooms_skip_order_update', false, $order);
+        if ($skip) {
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                sprintf('Пропуск Заказ %s - обновлен', $order_id)
+            );
+
+            delete_post_meta($order_id, 'wooms_order_sync');
+
+            return false;
+        }
+
+        /**
+         * Send order if no wooms_id
+         */
+        if (empty($wooms_id)) {
+
+            $check = self::send_order($order_id, $order);
+            if ($check) {
+
+                $order = wc_get_order($order_id);
+                $order->delete_meta_data('wooms_order_sync');
+                $order->save();
+
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Preparation the data for update an existing order
+         */
+        $data = array(
+            "name" => self::get_data_name($order_id),
+        );
+
+        /**
+         * for send and update
+         */
+        $data = apply_filters('wooms_order_data', $data, $order_id);
+
+        /**
+         * only for update exist order
+         */
+        $data = apply_filters('wooms_order_update_data', $data, $order_id);
+
+        if (empty($data['positions'])) {
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
+                sprintf('При передаче Заказа %s - нет позиций', $order_id)
+            );
+        }
+
+        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/' . $wooms_id;
+
+        $result = wooms_request($url, $data, 'PUT');
+
+        if (empty($result["id"])) {
+            do_action(
+                'wooms_logger_error',
+                __CLASS__,
+                sprintf('При передаче Заказа %s - данные не переданы', $order_id),
+                $result
+            );
+        } else {
+
+            $order = apply_filters('wooms_order_send_save', $order, $data);
+
+            $data_json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            $order->update_meta_data('wooms_data', $data_json);
+
+            $order = apply_filters('wooms_order_update', $order, $result);
+
+            $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
+            $order->delete_meta_data('wooms_order_sync');
+
+            $order->save();
+
+            do_action(
+                'wooms_logger',
+                __CLASS__,
+                sprintf('Заказ %s - обновлен', $order_id),
+                $data
+            );
+
+            return true;
+        }
+    }
+
 
     /**
      * add_currency
@@ -192,115 +299,6 @@ class OrderSender
         delete_transient('wooms_order_timestamp_end');
 
         // add_action('woocommerce_update_order', [__CLASS__, 'order_update']);
-    }
-
-    /**
-     * order_update_to_moysklad
-     */
-    public static function order_update_to_moysklad($order_id, $order = false)
-    {
-
-        if (empty($order)) {
-            $order    = wc_get_order($order_id);
-        }
-
-        $wooms_id = $order->get_meta('wooms_id', true);
-
-        if (!$order->get_items()) {
-            return false;
-        }
-
-        $skip = apply_filters('wooms_skip_order_update', false, $order);
-        if ($skip) {
-
-            do_action(
-                'wooms_logger',
-                __CLASS__,
-                sprintf('Пропуск Заказ %s - обновлен', $order_id)
-            );
-
-            delete_post_meta($order_id, 'wooms_order_sync');
-
-            return false;
-        }
-
-        /**
-         * Send order if no wooms_id
-         */
-        if (empty($wooms_id)) {
-
-            $check = self::send_order($order_id, $order);
-            if ($check) {
-
-                $order = wc_get_order($order_id);
-                $order->delete_meta_data('wooms_order_sync');
-                $order->save();
-
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        /**
-         * Preparation the data for update an existing order
-         */
-        $data = array(
-            "name" => self::get_data_name($order_id),
-        );
-
-        /**
-         * for send and update
-         */
-        $data = apply_filters('wooms_order_data', $data, $order_id);
-
-        /**
-         * only for update exist order
-         */
-        $data = apply_filters('wooms_order_update_data', $data, $order_id);
-
-        if (empty($data['positions'])) {
-            do_action(
-                'wooms_logger_error',
-                __CLASS__,
-                sprintf('При передаче Заказа %s - нет позиций', $order_id)
-            );
-        }
-
-        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/' . $wooms_id;
-
-        $result = wooms_request($url, $data, 'PUT');
-
-        if (empty($result["id"])) {
-            do_action(
-                'wooms_logger_error',
-                __CLASS__,
-                sprintf('При передаче Заказа %s - данные не переданы', $order_id),
-                $result
-            );
-        } else {
-
-            $order = apply_filters('wooms_order_send_save', $order, $data);
-
-            $data_json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            $order->update_meta_data('wooms_data', $data_json);
-
-            $order = apply_filters('wooms_order_update', $order, $result);
-
-            $order->update_meta_data('wooms_send_timestamp', date("Y-m-d H:i:s"));
-            $order->delete_meta_data('wooms_order_sync');
-
-            $order->save();
-
-            do_action(
-                'wooms_logger',
-                __CLASS__,
-                sprintf('Заказ %s - обновлен', $order_id),
-                $data
-            );
-
-            return true;
-        }
     }
 
 
