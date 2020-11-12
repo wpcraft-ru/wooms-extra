@@ -13,7 +13,7 @@ class OrderUpdateFromMoySklad
     /**
      * этот хук является ключем для ActionSheduler и для метаполя, по которому определяются заказы для обновления.
      */
-    public static $hook_order_update_from_moysklad = 'wooms_order_task_update';
+    public static $hook_order_update_from_moysklad = 'wooms_order_update_from_moysklad';
     public static $state_key = 'wooms_order_update_from_moysklad_state';
 
     /**
@@ -31,7 +31,7 @@ class OrderUpdateFromMoySklad
             die("ddd");
         });
 
-        add_action('wooms_order_task_update', function ($args) {
+        add_action('wooms_order_update_from_moysklad', function ($args) {
             if (empty($args['post_id'])) {
                 return;
             }
