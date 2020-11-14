@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: WooMS XT (Extra)
  * Description: Расширение для синхронизации данных между приложениями МойСклад и WooCommerce - расширенная версия
@@ -13,7 +12,7 @@
  * Text Domain: wooms-xt
  * Domain Path: /languages
  * WC requires at least: 3.6
- * WC tested up to: 4.0
+ * WC tested up to: 4.7.0
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
  * Version: 8.0
