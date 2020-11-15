@@ -21,15 +21,15 @@ class OrderUpdateFromMoySklad
      */
     public static function init()
     {
-        add_action('init', function () {
-            if (!isset($_GET['dd'])) {
-                return;
-            }
+        // add_action('init', function () {
+        //     if (!isset($_GET['dd'])) {
+        //         return;
+        //     }
 
-            self::update_order_from_moysklad(23690);
+        //     self::update_order_from_moysklad(23690);
 
-            die("ddd");
-        });
+        //     die("ddd");
+        // });
 
         add_action('wooms_order_update_from_moysklad', function ($args) {
             if (empty($args['post_id'])) {

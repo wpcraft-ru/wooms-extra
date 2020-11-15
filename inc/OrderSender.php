@@ -30,10 +30,7 @@ class OrderSender
 
         //   echo '<pre>';
 
-        //   // dd(get_transient('wooms_end_timestamp'));
-        //   $check = self::update_order(693178);
-
-        //   var_dump($check);
+        //   $check = self::order_update_to_moysklad(26451);
 
         //   die(0);
         // });
