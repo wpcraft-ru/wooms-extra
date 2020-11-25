@@ -30,7 +30,7 @@ class OrderSender
 
         //   echo '<pre>';
 
-        //   $check = self::order_update_to_moysklad(26451);
+        //   $check = self::order_update_to_moysklad(26455);
 
         //   die(0);
         // });
@@ -125,12 +125,14 @@ class OrderSender
             }
         }
 
+        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/' . $wooms_id;
+
+        $data = wooms_request($url);
+
         /**
          * Preparation the data for update an existing order
          */
-        $data = array(
-            "name" => self::get_data_name($order_id),
-        );
+        $data["name"] = self::get_data_name($order_id);
 
         /**
          * for send and update
@@ -150,7 +152,6 @@ class OrderSender
             );
         }
 
-        $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/customerorder/' . $wooms_id;
 
         $result = wooms_request($url, $data, 'PUT');
 
@@ -668,6 +669,7 @@ class OrderSender
             "legalAddress"  => self::get_data_order_address($order_id),
             "actualAddress" => self::get_data_order_address($order_id),
             "phone"         => self::get_data_order_phone($order_id, $order),
+            "email"         => $order->get_billing_email()
         );
 
         $url    = $data_order['agent']['meta']['href'];
@@ -687,6 +689,12 @@ class OrderSender
 
         if (empty($order)) {
             $order = wc_get_order($order_id);
+        }
+
+
+        //main method - by email
+        if($order->get_billing_email()){
+            return $data_order;
         }
 
         if (!$phone = $order->get_billing_phone()) {
@@ -740,6 +748,7 @@ class OrderSender
             "legalAddress"  => self::get_data_order_address($order_id),
             "actualAddress" => self::get_data_order_address($order_id),
             "phone"         => self::get_data_order_phone($order_id, $order),
+            "email"         => $order->get_billing_email()
         );
 
         $url    = 'https://online.moysklad.ru/api/remap/1.2/entity/counterparty';
