@@ -13,27 +13,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build project # This would actually build your project, using zip for an example artifact
+      - name: Build project
         run: |
+          composer install --no-dev --optimize-autoloader
           mkdir build
-          zip --junk-paths build/wooms-extra.zip . -x *.git* node_modules/\* .* "*/\.*" CODE_OF_CONDUCT.md CONTRIBUTING.md ISSUE_TEMPLATE.md PULL_REQUEST_TEMPLATE.md *.dist composer.* dev-helpers** build** "vendor/*" "docs/*" "tests/*"
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create artifact
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip --junk-paths -X -r build/wooms.zip . -x *.git* node_modules/\* .* "*/\.*" CODE_OF_CONDUCT.md CONTRIBUTING.md ISSUE_TEMPLATE.md PULL_REQUEST_TEMPLATE.md *.dist composer.* dev-helpers** build** "vendor/*" "docs/*" "tests/*"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+            name: wooms
+            path: build/wooms.zip
+      - name: Upload to release
+        uses: JasonEtco/upload-to-release@master
+        with:
+          args: build/wooms.zip application/zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-      - name: Upload Release Asset
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./build/wooms-extra.zip
-          asset_name: build/wooms-extra.zip
-          asset_content_type: application/zip
