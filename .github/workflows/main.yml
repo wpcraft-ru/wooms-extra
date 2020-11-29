@@ -1,6 +1,6 @@
 # GitHub Action: https://dev.to/leoloso/using-github-actions-to-release-a-wordpress-plugin-42a5
 
-name: Generate Installable Plugin, and Upload as Release Asset
+name: Generate Installable Plugin, and Upload as Release Asset 1
 on:
   release:
     types: [published]
