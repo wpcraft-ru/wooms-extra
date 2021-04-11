@@ -58,6 +58,11 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/SiteHealthWebHooks.php';
         require_once __DIR__ . '/inc/CurrencyConverter.php';
         require_once __DIR__ . '/inc/OrderNumber.php';
+
+        add_action( 'woocommerce_order_item_meta_start', function () {
+
+            add_filter( 'woocommerce_order_item_get_formatted_meta_data',  'wooms_id_remove_from_order_data', 10, 2 );
+        });
     }
 });
 
@@ -73,3 +78,18 @@ add_filter('wooms_xt_version', function ($version) {
     $data = get_plugin_data(__FILE__);
     return $data["Version"];
 });
+
+/**
+ * Removal of wooms_id from order data in customer email and order-received / view-order pages
+ */
+function wooms_id_remove_from_order_data( $attr, $data ) {
+
+    foreach( $attr as $key => $att ) {
+
+        if ( $att->key == 'wooms_id' ) {
+            unset( $attr[$key] );
+        }
+    }
+
+    return $attr;
+}
