@@ -39,6 +39,7 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/ProductSingleSync.php';
         require_once __DIR__ . '/inc/ProductStocks.php';
         require_once __DIR__ . '/inc/ProductGrouped.php';
+		require_once __DIR__ . '/inc/ProductExcerpt.php';
 
         require_once __DIR__ . '/inc/ProductVariable.php';
         require_once __DIR__ . '/inc/ProductVariableImage.php';
