@@ -60,6 +60,8 @@ class ProductVariable
         add_action('init', array(__CLASS__, 'add_schedule_hook'));
 
         add_action('woomss_tool_actions_btns', array(__CLASS__, 'display_state'), 15);
+
+		add_action('woocommerce_variation_header', array(__CLASS__, 'variation_sync_id'), 10);
     }
 
 
@@ -885,6 +887,16 @@ class ProductVariable
         }
 
         set_transient(self::$state_transient_key, $state);
+    }
+
+    /**
+     * show wooms_id for variation in admin
+     */
+    public static function variation_sync_id($variation) {
+        $wooms_id = get_post_meta($variation->ID, 'wooms_id', true);
+        if ($wooms_id) {
+            echo 'wooms_id: ' . $wooms_id;
+        }
     }
 }
 
