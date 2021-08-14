@@ -135,6 +135,11 @@ class OrderSender
         $data["name"] = self::get_data_name($order_id);
 
         /**
+         * New order description (customer note)
+         */
+		$data["description"] = self::get_order_note($order);
+
+        /**
          * for send and update
          */
         $data = apply_filters('wooms_order_data', $data, $order_id);
