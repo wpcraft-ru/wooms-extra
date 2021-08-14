@@ -144,7 +144,8 @@ class OrderSender
          */
         $data = apply_filters('wooms_order_update_data', $data, $order_id);
 
-        if (empty($data['positions'])) {
+        /* В заказе может быть только доставка и тогда не ясно, что остальные позиции не встали */
+        if (!isset($data['positions']) || empty($data['positions'])) {
             do_action(
                 'wooms_logger_error',
                 __CLASS__,
@@ -538,6 +539,18 @@ class OrderSender
             $product_type = self::get_product_type($item);
 
             $uuid = get_post_meta($product_id, 'wooms_id', true);
+
+            /* Если wooms_id у товара отсутствует,
+            * позиция не может быть передана (из существующей логики)
+            * поэтому, чтобы обратить внимание менеджера склада,
+            * что заказ не полный (при наличии других товаров в заказе)
+            * следует передать пустой заказ, иначе отправка зацикливается:
+            * https://github.com/wpcraft-ru/wooms/issues/408
+            */
+            if (!$uuid) {
+
+                return $data_order;
+            }
 
             $item->update_meta_data('wooms_id', $uuid);
             $item->save();
