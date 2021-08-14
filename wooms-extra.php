@@ -58,6 +58,7 @@ add_action('plugins_loaded', function () {
         require_once __DIR__ . '/inc/SiteHealthWebHooks.php';
         require_once __DIR__ . '/inc/CurrencyConverter.php';
         require_once __DIR__ . '/inc/OrderNumber.php';
+        require_once __DIR__ . '/inc/ProductsExclusion.php';
 
         add_action( 'woocommerce_order_item_meta_start', function () {
 
