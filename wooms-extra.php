@@ -12,7 +12,7 @@
  * Text Domain: wooms-xt
  * Domain Path: /languages
  * WC requires at least: 4.0
- * WC tested up to: 5.2
+ * WC tested up to: 5.6
  * WooMS requires at least: 2.0.5
  * WooMS tested up to: 2.0.5
  * Version: 8.2
