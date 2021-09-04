@@ -51,29 +51,21 @@ class ProductsExclusion {
 
         add_settings_field(
             $id       = $option,
-            $title    = 'Не загружать товары с отметкой (Тип - Флажок)',
+            $title    = 'Не загружать товары с отметкой',
             $callback = function ($args) {
 
-                $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/product/metadata/attributes';
-                $data = wooms_request( $url );
+                // $url  = 'https://online.moysklad.ru/api/remap/1.2/entity/product/metadata/attributes';
+                // $data = wooms_request( $url );
 
-                if ( empty( $data['rows'] ) ) {
-                    echo '<span class="notice notice-error inline">Система не смогла получить список атрибутов из МойСклад</span>';
-                    return;
-                }
+                // if ( empty( $data['rows'] ) ) {
+                //     echo '<span class="notice notice-error inline">Система не смогла получить список атрибутов из МойСклад</span>';
+                //     return;
+                // }
 
-                $selected_flag = $args['value']; ?>
+                // $selected_flag = $args['value']; ?>
 
-                <select class="wooms_select_exclude_flag" name="wooms_product_exclude_flag">
-                    <option value="">---</option>
-                    <?php
-                    foreach ( $data['rows'] as $row ) {
-                        if ( $row['type'] == 'boolean' ) {
-                            printf('<option value="%s" %s>%s</option>', $row['id'], selected( $row['id'], $selected_flag, false ), $row['name']);
-                        }
-                    }
-                    ?>
-                </select>
+                <input type="text", name="<?= self::$exclude_flag ?>" size="50">
+                <p>Тип поля в МойСклад должен быть - Флажок</p>
                 <?php
             },
             $page    = 'mss-settings',
@@ -100,4 +92,4 @@ class ProductsExclusion {
 
 }
 
-ProductsExclusion::init();
+// ProductsExclusion::init();
