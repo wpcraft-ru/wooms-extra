@@ -22,10 +22,10 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: wooms-extra
-          path: wooms-extra-${{ env.VERSION }}.zip
+          path: wooms-extra-${{ steps.get_version.outputs.VERSION }}.zip
       - name: Upload to release 
         uses: JasonEtco/upload-to-release@master
         with:
-          args: wooms-extra-${{ env.VERSION }}.zip application/zip
+          args: wooms-extra-${{ steps.get_version.outputs.VERSION }}.zip application/zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
