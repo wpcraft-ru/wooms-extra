@@ -13,7 +13,7 @@
  * Domain Path: /languages
  * 
  * WC requires at least: 5.5
- * WC tested up to: 5.8
+ * WC tested up to: 5.9
  * PHP requires at least: 5.6
  * WP requires at least: 5.0
  * Tested up to: 5.8.1
