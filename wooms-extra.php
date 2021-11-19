@@ -17,10 +17,10 @@
  * PHP requires at least: 5.6
  * WP requires at least: 5.0
  * Tested up to: 5.8.1
- * WooMS requires at least: 8.0
- * WooMS tested up to: 8.0
+ * WooMS requires at least: 8.5
+ * WooMS tested up to: 8.5
  * 
- * Version: 8.4
+ * Version: 8.5
  */
  
 
