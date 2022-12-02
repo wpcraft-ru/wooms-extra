@@ -1,7 +1,3 @@
-Расширенная версия для базового плагина https://github.com/wpcraft-ru/wooms
+! это архив и более не работаем тут
 
-
-Версии и история - changelog - https://github.com/wpcraft-ru/wooms/releases
-
-
-Для работы нужно чтобы был активирован базовый плагин.
+весь код переехал сюда https://github.com/wpcraft-ru/wooms
